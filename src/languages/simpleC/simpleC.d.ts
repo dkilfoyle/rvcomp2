@@ -35,8 +35,8 @@ export type StatementCstChildren = {
   doStatement?: DoStatementCstNode[];
   blockStatement?: BlockStatementCstNode[];
   variableDeclarationStatement?: VariableDeclarationStatementCstNode[];
+  assignStatement?: AssignStatementCstNode[];
   expressionStatement?: ExpressionStatementCstNode[];
-  emptyStatement?: EmptyStatementCstNode[];
 };
 
 export interface IfStatementCstNode extends CstNode {
@@ -46,7 +46,7 @@ export interface IfStatementCstNode extends CstNode {
 
 export type IfStatementCstChildren = {
   If: IToken[];
-  paren_expr: Paren_exprCstNode[];
+  parenExpression: ParenExpressionCstNode[];
   statement: StatementCstNode[];
   Else?: IToken[];
 };
@@ -58,7 +58,7 @@ export interface WhileStatementCstNode extends CstNode {
 
 export type WhileStatementCstChildren = {
   While: IToken[];
-  paren_expr: Paren_exprCstNode[];
+  parenExpression: ParenExpressionCstNode[];
   statement: StatementCstNode[];
 };
 
@@ -71,7 +71,7 @@ export type DoStatementCstChildren = {
   Do: IToken[];
   statement: StatementCstNode[];
   While: IToken[];
-  paren_expr: Paren_exprCstNode[];
+  parenExpression: ParenExpressionCstNode[];
   SemiColon: IToken[];
 };
 
@@ -94,6 +94,7 @@ export interface VariableDeclarationStatementCstNode extends CstNode {
 export type VariableDeclarationStatementCstChildren = {
   intType: IToken[];
   ID: IToken[];
+  SemiColon: IToken[];
 };
 
 export interface ExpressionStatementCstNode extends CstNode {
@@ -102,29 +103,55 @@ export interface ExpressionStatementCstNode extends CstNode {
 }
 
 export type ExpressionStatementCstChildren = {
-  expression: ExpressionCstNode[];
+  additionExpression: AdditionExpressionCstNode[];
   SemiColon: IToken[];
 };
 
-export interface ExpressionCstNode extends CstNode {
-  name: "expression";
-  children: ExpressionCstChildren;
+export interface AssignStatementCstNode extends CstNode {
+  name: "assignStatement";
+  children: AssignStatementCstChildren;
 }
 
-export type ExpressionCstChildren = {
-  functionCallExpression?: FunctionCallExpressionCstNode[];
-  assignExpression?: AssignExpressionCstNode[];
-  relationExpression?: RelationExpressionCstNode[];
+export type AssignStatementCstChildren = {
+  identifierExpression: IdentifierExpressionCstNode[];
+  Equals: IToken[];
+  additionExpression: AdditionExpressionCstNode[];
+  SemiColon: IToken[];
 };
 
-export interface RelationExpressionCstNode extends CstNode {
-  name: "relationExpression";
-  children: RelationExpressionCstChildren;
+export interface AdditionExpressionCstNode extends CstNode {
+  name: "additionExpression";
+  children: AdditionExpressionCstChildren;
 }
 
-export type RelationExpressionCstChildren = {
-  AdditionExpression: AdditionExpressionCstNode[];
-  LessThan?: IToken[];
+export type AdditionExpressionCstChildren = {
+  multiplicationExpression: MultiplicationExpressionCstNode[];
+  Plus?: IToken[];
+  Minus?: IToken[];
+};
+
+export interface MultiplicationExpressionCstNode extends CstNode {
+  name: "multiplicationExpression";
+  children: MultiplicationExpressionCstChildren;
+}
+
+export type MultiplicationExpressionCstChildren = {
+  atomicExpression: AtomicExpressionCstNode[];
+  Times?: IToken[];
+  Divide?: IToken[];
+};
+
+export interface AtomicExpressionCstNode extends CstNode {
+  name: "atomicExpression";
+  children: AtomicExpressionCstChildren;
+}
+
+export type AtomicExpressionCstChildren = {
+  unaryExpression?: UnaryExpressionCstNode[];
+  functionCallExpression?: FunctionCallExpressionCstNode[];
+  identifierExpression?: IdentifierExpressionCstNode[];
+  integerLiteralExpression?: IntegerLiteralExpressionCstNode[];
+  parenExpression?: ParenExpressionCstNode[];
 };
 
 export interface FunctionCallExpressionCstNode extends CstNode {
@@ -133,63 +160,49 @@ export interface FunctionCallExpressionCstNode extends CstNode {
 }
 
 export type FunctionCallExpressionCstChildren = {
-  ID: IToken[];
+  identifierExpression: IdentifierExpressionCstNode[];
   LParen: IToken[];
   parameterList: ParameterListCstNode[];
   RParen: IToken[];
 };
 
-export interface AdditionExpressionCstNode extends CstNode {
-  name: "AdditionExpression";
-  children: AdditionExpressionCstChildren;
+export interface ParenExpressionCstNode extends CstNode {
+  name: "parenExpression";
+  children: ParenExpressionCstChildren;
 }
 
-export type AdditionExpressionCstChildren = {
-  term: TermCstNode[];
-  Plus?: IToken[];
-  Minus?: IToken[];
-};
-
-export interface AssignExpressionCstNode extends CstNode {
-  name: "assignExpression";
-  children: AssignExpressionCstChildren;
-}
-
-export type AssignExpressionCstChildren = {
-  ID: IToken[];
-  Equals: IToken[];
-  expression: ExpressionCstNode[];
-};
-
-export interface TermCstNode extends CstNode {
-  name: "term";
-  children: TermCstChildren;
-}
-
-export type TermCstChildren = {
-  ID?: IToken[];
-  INT?: IToken[];
-  paren_expr?: Paren_exprCstNode[];
-};
-
-export interface Paren_exprCstNode extends CstNode {
-  name: "paren_expr";
-  children: Paren_exprCstChildren;
-}
-
-export type Paren_exprCstChildren = {
+export type ParenExpressionCstChildren = {
   LParen: IToken[];
-  expression: ExpressionCstNode[];
+  additionExpression: AdditionExpressionCstNode[];
   RParen: IToken[];
 };
 
-export interface EmptyStatementCstNode extends CstNode {
-  name: "emptyStatement";
-  children: EmptyStatementCstChildren;
+export interface UnaryExpressionCstNode extends CstNode {
+  name: "unaryExpression";
+  children: UnaryExpressionCstChildren;
 }
 
-export type EmptyStatementCstChildren = {
-  SemiColon: IToken[];
+export type UnaryExpressionCstChildren = {
+  Plus: IToken[];
+  additionExpression: AdditionExpressionCstNode[];
+};
+
+export interface IdentifierExpressionCstNode extends CstNode {
+  name: "identifierExpression";
+  children: IdentifierExpressionCstChildren;
+}
+
+export type IdentifierExpressionCstChildren = {
+  ID: IToken[];
+};
+
+export interface IntegerLiteralExpressionCstNode extends CstNode {
+  name: "integerLiteralExpression";
+  children: IntegerLiteralExpressionCstChildren;
+}
+
+export type IntegerLiteralExpressionCstChildren = {
+  INT: IToken[];
 };
 
 export interface ParameterListCstNode extends CstNode {
@@ -198,7 +211,7 @@ export interface ParameterListCstNode extends CstNode {
 }
 
 export type ParameterListCstChildren = {
-  ID: IToken[];
+  additionExpression: AdditionExpressionCstNode[];
   Comma?: IToken[];
 };
 
@@ -222,14 +235,15 @@ export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   blockStatement(children: BlockStatementCstChildren, param?: IN): OUT;
   variableDeclarationStatement(children: VariableDeclarationStatementCstChildren, param?: IN): OUT;
   expressionStatement(children: ExpressionStatementCstChildren, param?: IN): OUT;
-  expression(children: ExpressionCstChildren, param?: IN): OUT;
-  relationExpression(children: RelationExpressionCstChildren, param?: IN): OUT;
+  assignStatement(children: AssignStatementCstChildren, param?: IN): OUT;
+  additionExpression(children: AdditionExpressionCstChildren, param?: IN): OUT;
+  multiplicationExpression(children: MultiplicationExpressionCstChildren, param?: IN): OUT;
+  atomicExpression(children: AtomicExpressionCstChildren, param?: IN): OUT;
   functionCallExpression(children: FunctionCallExpressionCstChildren, param?: IN): OUT;
-  AdditionExpression(children: AdditionExpressionCstChildren, param?: IN): OUT;
-  assignExpression(children: AssignExpressionCstChildren, param?: IN): OUT;
-  term(children: TermCstChildren, param?: IN): OUT;
-  paren_expr(children: Paren_exprCstChildren, param?: IN): OUT;
-  emptyStatement(children: EmptyStatementCstChildren, param?: IN): OUT;
+  parenExpression(children: ParenExpressionCstChildren, param?: IN): OUT;
+  unaryExpression(children: UnaryExpressionCstChildren, param?: IN): OUT;
+  identifierExpression(children: IdentifierExpressionCstChildren, param?: IN): OUT;
+  integerLiteralExpression(children: IntegerLiteralExpressionCstChildren, param?: IN): OUT;
   parameterList(children: ParameterListCstChildren, param?: IN): OUT;
   typeDeclaration(children: TypeDeclarationCstChildren, param?: IN): OUT;
 }

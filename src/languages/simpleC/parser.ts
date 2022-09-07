@@ -46,6 +46,8 @@ const Equals = createToken({ name: "Equals", pattern: /=/ });
 const LessThan = createToken({ name: "LessThan", pattern: /</ });
 const Plus = createToken({ name: "Plus", pattern: /\+/ });
 const Minus = createToken({ name: "Minus", pattern: /-/ });
+const Times = createToken({ name: "Times", pattern: /\*/ });
+const Divide = createToken({ name: "Divide", pattern: /\// });
 const Comma = createToken({ name: "Comma", pattern: /,/ });
 const INT = createToken({ name: "INT", pattern: /[0-9]+/ });
 
@@ -88,13 +90,14 @@ class SimpleCParser extends CstParser {
       { ALT: () => this.SUBRULE(this.doStatement) },
       { ALT: () => this.SUBRULE(this.blockStatement) },
       { ALT: () => this.SUBRULE(this.variableDeclarationStatement) },
+      { ALT: () => this.SUBRULE(this.assignStatement) },
       { ALT: () => this.SUBRULE(this.expressionStatement) },
     ]);
   });
 
   public ifStatement = this.RULE("ifStatement", () => {
     this.CONSUME(If);
-    this.SUBRULE(this.paren_expr);
+    this.SUBRULE(this.parenExpression);
     this.SUBRULE(this.statement);
     this.OPTION(() => {
       this.CONSUME(Else);
@@ -104,7 +107,7 @@ class SimpleCParser extends CstParser {
 
   public whileStatement = this.RULE("whileStatement", () => {
     this.CONSUME(While);
-    this.SUBRULE(this.paren_expr);
+    this.SUBRULE(this.parenExpression);
     this.SUBRULE(this.statement);
   });
 
@@ -112,7 +115,7 @@ class SimpleCParser extends CstParser {
     this.CONSUME(Do);
     this.SUBRULE(this.statement);
     this.CONSUME(While);
-    this.SUBRULE(this.paren_expr);
+    this.SUBRULE(this.parenExpression);
     this.CONSUME(SemiColon);
   });
 
@@ -131,66 +134,80 @@ class SimpleCParser extends CstParser {
   });
 
   public expressionStatement = this.RULE("expressionStatement", () => {
-    this.SUBRULE(this.expression);
+    this.SUBRULE(this.additionExpression);
+    this.CONSUME(SemiColon);
+  });
+
+  public assignStatement = this.RULE("assignStatement", () => {
+    this.SUBRULE(this.identifierExpression);
+    this.CONSUME(Equals);
+    this.SUBRULE(this.additionExpression);
     this.CONSUME(SemiColon);
   });
 
   // Expressions
 
-  public expression = this.RULE("expression", () => {
-    this.OR([
-      { ALT: () => this.SUBRULE(this.functionCallExpression) },
-      { ALT: () => this.SUBRULE(this.assignExpression) },
-      { ALT: () => this.SUBRULE(this.relationExpression) },
-    ]);
-  });
-
-  public relationExpression = this.RULE("relationExpression", () => {
-    this.SUBRULE(this.AdditionExpression);
+  public additionExpression = this.RULE("additionExpression", () => {
+    this.SUBRULE(this.multiplicationExpression);
     this.MANY(() => {
-      this.CONSUME(LessThan);
-      this.SUBRULE2(this.AdditionExpression);
+      this.OR([{ ALT: () => this.CONSUME(Plus) }, { ALT: () => this.CONSUME(Minus) }]);
+      this.SUBRULE2(this.multiplicationExpression);
     });
   });
 
+  public multiplicationExpression = this.RULE("multiplicationExpression", () => {
+    this.SUBRULE(this.atomicExpression);
+    this.MANY(() => {
+      this.OR([{ ALT: () => this.CONSUME(Times) }, { ALT: () => this.CONSUME(Divide) }]);
+      this.SUBRULE2(this.atomicExpression);
+    });
+  });
+
+  public atomicExpression = this.RULE("atomicExpression", () => {
+    this.OR([
+      { ALT: () => this.SUBRULE(this.unaryExpression) },
+      { ALT: () => this.SUBRULE(this.functionCallExpression) },
+      { ALT: () => this.SUBRULE(this.identifierExpression) },
+      { ALT: () => this.SUBRULE(this.integerLiteralExpression) },
+      { ALT: () => this.SUBRULE(this.parenExpression) },
+    ]);
+  });
+
+  // atomics
+
   public functionCallExpression = this.RULE("functionCallExpression", () => {
-    this.CONSUME(ID);
+    this.SUBRULE(this.identifierExpression);
     this.CONSUME(LParen);
     this.SUBRULE(this.parameterList);
     this.CONSUME(RParen);
   });
 
-  public AdditionExpression = this.RULE("AdditionExpression", () => {
-    this.SUBRULE(this.term);
-    this.MANY(() => {
-      this.OR([{ ALT: () => this.CONSUME(Plus) }, { ALT: () => this.CONSUME(Minus) }]);
-      this.SUBRULE2(this.term);
-    });
-  });
-
-  public assignExpression = this.RULE("assignExpression", () => {
-    this.CONSUME(ID);
-    this.CONSUME(Equals);
-    this.SUBRULE(this.expression);
-  });
-
-  public term = this.RULE("term", () => {
-    this.OR([{ ALT: () => this.CONSUME(ID) }, { ALT: () => this.CONSUME(INT) }, { ALT: () => this.SUBRULE(this.paren_expr) }]);
-  });
-
-  public paren_expr = this.RULE("paren_expr", () => {
+  public parenExpression = this.RULE("parenExpression", () => {
     this.CONSUME(LParen);
-    this.SUBRULE(this.expression);
+    this.SUBRULE(this.additionExpression);
     this.CONSUME(RParen);
+  });
+
+  public unaryExpression = this.RULE("unaryExpression", () => {
+    this.CONSUME(Plus);
+    this.SUBRULE(this.additionExpression);
+  });
+
+  public identifierExpression = this.RULE("identifierExpression", () => {
+    this.CONSUME(ID);
+  });
+
+  public integerLiteralExpression = this.RULE("integerLiteralExpression", () => {
+    this.CONSUME(INT);
   });
 
   // ------------------ utils ----------------------------------
 
   public parameterList = this.RULE("parameterList", () => {
-    this.CONSUME(ID);
+    this.SUBRULE(this.additionExpression);
     this.MANY(() => {
       this.CONSUME(Comma);
-      this.CONSUME2(ID);
+      this.SUBRULE2(this.additionExpression);
     });
   });
 
@@ -204,9 +221,9 @@ class SimpleCParser extends CstParser {
 const parserInstance = new SimpleCParser();
 export const productions: Record<string, Rule> = parserInstance.getGAstProductions();
 
-// import { generateCstDts } from "chevrotain";
-// const dtsString = generateCstDts(productions, { includeVisitorInterface: true });
-// console.log(dtsString);
+import { generateCstDts } from "chevrotain";
+const dtsString = generateCstDts(productions, { includeVisitorInterface: true });
+console.log({ dst: dtsString });
 
 export const parse = (text: string) => {
   const lexResult = SimpleCLexer.tokenize(text);

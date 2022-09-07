@@ -2,23 +2,39 @@ import { IToken } from "chevrotain";
 import { ISimpleCLangError } from "../../components/simpleCEditor/monaco/DiagnosticsAdapter";
 import parser from "./parser";
 import {
-  AssignExpressionCstChildren,
+  AdditionExpressionCstChildren,
+  AtomicExpressionCstChildren,
   BlockStatementCstChildren,
-  ExpressionCstChildren,
   ExpressionStatementCstChildren,
+  FunctionCallExpressionCstChildren,
   FunctionDeclarationCstChildren,
-  FunctionDeclarationCstNode,
+  IdentifierExpressionCstChildren,
+  IntegerLiteralExpressionCstChildren,
+  MultiplicationExpressionCstChildren,
+  ParameterListCstChildren,
+  ParenExpressionCstChildren,
   ProgramCstChildren,
-  ProgramCstNode,
   StatementCstChildren,
   VariableDeclarationStatementCstChildren,
 } from "./simpleC";
 
 const CstBaseVisitor = parser.parserInstance.getBaseCstVisitorConstructor();
 
+interface Pos {
+  startLine: number;
+  endLine: number;
+  startColumn: number;
+  endColumn: number;
+}
+
+interface Identifier {
+  id: string;
+  pos: Pos;
+}
+
 interface Scope {
   name: string;
-  ids: string[];
+  ids: Identifier[];
   parent: Scope | undefined;
   children: Scope[];
 }
@@ -32,13 +48,17 @@ class CstVisitor extends CstBaseVisitor {
     super();
     this.validateVisitor();
     this.errors = [];
-    this.scopeStack = { name: "global", parent: undefined, ids: [], children: [] };
+    this.scopeStack = this.getGlobalScope();
     this.currentScope = this.scopeStack;
   }
   reset() {
     this.errors = [];
-    this.scopeStack = { name: "global", parent: undefined, ids: [], children: [] };
+    this.scopeStack = this.getGlobalScope();
     this.currentScope = this.scopeStack;
+  }
+  getGlobalScope() {
+    const getLibFnDef = (id: string) => ({ id, pos: { startLine: 0, endLine: 0, startColumn: 0, endColumn: 0 } });
+    return { name: "global", parent: undefined, ids: [getLibFnDef("print_int")], children: [] };
   }
 
   pushScope(name: string) {
@@ -49,11 +69,25 @@ class CstVisitor extends CstBaseVisitor {
   popScope() {
     if (this.currentScope.parent) this.currentScope = this.currentScope.parent;
   }
-  inScope(testid: string, scope = this.currentScope): boolean {
-    const found = scope.ids.find((id) => id == testid);
+  addToScope(id: string, token: IToken) {
+    this.currentScope.ids.push({ id, pos: this.getTokenPos(token) });
+  }
+  getTokenPos(token: IToken) {
+    return {
+      startLine: token.startLine || 0,
+      startColumn: token.startColumn || 0,
+      endLine: token.endLine || 0,
+      endColumn: token.endColumn || 0,
+    };
+  }
+  isInScope(testid: string, scope = this.currentScope): boolean {
+    const found = scope.ids.find((id) => id.id == testid);
     if (found) return true;
-    if (scope.parent) return this.inScope(testid, scope.parent);
+    if (scope.parent) return this.isInScope(testid, scope.parent);
     else return false;
+  }
+  checkInScope(testid: string, token: IToken, scope = this.currentScope) {
+    if (!this.isInScope(testid, scope)) this.pushError(`Cannot find name'${testid}'`, token);
   }
 
   pushError(message: string, token: IToken) {
@@ -62,7 +96,7 @@ class CstVisitor extends CstBaseVisitor {
       startLineNumber: token.startLine || 0,
       endColumn: (token.endColumn || 0) + 1,
       endLineNumber: token.endLine || 0,
-      code: "3",
+      code: "Linter",
       message,
     });
   }
@@ -75,7 +109,7 @@ class CstVisitor extends CstBaseVisitor {
   }
   functionDeclaration(ctx: FunctionDeclarationCstChildren) {
     const id = ctx.ID[0].image;
-    this.currentScope.ids.push(id);
+    this.addToScope(id, ctx.ID[0]);
     this.pushScope(id);
 
     const parameters = ctx.parameterList ? this.visit(ctx.parameterList) : [];
@@ -95,9 +129,9 @@ class CstVisitor extends CstBaseVisitor {
     if (ctx.ifStatement) return this.visit(ctx.ifStatement);
     if (ctx.doStatement) return this.visit(ctx.doStatement);
     if (ctx.whileStatement) return this.visit(ctx.whileStatement);
-    if (ctx.emptyStatement) return this.visit(ctx.emptyStatement);
     if (ctx.variableDeclarationStatement) return this.visit(ctx.variableDeclarationStatement);
     if (ctx.expressionStatement) return this.visit(ctx.expressionStatement);
+    if (ctx.assignStatement) return this.visit(ctx.assignStatement);
     throw new Error();
   }
   ifStatement(ctx: any) {
@@ -117,53 +151,73 @@ class CstVisitor extends CstBaseVisitor {
   }
   variableDeclarationStatement(ctx: VariableDeclarationStatementCstChildren) {
     const id = ctx.ID[0].image;
-    this.currentScope.ids.push(id);
-
+    this.addToScope(id, ctx.ID[0]);
     return { _name: "variableDeclarationStatement", id };
   }
   expressionStatement(ctx: ExpressionStatementCstChildren) {
-    return this.visit(ctx.expression);
+    return this.visit(ctx.additionExpression);
   }
-  expression(ctx: ExpressionCstChildren) {
-    if (ctx.assignExpression) return this.visit(ctx.assignExpression);
-    if (ctx.functionCallExpression) return this.visit(ctx.functionCallExpression);
-    if (ctx.relationExpression) return this.visit(ctx.relationExpression);
-    throw new Error();
-  }
-  relationExpression(ctx: any) {
-    console.log("relationExpression", ctx);
-    return { name: "bla" };
-  }
-  AdditionExpression(ctx: any) {
-    console.log("AdditionExpression", ctx);
-    return { name: "bla" };
-  }
-  assignExpression(ctx: AssignExpressionCstChildren) {
-    const lhs = ctx.ID[0].image;
-    if (!this.inScope(lhs)) this.pushError(`id ${lhs} does not exist`, ctx.ID[0]);
-    const rhs = this.visit(ctx.expression);
+
+  assignStatement(ctx: any) {
+    const lhs = this.visit(ctx.identifierExpression);
+    const rhs = this.visit(ctx.additionExpression);
     return { _name: "assignExpression", lhs, rhs };
   }
-  functionCallExpression(ctx: any) {
-    console.log("functionCallExpression", ctx);
+
+  // expressions
+
+  additionExpression(ctx: AdditionExpressionCstChildren) {
+    const lhs = this.visit(ctx.multiplicationExpression[0]);
+    const rhs = this.visit(ctx.multiplicationExpression[1]);
+    if (!rhs) return lhs;
+    return { _name: "additionExpression", lhs, rhs, op: ctx.Minus ? "-" : "+" };
+  }
+
+  multiplicationExpression(ctx: MultiplicationExpressionCstChildren) {
+    const lhs = this.visit(ctx.atomicExpression[0]);
+    const rhs = this.visit(ctx.atomicExpression[1]);
+    if (!rhs) return lhs;
+    else return { _name: "multiplicationExpression", lhs, rhs, op: ctx.Divide ? "/" : "*" };
+  }
+
+  atomicExpression(ctx: AtomicExpressionCstChildren) {
+    if (ctx.identifierExpression) return this.visit(ctx.identifierExpression);
+    if (ctx.integerLiteralExpression) return this.visit(ctx.integerLiteralExpression);
+    if (ctx.functionCallExpression) return this.visit(ctx.functionCallExpression);
+    if (ctx.parenExpression) return this.visit(ctx.parenExpression);
+    // return this.visit(ctx.);
+  }
+
+  unaryExpression(ctx: any) {
+    console.log("unaryExpression", ctx);
     return { name: "bla" };
   }
-  term(ctx: any) {
-    console.log("term", ctx);
-    return { name: "bla" };
+
+  functionCallExpression(ctx: FunctionCallExpressionCstChildren) {
+    const id = this.visit(ctx.identifierExpression).id;
+    const params = this.visit(ctx.parameterList);
+    return { _name: "functionCallExpression", id, params: params.params };
   }
-  paren_expr(ctx: any) {
-    console.log("paren_expr", ctx);
-    return { name: "bla" };
+
+  identifierExpression(ctx: IdentifierExpressionCstChildren) {
+    const id = ctx.ID[0].image;
+    this.checkInScope(id, ctx.ID[0]);
+    return { _name: "identifierExpression", id };
   }
-  emptyStatement(ctx: any) {
-    console.log("emptyStatement", ctx);
-    return { name: "bla" };
+
+  integerLiteralExpression(ctx: IntegerLiteralExpressionCstChildren) {
+    const value = parseInt(ctx.INT[0].image);
+    return { _name: "integerLiteralExpression", value };
   }
-  parameterList(ctx: any) {
-    console.log("parameterList", ctx);
-    return { name: "bla" };
+
+  parenExpression(ctx: ParenExpressionCstChildren) {
+    return this.visit(ctx.additionExpression);
   }
+
+  parameterList(ctx: ParameterListCstChildren) {
+    return { _name: "parameterList", params: ctx.additionExpression.map((e) => this.visit(e)) };
+  }
+
   typeDeclaration(ctx: any) {
     console.log("typeDeclaration", ctx);
     return { name: "bla" };
