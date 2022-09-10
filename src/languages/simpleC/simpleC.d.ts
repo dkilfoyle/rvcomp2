@@ -16,12 +16,31 @@ export interface FunctionDeclarationCstNode extends CstNode {
 }
 
 export type FunctionDeclarationCstChildren = {
-  typeDeclaration: TypeDeclarationCstNode[];
-  ID: IToken[];
+  variableDeclaration: VariableDeclarationCstNode[];
   LParen: IToken[];
-  parameterList?: ParameterListCstNode[];
+  params?: VariableDeclarationListCstNode[];
   RParen: IToken[];
   blockStatement: BlockStatementCstNode[];
+};
+
+export interface VariableDeclarationListCstNode extends CstNode {
+  name: "variableDeclarationList";
+  children: VariableDeclarationListCstChildren;
+}
+
+export type VariableDeclarationListCstChildren = {
+  variableDeclaration: VariableDeclarationCstNode[];
+  Comma?: IToken[];
+};
+
+export interface VariableDeclarationCstNode extends CstNode {
+  name: "variableDeclaration";
+  children: VariableDeclarationCstChildren;
+}
+
+export type VariableDeclarationCstChildren = {
+  typeSpecifier: TypeSpecifierCstNode[];
+  ID: IToken[];
 };
 
 export interface StatementCstNode extends CstNode {
@@ -92,8 +111,7 @@ export interface VariableDeclarationStatementCstNode extends CstNode {
 }
 
 export type VariableDeclarationStatementCstChildren = {
-  intType: IToken[];
-  ID: IToken[];
+  variableDeclaration: VariableDeclarationCstNode[];
   SemiColon: IToken[];
 };
 
@@ -154,6 +172,16 @@ export type AtomicExpressionCstChildren = {
   parenExpression?: ParenExpressionCstNode[];
 };
 
+export interface ExpressionListCstNode extends CstNode {
+  name: "expressionList";
+  children: ExpressionListCstChildren;
+}
+
+export type ExpressionListCstChildren = {
+  additionExpression: AdditionExpressionCstNode[];
+  Comma?: IToken[];
+};
+
 export interface FunctionCallExpressionCstNode extends CstNode {
   name: "functionCallExpression";
   children: FunctionCallExpressionCstChildren;
@@ -162,7 +190,7 @@ export interface FunctionCallExpressionCstNode extends CstNode {
 export type FunctionCallExpressionCstChildren = {
   identifierExpression: IdentifierExpressionCstNode[];
   LParen: IToken[];
-  parameterList: ParameterListCstNode[];
+  expressionList?: ExpressionListCstNode[];
   RParen: IToken[];
 };
 
@@ -205,22 +233,12 @@ export type IntegerLiteralExpressionCstChildren = {
   INT: IToken[];
 };
 
-export interface ParameterListCstNode extends CstNode {
-  name: "parameterList";
-  children: ParameterListCstChildren;
+export interface TypeSpecifierCstNode extends CstNode {
+  name: "typeSpecifier";
+  children: TypeSpecifierCstChildren;
 }
 
-export type ParameterListCstChildren = {
-  additionExpression: AdditionExpressionCstNode[];
-  Comma?: IToken[];
-};
-
-export interface TypeDeclarationCstNode extends CstNode {
-  name: "typeDeclaration";
-  children: TypeDeclarationCstChildren;
-}
-
-export type TypeDeclarationCstChildren = {
+export type TypeSpecifierCstChildren = {
   intType?: IToken[];
   voidType?: IToken[];
 };
@@ -228,6 +246,8 @@ export type TypeDeclarationCstChildren = {
 export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   program(children: ProgramCstChildren, param?: IN): OUT;
   functionDeclaration(children: FunctionDeclarationCstChildren, param?: IN): OUT;
+  variableDeclarationList(children: VariableDeclarationListCstChildren, param?: IN): OUT;
+  variableDeclaration(children: VariableDeclarationCstChildren, param?: IN): OUT;
   statement(children: StatementCstChildren, param?: IN): OUT;
   ifStatement(children: IfStatementCstChildren, param?: IN): OUT;
   whileStatement(children: WhileStatementCstChildren, param?: IN): OUT;
@@ -239,11 +259,11 @@ export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   additionExpression(children: AdditionExpressionCstChildren, param?: IN): OUT;
   multiplicationExpression(children: MultiplicationExpressionCstChildren, param?: IN): OUT;
   atomicExpression(children: AtomicExpressionCstChildren, param?: IN): OUT;
+  expressionList(children: ExpressionListCstChildren, param?: IN): OUT;
   functionCallExpression(children: FunctionCallExpressionCstChildren, param?: IN): OUT;
   parenExpression(children: ParenExpressionCstChildren, param?: IN): OUT;
   unaryExpression(children: UnaryExpressionCstChildren, param?: IN): OUT;
   identifierExpression(children: IdentifierExpressionCstChildren, param?: IN): OUT;
   integerLiteralExpression(children: IntegerLiteralExpressionCstChildren, param?: IN): OUT;
-  parameterList(children: ParameterListCstChildren, param?: IN): OUT;
-  typeDeclaration(children: TypeDeclarationCstChildren, param?: IN): OUT;
+  typeSpecifier(children: TypeSpecifierCstChildren, param?: IN): OUT;
 }

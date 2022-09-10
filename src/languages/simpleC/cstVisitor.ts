@@ -5,73 +5,143 @@ import {
   AdditionExpressionCstChildren,
   AtomicExpressionCstChildren,
   BlockStatementCstChildren,
+  ExpressionListCstChildren,
   ExpressionStatementCstChildren,
   FunctionCallExpressionCstChildren,
   FunctionDeclarationCstChildren,
   IdentifierExpressionCstChildren,
   IntegerLiteralExpressionCstChildren,
   MultiplicationExpressionCstChildren,
-  ParameterListCstChildren,
   ParenExpressionCstChildren,
   ProgramCstChildren,
   StatementCstChildren,
+  TypeSpecifierCstChildren,
+  VariableDeclarationCstChildren,
+  VariableDeclarationListCstChildren,
   VariableDeclarationStatementCstChildren,
 } from "./simpleC";
 
 const CstBaseVisitor = parser.parserInstance.getBaseCstVisitorConstructor();
 
-interface Pos {
+interface IPos {
   startLine: number;
   endLine: number;
   startColumn: number;
   endColumn: number;
 }
 
-interface Identifier {
-  id: string;
-  pos: Pos;
+interface IDeclaration {
+  name: string;
+  type: string;
+  pos: IPos;
 }
 
-interface Scope {
-  name: string;
-  ids: Identifier[];
-  parent: Scope | undefined;
-  children: Scope[];
+interface IVariableDeclaration extends IDeclaration {
+  kind: "variable";
 }
+
+interface IFunctionDeclaration extends IDeclaration {
+  kind: "function";
+  params: IVariableDeclaration[];
+}
+
+type ISignature = IVariableDeclaration | IFunctionDeclaration;
+
+interface IScope {
+  name: string;
+  signatures: ISignature[];
+  parent: IScope | undefined;
+  children: IScope[];
+}
+
+class ScopeStack {
+  public stack: IScope;
+  public currentScope: IScope;
+
+  constructor() {
+    this.stack = this.getGlobalScope();
+    this.currentScope = this.stack;
+  }
+
+  reset() {
+    this.stack = this.getGlobalScope();
+    this.currentScope = this.stack;
+  }
+
+  getGlobalScope(): IScope {
+    const getLibPos = () => ({ startLine: 0, endLine: 0, startColumn: 0, endColumn: 0 });
+    return {
+      name: "global",
+      parent: undefined,
+      children: [],
+      signatures: [
+        {
+          kind: "function",
+          name: "print_int",
+          type: "void",
+          pos: getLibPos(),
+          params: [{ kind: "variable", name: "num", type: "int", pos: getLibPos() }],
+        },
+      ],
+    };
+  }
+
+  pushScope(name: string) {
+    const newScope: IScope = { name, parent: this.currentScope, signatures: [], children: [] };
+    if (this.currentScope) this.currentScope.children.push(newScope);
+    this.currentScope = newScope;
+  }
+
+  popScope() {
+    if (this.currentScope.parent) this.currentScope = this.currentScope.parent;
+  }
+
+  addToScope(name: string, type: string, pos: IPos, params?: IVariableDeclaration[]) {
+    this.currentScope.signatures.push({ name, type, pos, params: params ? params : [], kind: params ? "function" : "variable" });
+  }
+
+  getSignature(testid: string, scope = this.currentScope): ISignature | undefined {
+    const found = scope.signatures.find((sig) => sig.name == testid);
+    if (found) return found;
+    if (scope.parent) return this.getSignature(testid, scope.parent);
+    else return undefined;
+  }
+
+  isInScope(testid: string, scope = this.currentScope): ISignature | undefined {
+    return this.getSignature(testid, scope);
+  }
+}
+
+// program:
+//   functionDeclaration*
+//   | statement*
+// functionDeclaration:
+//   typedIdentifier
+//   '(' parameterList? ')'
+//    block
+// parameterList:
+//   typedIdentifier (',' typedIdentifier)*
+// typedIdtentifier: typeSpecifier ID
+// typeSpecifier: (IntType | VoidType)
+// variableDeclarationStatement
+//   typedIdentifier ';'
 
 class CstVisitor extends CstBaseVisitor {
   public errors: ISimpleCLangError[];
-  public scopeStack: Scope;
-  public currentScope: Scope;
+  public scopeStack: ScopeStack;
 
   constructor() {
     super();
     this.validateVisitor();
+    this.scopeStack = new ScopeStack();
     this.errors = [];
-    this.scopeStack = this.getGlobalScope();
-    this.currentScope = this.scopeStack;
-  }
-  reset() {
-    this.errors = [];
-    this.scopeStack = this.getGlobalScope();
-    this.currentScope = this.scopeStack;
-  }
-  getGlobalScope() {
-    const getLibFnDef = (id: string) => ({ id, pos: { startLine: 0, endLine: 0, startColumn: 0, endColumn: 0 } });
-    return { name: "global", parent: undefined, ids: [getLibFnDef("print_int")], children: [] };
   }
 
-  pushScope(name: string) {
-    const newScope = { name, parent: this.currentScope, ids: [], children: [] };
-    if (this.currentScope) this.currentScope.children.push(newScope);
-    this.currentScope = newScope;
+  reset() {
+    this.errors = [];
+    this.scopeStack.reset();
   }
-  popScope() {
-    if (this.currentScope.parent) this.currentScope = this.currentScope.parent;
-  }
-  addToScope(id: string, token: IToken) {
-    this.currentScope.ids.push({ id, pos: this.getTokenPos(token) });
-  }
+
   getTokenPos(token: IToken) {
     return {
       startLine: token.startLine || 0,
@@ -80,22 +150,26 @@ class CstVisitor extends CstBaseVisitor {
       endColumn: token.endColumn || 0,
     };
   }
-  isInScope(testid: string, scope = this.currentScope): boolean {
-    const found = scope.ids.find((id) => id.id == testid);
-    if (found) return true;
-    if (scope.parent) return this.isInScope(testid, scope.parent);
-    else return false;
-  }
-  checkInScope(testid: string, token: IToken, scope = this.currentScope) {
-    if (!this.isInScope(testid, scope)) this.pushError(`Cannot find name'${testid}'`, token);
+
+  checkInScope(testid: string, pos: IPos, scope = this.scopeStack.currentScope) {
+    const sig = this.scopeStack.getSignature(testid, scope);
+    if (!sig) this.pushError(`Cannot find name'${testid}'`, pos);
+    return sig;
   }
 
-  pushError(message: string, token: IToken) {
+  checkParams(fnid: string, pos: IPos, params: IVariableDeclaration[]) {
+    const fn = this.scopeStack.getSignature(fnid);
+    if (fn && fn.kind === "function") {
+      if (fn.params.length != params.length) this.pushError(`Expecting ${fn.params.length} parameters`, pos);
+    } else debugger;
+  }
+
+  pushError(message: string, pos: IPos) {
     this.errors.push({
-      startColumn: token.startColumn || 0,
-      startLineNumber: token.startLine || 0,
-      endColumn: (token.endColumn || 0) + 1,
-      endLineNumber: token.endLine || 0,
+      startColumn: pos.startColumn || 0,
+      startLineNumber: pos.startLine || 0,
+      endColumn: (pos.endColumn || 0) + 1,
+      endLineNumber: pos.endLine || 0,
       code: "Linter",
       message,
     });
@@ -107,23 +181,32 @@ class CstVisitor extends CstBaseVisitor {
     const rootLevelStatements = ctx.statement?.map((node) => this.visit(node)) || [];
     return { _name: "program", functionDeclarations, rootLevelStatements, scopeStack: this.scopeStack, errors: this.errors };
   }
-  functionDeclaration(ctx: FunctionDeclarationCstChildren) {
-    const id = ctx.ID[0].image;
-    this.addToScope(id, ctx.ID[0]);
-    this.pushScope(id);
 
-    const parameters = ctx.parameterList ? this.visit(ctx.parameterList) : [];
+  functionDeclaration(ctx: FunctionDeclarationCstChildren) {
+    const decl: IVariableDeclaration = this.visit(ctx.variableDeclaration);
+    const params: IVariableDeclaration[] = ctx.params ? this.visit(ctx.params).declarations : [];
+
+    this.scopeStack.addToScope(decl.name, decl.type, decl.pos, params);
+
+    this.scopeStack.pushScope(decl.name);
+    params.forEach((p) => this.scopeStack.addToScope(p.name, p.type, p.pos));
+
     const block = this.visit(ctx.blockStatement);
 
-    this.popScope();
+    this.scopeStack.popScope();
 
     return {
       _name: "functionDeclaration",
-      id,
-      parameters,
+      id: decl.name,
+      params,
       block,
     };
   }
+
+  variableDeclarationList(ctx: VariableDeclarationListCstChildren) {
+    return { _name: "variableDeclarationList", declarations: ctx.variableDeclaration.map((p) => this.visit(p)) };
+  }
+
   statement(ctx: StatementCstChildren) {
     if (ctx.blockStatement) return this.visit(ctx.blockStatement);
     if (ctx.ifStatement) return this.visit(ctx.ifStatement);
@@ -134,26 +217,29 @@ class CstVisitor extends CstBaseVisitor {
     if (ctx.assignStatement) return this.visit(ctx.assignStatement);
     throw new Error();
   }
+
   ifStatement(ctx: any) {
-    console.log("ifStatement", ctx);
-    return { name: "bla" };
+    return { name: "unimplented_if" };
   }
+
   whileStatement(ctx: any) {
-    console.log("whileStatement", ctx);
-    return { name: "bla" };
+    return { name: "unimplemented_while" };
   }
+
   doStatement(ctx: any) {
-    console.log("doStatement", ctx);
-    return { name: "bla" };
+    return { name: "unimplented_do" };
   }
+
   blockStatement(ctx: BlockStatementCstChildren) {
     return { _name: "blockStatement", statements: ctx.statement?.map((s) => this.visit(s)) };
   }
+
   variableDeclarationStatement(ctx: VariableDeclarationStatementCstChildren) {
-    const id = ctx.ID[0].image;
-    this.addToScope(id, ctx.ID[0]);
-    return { _name: "variableDeclarationStatement", id };
+    const decl = this.visit(ctx.variableDeclaration);
+    this.scopeStack.addToScope(decl.name, decl.type, decl.pos);
+    return decl;
   }
+
   expressionStatement(ctx: ExpressionStatementCstChildren) {
     return this.visit(ctx.additionExpression);
   }
@@ -194,15 +280,16 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   functionCallExpression(ctx: FunctionCallExpressionCstChildren) {
-    const id = this.visit(ctx.identifierExpression).id;
-    const params = this.visit(ctx.parameterList);
-    return { _name: "functionCallExpression", id, params: params.params };
+    const fndecl = this.visit(ctx.identifierExpression);
+    const params = ctx.expressionList ? this.visit(ctx.expressionList).params : [];
+    this.checkParams(fndecl.name, fndecl.pos, params);
+    return { _name: "functionCallExpression", id: fndecl.name, params: params.params };
   }
 
   identifierExpression(ctx: IdentifierExpressionCstChildren) {
     const id = ctx.ID[0].image;
-    this.checkInScope(id, ctx.ID[0]);
-    return { _name: "identifierExpression", id };
+    const decl = this.checkInScope(id, this.getTokenPos(ctx.ID[0]));
+    return { _name: "identifierExpression", ...decl, pos: this.getTokenPos(ctx.ID[0]) };
   }
 
   integerLiteralExpression(ctx: IntegerLiteralExpressionCstChildren) {
@@ -214,13 +301,24 @@ class CstVisitor extends CstBaseVisitor {
     return this.visit(ctx.additionExpression);
   }
 
-  parameterList(ctx: ParameterListCstChildren) {
-    return { _name: "parameterList", params: ctx.additionExpression.map((e) => this.visit(e)) };
+  expressionList(ctx: ExpressionListCstChildren) {
+    return { _name: "expressionList", params: ctx.additionExpression.map((e) => this.visit(e)) };
   }
 
-  typeDeclaration(ctx: any) {
-    console.log("typeDeclaration", ctx);
-    return { name: "bla" };
+  typeSpecifier(ctx: TypeSpecifierCstChildren) {
+    let t;
+    if (ctx.intType) t = ctx.intType[0].image;
+    else if (ctx.voidType) t = ctx.voidType[0].image;
+    else throw new Error();
+
+    return { _name: "typeSpecifier", type: t };
+  }
+
+  variableDeclaration(ctx: VariableDeclarationCstChildren) {
+    const name = ctx.ID[0].image;
+    const pos = this.getTokenPos(ctx.ID[0]);
+    const type = this.visit(ctx.typeSpecifier).type;
+    return { _name: "variableDeclaration", name, pos, type };
   }
 }
 

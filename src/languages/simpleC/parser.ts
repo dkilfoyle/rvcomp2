@@ -73,14 +73,26 @@ class SimpleCParser extends CstParser {
   });
 
   public functionDeclaration = this.RULE("functionDeclaration", () => {
-    this.SUBRULE(this.typeDeclaration);
-    this.CONSUME(ID);
+    this.SUBRULE(this.variableDeclaration);
     this.CONSUME(LParen);
     this.OPTION(() => {
-      this.SUBRULE(this.parameterList);
+      this.SUBRULE(this.variableDeclarationList, { LABEL: "params" });
     });
     this.CONSUME(RParen);
     this.SUBRULE(this.blockStatement);
+  });
+
+  public variableDeclarationList = this.RULE("variableDeclarationList", () => {
+    this.SUBRULE(this.variableDeclaration);
+    this.MANY(() => {
+      this.CONSUME(Comma);
+      this.SUBRULE2(this.variableDeclaration);
+    });
+  });
+
+  public variableDeclaration = this.RULE("variableDeclaration", () => {
+    this.SUBRULE(this.typeSpecifier);
+    this.CONSUME(ID);
   });
 
   public statement = this.RULE("statement", () => {
@@ -128,8 +140,7 @@ class SimpleCParser extends CstParser {
   });
 
   public variableDeclarationStatement = this.RULE("variableDeclarationStatement", () => {
-    this.CONSUME(IntType);
-    this.CONSUME(ID);
+    this.SUBRULE(this.variableDeclaration);
     this.CONSUME(SemiColon);
   });
 
@@ -173,12 +184,20 @@ class SimpleCParser extends CstParser {
     ]);
   });
 
+  public expressionList = this.RULE("expressionList", () => {
+    this.SUBRULE(this.additionExpression);
+    this.MANY(() => {
+      this.CONSUME(Comma);
+      this.SUBRULE2(this.additionExpression);
+    });
+  });
+
   // atomics
 
   public functionCallExpression = this.RULE("functionCallExpression", () => {
     this.SUBRULE(this.identifierExpression);
     this.CONSUME(LParen);
-    this.SUBRULE(this.parameterList);
+    this.OPTION(() => this.SUBRULE(this.expressionList));
     this.CONSUME(RParen);
   });
 
@@ -203,15 +222,7 @@ class SimpleCParser extends CstParser {
 
   // ------------------ utils ----------------------------------
 
-  public parameterList = this.RULE("parameterList", () => {
-    this.SUBRULE(this.additionExpression);
-    this.MANY(() => {
-      this.CONSUME(Comma);
-      this.SUBRULE2(this.additionExpression);
-    });
-  });
-
-  public typeDeclaration = this.RULE("typeDeclaration", () => {
+  public typeSpecifier = this.RULE("typeSpecifier", () => {
     this.OR([{ ALT: () => this.CONSUME(IntType) }, { ALT: () => this.CONSUME(VoidType) }]);
   });
 }
