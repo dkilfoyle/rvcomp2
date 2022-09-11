@@ -14,9 +14,13 @@ export class SimpleCWorker {
     const code = this.getTextDocument();
     return Promise.resolve(this.languageService.validate(code));
   }
-  format(code: string): Promise<string> {
+  doFormat(code: string): Promise<string> {
     return Promise.resolve(this.languageService.format(code));
   }
+  doSymbols(): Promise<any> {
+    return Promise.resolve(this.languageService.symbols());
+  }
+
   private getTextDocument(): string {
     const model = this._ctx.getMirrorModels()[0]; // When there are multiple files open, this will be an array
     return model.getValue();

@@ -24,8 +24,8 @@ import {
 const CstBaseVisitor = parser.parserInstance.getBaseCstVisitorConstructor();
 
 interface IPos {
-  startLine: number;
-  endLine: number;
+  startLineNumber: number;
+  endLineNumber: number;
   startColumn: number;
   endColumn: number;
 }
@@ -47,7 +47,7 @@ interface IFunctionDeclaration extends IDeclaration {
 
 type ISignature = IVariableDeclaration | IFunctionDeclaration;
 
-interface IScope {
+export interface IScope {
   name: string;
   signatures: ISignature[];
   parent: IScope | undefined;
@@ -69,7 +69,7 @@ class ScopeStack {
   }
 
   getGlobalScope(): IScope {
-    const getLibPos = () => ({ startLine: 0, endLine: 0, startColumn: 0, endColumn: 0 });
+    const getLibPos = () => ({ startLineNumber: 0, endLineNumber: 0, startColumn: 0, endColumn: 0 });
     return {
       name: "global",
       parent: undefined,
@@ -110,6 +110,18 @@ class ScopeStack {
   isInScope(testid: string, scope = this.currentScope): ISignature | undefined {
     return this.getSignature(testid, scope);
   }
+
+  flatten(scope = this.stack): ISignature[] {
+    const sigs: ISignature[] = [];
+    const getScopeSymbols = (scope: IScope) => {
+      scope.signatures.forEach((sig) => {
+        sigs.push(sig);
+      });
+      scope.children.forEach((child) => getScopeSymbols(child));
+    };
+    getScopeSymbols(scope);
+    return sigs;
+  }
 }
 
 // program:
@@ -144,10 +156,10 @@ class CstVisitor extends CstBaseVisitor {
 
   getTokenPos(token: IToken) {
     return {
-      startLine: token.startLine || 0,
+      startLineNumber: token.startLine || 0,
       startColumn: token.startColumn || 0,
-      endLine: token.endLine || 0,
-      endColumn: token.endColumn || 0,
+      endLineNumber: token.endLine || 0,
+      endColumn: (token.endColumn || 0) + 1,
     };
   }
 
@@ -166,10 +178,7 @@ class CstVisitor extends CstBaseVisitor {
 
   pushError(message: string, pos: IPos) {
     this.errors.push({
-      startColumn: pos.startColumn || 0,
-      startLineNumber: pos.startLine || 0,
-      endColumn: (pos.endColumn || 0) + 1,
-      endLineNumber: pos.endLine || 0,
+      ...pos,
       code: "Linter",
       message,
     });

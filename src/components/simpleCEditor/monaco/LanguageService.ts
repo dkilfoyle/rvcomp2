@@ -1,6 +1,7 @@
 import { ISimpleCLangError } from "./DiagnosticsAdapter";
 import { parse } from "../../../languages/simpleC/parser";
 import { cstVisitor } from "../../../languages/simpleC/cstVisitor";
+import * as monaco from "monaco-editor";
 
 export default class SimpleCLanguageService {
   validate(code: string): ISimpleCLangError[] {
@@ -32,11 +33,26 @@ export default class SimpleCLanguageService {
     if (ast) errors.push(...ast.errors);
     return errors;
   }
+
   format(code: string): string {
     // if the code contains errors, no need to format, because this way of formating the code, will remove some of the code
     // to make things simple, we only allow formatting a valide code
     if (this.validate(code).length > 0) return code;
     let formattedCode = code;
     return formattedCode;
+  }
+
+  symbols(): monaco.languages.DocumentSymbol[] {
+    // todo: containerName and children
+    return cstVisitor.scopeStack.flatten().map((sig) => {
+      return {
+        range: sig.pos,
+        name: sig.name,
+        kind: sig.kind === "function" ? 11 : 12,
+        detail: "",
+        tags: [],
+        selectionRange: sig.pos,
+      };
+    });
   }
 }

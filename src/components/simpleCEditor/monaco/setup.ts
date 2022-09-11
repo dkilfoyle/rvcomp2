@@ -5,6 +5,7 @@ import { WorkerManager } from "./WorkerManager";
 import DiagnosticsAdapter from "./DiagnosticsAdapter";
 import SimpleCFormattingProvider from "./SimpleCFormattingProvider";
 import { SimpleCWorker } from "./SimpleCWorker";
+import SimpleCSymbolProvider from "./SimpleCSymbolProvider";
 
 export function setupLanguage() {
   monaco.languages.register(languageExtensionPoint);
@@ -16,8 +17,10 @@ export function setupLanguage() {
     const worker: WorkerAccessor = (...uris: monaco.Uri[]): Promise<SimpleCWorker> => {
       return client.getLanguageServiceWorker(...uris);
     };
+
     monaco.languages.registerDocumentFormattingEditProvider(languageID, new SimpleCFormattingProvider(worker));
     new DiagnosticsAdapter(worker);
+    monaco.languages.registerDocumentSymbolProvider(languageID, new SimpleCSymbolProvider(worker));
   });
 }
 

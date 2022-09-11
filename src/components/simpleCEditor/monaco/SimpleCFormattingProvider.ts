@@ -16,7 +16,7 @@ export default class SimpleCFormattingProvider implements monaco.languages.Docum
     // get the worker proxy
     const worker = await this.worker(resource);
     // call the validate methode proxy from the langaueg service and get errors
-    const formattedCode = await worker.format(code);
+    const formattedCode = await worker.doFormat(code);
     const endLineNumber = code.split("\n").length + 1;
     const endColumn =
       code
