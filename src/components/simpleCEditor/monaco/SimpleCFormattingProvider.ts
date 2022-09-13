@@ -1,9 +1,7 @@
 import * as monaco from "monaco-editor";
-import { WorkerAccessor } from "./setup";
+import { Adapter } from "./Adapter";
 
-export default class SimpleCFormattingProvider implements monaco.languages.DocumentFormattingEditProvider {
-  constructor(private worker: WorkerAccessor) {}
-
+export default class SimpleCFormattingProvider extends Adapter implements monaco.languages.DocumentFormattingEditProvider {
   provideDocumentFormattingEdits(
     model: monaco.editor.ITextModel,
     options: monaco.languages.FormattingOptions,

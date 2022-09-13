@@ -55,4 +55,23 @@ export default class SimpleCLanguageService {
       };
     });
   }
+
+  signatures(identifier: string, pos: monaco.Position): monaco.languages.SignatureInformation[] {
+    // todo: parse code up to pos, return cstVisitor.scopeStack.getSignature(identifier)
+    return [
+      {
+        label: "print_int(num,opt)",
+        parameters: [
+          {
+            label: "num",
+            documentation: "The integer to print",
+          },
+          {
+            label: "opt",
+            documentation: "Print options",
+          },
+        ],
+      },
+    ];
+  }
 }

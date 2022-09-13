@@ -1,3 +1,4 @@
+import * as monaco from "monaco-editor";
 import { ISimpleCLangError } from "./DiagnosticsAdapter";
 import SimpleCLanguageService from "./LanguageService";
 
@@ -19,6 +20,9 @@ export class SimpleCWorker {
   }
   doSymbols(): Promise<any> {
     return Promise.resolve(this.languageService.symbols());
+  }
+  doSignatures(identifier: string, position: monaco.Position): Promise<monaco.languages.SignatureInformation[]> {
+    return Promise.resolve(this.languageService.signatures(identifier, position));
   }
 
   private getTextDocument(): string {

@@ -1,5 +1,5 @@
 import * as monaco from "monaco-editor";
-import { WorkerAccessor } from "./setup";
+import { Adapter } from "./Adapter";
 
 // function toDocumentSymbol(item: ls.DocumentSymbol): monaco.languages.DocumentSymbol {
 //   return {
@@ -13,13 +13,13 @@ import { WorkerAccessor } from "./setup";
 //   };
 // }
 
-export default class SimpleCSymbolProvider implements monaco.languages.DocumentSymbolProvider {
-  constructor(private worker: WorkerAccessor) {}
-
+export default class SimpleCSymbolProvider extends Adapter implements monaco.languages.DocumentSymbolProvider {
   async provideDocumentSymbols(model: monaco.editor.ITextModel) {
     // get the worker proxy
     const resource = model.uri;
     const worker = await this.worker(resource);
+
+    console.log("symbols");
 
     // get document symbols from the worker
     const items = await worker.doSymbols();
