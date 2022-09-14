@@ -21,8 +21,8 @@ export class SimpleCWorker {
   doSymbols(): Promise<any> {
     return Promise.resolve(this.languageService.symbols());
   }
-  doSignatures(identifier: string, position: monaco.Position): Promise<monaco.languages.SignatureInformation[]> {
-    return Promise.resolve(this.languageService.signatures(identifier, position));
+  doSignatures(identifier: string, offset: number): Promise<monaco.languages.SignatureInformation[]> {
+    return Promise.resolve(this.languageService.signatures(identifier, offset));
   }
 
   private getTextDocument(): string {

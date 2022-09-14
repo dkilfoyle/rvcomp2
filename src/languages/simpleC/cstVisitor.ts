@@ -1,4 +1,4 @@
-import { IToken } from "chevrotain";
+import { CstNode, CstNodeLocation, IToken } from "chevrotain";
 import { ISimpleCLangError } from "../../components/simpleCEditor/monaco/DiagnosticsAdapter";
 import parser from "./parser";
 import {
@@ -36,11 +36,11 @@ interface IDeclaration {
   pos: IPos;
 }
 
-interface IVariableDeclaration extends IDeclaration {
+export interface IVariableDeclaration extends IDeclaration {
   kind: "variable";
 }
 
-interface IFunctionDeclaration extends IDeclaration {
+export interface IFunctionDeclaration extends IDeclaration {
   kind: "function";
   params: IVariableDeclaration[];
 }
@@ -50,28 +50,30 @@ type ISignature = IVariableDeclaration | IFunctionDeclaration;
 export interface IScope {
   name: string;
   signatures: ISignature[];
+  location: CstNodeLocation;
   parent: IScope | undefined;
   children: IScope[];
 }
 
 class ScopeStack {
-  public stack: IScope;
-  public currentScope: IScope;
+  public stack!: IScope;
+  public currentScope!: IScope;
 
   constructor() {
-    this.stack = this.getGlobalScope();
+    // this.stack = this.getGlobalScope();
+    // this.currentScope = this.stack;
+  }
+
+  reset(location: CstNodeLocation) {
+    this.stack = this.getGlobalScope(location);
     this.currentScope = this.stack;
   }
 
-  reset() {
-    this.stack = this.getGlobalScope();
-    this.currentScope = this.stack;
-  }
-
-  getGlobalScope(): IScope {
+  getGlobalScope(location: CstNodeLocation): IScope {
     const getLibPos = () => ({ startLineNumber: 0, endLineNumber: 0, startColumn: 0, endColumn: 0 });
     return {
       name: "global",
+      location,
       parent: undefined,
       children: [],
       signatures: [
@@ -86,8 +88,9 @@ class ScopeStack {
     };
   }
 
-  pushScope(name: string) {
-    const newScope: IScope = { name, parent: this.currentScope, signatures: [], children: [] };
+  pushScope(name: string, location: CstNodeLocation | undefined) {
+    if (!location) throw new Error("Need node location");
+    const newScope: IScope = { name, location, parent: this.currentScope, signatures: [], children: [] };
     if (this.currentScope) this.currentScope.children.push(newScope);
     this.currentScope = newScope;
   }
@@ -105,6 +108,27 @@ class ScopeStack {
     if (found) return found;
     if (scope.parent) return this.getSignature(testid, scope.parent);
     else return undefined;
+  }
+
+  isPosInScopeRange(offset: number, scope: IScope) {
+    return offset >= scope.location.startOffset && scope.location.endOffset && offset < scope.location.endOffset;
+  }
+
+  getSignatureAtLocation(testid: string, offset: number, scope = this.currentScope) {
+    if (!this.isPosInScopeRange(offset, scope)) return null;
+
+    // if leaf scope then look for id
+    if (scope.children.length === 0) return this.getSignature(testid, scope);
+
+    // scopes do not overlap so only one of the children will contain pos
+    let signature;
+    scope.children.find((childScope) => {
+      signature = this.getSignatureAtLocation(testid, offset, childScope);
+      return signature;
+    });
+
+    // this scope doesn't have testid
+    return signature;
   }
 
   isInScope(testid: string, scope = this.currentScope): ISignature | undefined {
@@ -149,9 +173,9 @@ class CstVisitor extends CstBaseVisitor {
     this.errors = [];
   }
 
-  reset() {
+  reset(location: CstNodeLocation) {
     this.errors = [];
-    this.scopeStack.reset();
+    this.scopeStack.reset(location);
   }
 
   getTokenPos(token: IToken) {
@@ -184,8 +208,13 @@ class CstVisitor extends CstBaseVisitor {
     });
   }
 
+  go(rootNode: CstNode) {
+    if (!rootNode.location) throw new Error("Need node location");
+    this.reset(rootNode.location);
+    return this.program(rootNode.children);
+  }
+
   program(ctx: ProgramCstChildren) {
-    this.reset();
     const functionDeclarations = ctx.functionDeclaration?.map((node) => this.visit(node)) || [];
     const rootLevelStatements = ctx.statement?.map((node) => this.visit(node)) || [];
     return { _name: "program", functionDeclarations, rootLevelStatements, scopeStack: this.scopeStack, errors: this.errors };
@@ -197,7 +226,7 @@ class CstVisitor extends CstBaseVisitor {
 
     this.scopeStack.addToScope(decl.name, decl.type, decl.pos, params);
 
-    this.scopeStack.pushScope(decl.name);
+    this.scopeStack.pushScope(decl.name, ctx.blockStatement[0].location);
     params.forEach((p) => this.scopeStack.addToScope(p.name, p.type, p.pos));
 
     const block = this.visit(ctx.blockStatement);

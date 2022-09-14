@@ -1,6 +1,6 @@
 import { ISimpleCLangError } from "./DiagnosticsAdapter";
 import { parse } from "../../../languages/simpleC/parser";
-import { cstVisitor } from "../../../languages/simpleC/cstVisitor";
+import { cstVisitor, IFunctionDeclaration, IVariableDeclaration } from "../../../languages/simpleC/cstVisitor";
 import * as monaco from "monaco-editor";
 
 export default class SimpleCLanguageService {
@@ -9,8 +9,7 @@ export default class SimpleCLanguageService {
     // console.log(parseAndGetASTRoot);
     const { cst, lexErrors, parseErrors } = parse(code);
     let ast;
-    if (lexErrors.length == 0 && parseErrors.length == 0) ast = cstVisitor.program(cst.children);
-    console.log(cst, ast);
+    if (lexErrors.length == 0 && parseErrors.length == 0) ast = cstVisitor.go(cst);
 
     const errors = [
       ...parseErrors.map((e) => ({
@@ -56,21 +55,18 @@ export default class SimpleCLanguageService {
     });
   }
 
-  signatures(identifier: string, pos: monaco.Position): monaco.languages.SignatureInformation[] {
+  signatures(identifier: string, offset: number): monaco.languages.SignatureInformation[] {
     // todo: parse code up to pos, return cstVisitor.scopeStack.getSignature(identifier)
+    let sig = cstVisitor.scopeStack.getSignatureAtLocation(identifier, offset);
+    if (!sig) return [];
+    if (sig.kind != "function") return [];
+
+    const sig2 = sig as IFunctionDeclaration;
+
     return [
       {
-        label: "print_int(num,opt)",
-        parameters: [
-          {
-            label: "num",
-            documentation: "The integer to print",
-          },
-          {
-            label: "opt",
-            documentation: "Print options",
-          },
-        ],
+        label: `${sig2.name}(${sig2.params.map((p) => p.name).join(",")})`,
+        parameters: sig2.params.map((p) => ({ label: p.name, documentation: p.type })),
       },
     ];
   }

@@ -58,7 +58,6 @@ export default class SimpleCSignatureHelpProvider extends Adapter implements mon
     const worker = await this.worker(resource);
 
     let iterator = new BackwardIterator(model, position.column - 1, position.lineNumber);
-    debugger;
     const activeParameter = this.readArguments(iterator);
     if (activeParameter < 0) return null;
 
@@ -66,7 +65,7 @@ export default class SimpleCSignatureHelpProvider extends Adapter implements mon
     if (!ident) return null;
 
     // get document symbols from the worker
-    const signatures = await worker.doSignatures(ident, position);
+    const signatures = await worker.doSignatures(ident, model.getOffsetAt(position));
 
     const result = {
       dispose: () => {},

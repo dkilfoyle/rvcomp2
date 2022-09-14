@@ -27,7 +27,6 @@ export default class DiagnosticsAdapter {
     monaco.editor.getModels().forEach(onModelAdd);
   }
   private async validate(resource: monaco.Uri): Promise<void> {
-    console.log("this.validate");
     // get the worker proxy
     const worker = await this.worker(resource);
     // call the validate methode proxy from the langaueg service and get errors
