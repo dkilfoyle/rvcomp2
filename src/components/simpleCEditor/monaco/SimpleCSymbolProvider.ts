@@ -19,13 +19,12 @@ export default class SimpleCSymbolProvider extends Adapter implements monaco.lan
     const resource = model.uri;
     const worker = await this.worker(resource);
 
-    console.log("symbols");
-
     // get document symbols from the worker
     const items = await worker.doSymbols();
     if (!items) {
       return;
     }
+
     return items;
   }
 }

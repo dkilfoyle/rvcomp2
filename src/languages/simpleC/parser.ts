@@ -3,57 +3,9 @@
  * https://tomassetti.me/ebnf/#examples (Scroll down a bit)
  */
 
-import chevrotain, { Lexer, CstParser, Rule, defaultLexerErrorProvider } from "chevrotain";
-
-// ----------------- lexer -----------------
-const allTokens: chevrotain.TokenType[] = [];
-
-// Utility to avoid manually building the allTokens array
-function createToken(options: { name: string; pattern: RegExp; group?: string }) {
-  const newToken = chevrotain.createToken(options);
-  allTokens.push(newToken);
-  return newToken;
-}
-
-function createKeywordToken(options: { name: string; pattern: RegExp; group?: string }) {
-  const newToken = chevrotain.createToken({ ...options, longer_alt: ID });
-  allTokens.push(newToken);
-  return newToken;
-}
-
-createToken({
-  name: "WhiteSpace",
-  pattern: /\s+/,
-  group: Lexer.SKIPPED,
-});
-
-const ID = chevrotain.createToken({ name: "ID", pattern: /[a-zA-Z_][a-zA-Z_0-9]*/ });
-
-const If = createKeywordToken({ name: "If", pattern: /if/ });
-const Else = createKeywordToken({ name: "Else", pattern: /else/ });
-const While = createKeywordToken({ name: "While", pattern: /while/ });
-const Do = createKeywordToken({ name: "Do", pattern: /do/ });
-
-const IntType = createKeywordToken({ name: "intType", pattern: /int/ });
-const VoidType = createKeywordToken({ name: "voidType", pattern: /void/ });
-
-const LCurly = createToken({ name: "LCurly", pattern: /{/ });
-const RCurly = createToken({ name: "RCurly", pattern: /}/ });
-const LParen = createToken({ name: "LParen", pattern: /\(/ });
-const RParen = createToken({ name: "RParen", pattern: /\)/ });
-const SemiColon = createToken({ name: "SemiColon", pattern: /;/ });
-const Equals = createToken({ name: "Equals", pattern: /=/ });
-const LessThan = createToken({ name: "LessThan", pattern: /</ });
-const Plus = createToken({ name: "Plus", pattern: /\+/ });
-const Minus = createToken({ name: "Minus", pattern: /-/ });
-const Times = createToken({ name: "Times", pattern: /\*/ });
-const Divide = createToken({ name: "Divide", pattern: /\// });
-const Comma = createToken({ name: "Comma", pattern: /,/ });
-const INT = createToken({ name: "INT", pattern: /[0-9]+/ });
-
-allTokens.push(ID);
-
-const SimpleCLexer = new Lexer(allTokens);
+import chevrotain, { CstParser, Rule } from "chevrotain";
+import { tokens, allTokens } from "./tokens";
+import { SimpleCLexer } from "./lexer";
 
 // ----------------- parser -----------------
 
@@ -74,25 +26,25 @@ class SimpleCParser extends CstParser {
 
   public functionDeclaration = this.RULE("functionDeclaration", () => {
     this.SUBRULE(this.variableDeclaration);
-    this.CONSUME(LParen);
+    this.CONSUME(tokens.LParen);
     this.OPTION(() => {
       this.SUBRULE(this.variableDeclarationList, { LABEL: "params" });
     });
-    this.CONSUME(RParen);
+    this.CONSUME(tokens.RParen);
     this.SUBRULE(this.blockStatement);
   });
 
   public variableDeclarationList = this.RULE("variableDeclarationList", () => {
     this.SUBRULE(this.variableDeclaration);
     this.MANY(() => {
-      this.CONSUME(Comma);
+      this.CONSUME(tokens.Comma);
       this.SUBRULE2(this.variableDeclaration);
     });
   });
 
   public variableDeclaration = this.RULE("variableDeclaration", () => {
     this.SUBRULE(this.typeSpecifier);
-    this.CONSUME(ID);
+    this.CONSUME(tokens.ID);
   });
 
   public statement = this.RULE("statement", () => {
@@ -108,52 +60,52 @@ class SimpleCParser extends CstParser {
   });
 
   public ifStatement = this.RULE("ifStatement", () => {
-    this.CONSUME(If);
+    this.CONSUME(tokens.If);
     this.SUBRULE(this.parenExpression);
     this.SUBRULE(this.statement);
     this.OPTION(() => {
-      this.CONSUME(Else);
+      this.CONSUME(tokens.Else);
       this.SUBRULE2(this.statement);
     });
   });
 
   public whileStatement = this.RULE("whileStatement", () => {
-    this.CONSUME(While);
+    this.CONSUME(tokens.While);
     this.SUBRULE(this.parenExpression);
     this.SUBRULE(this.statement);
   });
 
   public doStatement = this.RULE("doStatement", () => {
-    this.CONSUME(Do);
+    this.CONSUME(tokens.Do);
     this.SUBRULE(this.statement);
-    this.CONSUME(While);
+    this.CONSUME(tokens.While);
     this.SUBRULE(this.parenExpression);
-    this.CONSUME(SemiColon);
+    this.CONSUME(tokens.SemiColon);
   });
 
   public blockStatement = this.RULE("blockStatement", () => {
-    this.CONSUME(LCurly);
+    this.CONSUME(tokens.LCurly);
     this.MANY(() => {
       this.SUBRULE(this.statement);
     });
-    this.CONSUME(RCurly);
+    this.CONSUME(tokens.RCurly);
   });
 
   public variableDeclarationStatement = this.RULE("variableDeclarationStatement", () => {
     this.SUBRULE(this.variableDeclaration);
-    this.CONSUME(SemiColon);
+    this.CONSUME(tokens.SemiColon);
   });
 
   public expressionStatement = this.RULE("expressionStatement", () => {
     this.SUBRULE(this.additionExpression);
-    this.CONSUME(SemiColon);
+    this.CONSUME(tokens.SemiColon);
   });
 
   public assignStatement = this.RULE("assignStatement", () => {
     this.SUBRULE(this.identifierExpression);
-    this.CONSUME(Equals);
+    this.CONSUME(tokens.Equals);
     this.SUBRULE(this.additionExpression);
-    this.CONSUME(SemiColon);
+    this.CONSUME(tokens.SemiColon);
   });
 
   // Expressions
@@ -161,7 +113,7 @@ class SimpleCParser extends CstParser {
   public additionExpression = this.RULE("additionExpression", () => {
     this.SUBRULE(this.multiplicationExpression);
     this.MANY(() => {
-      this.OR([{ ALT: () => this.CONSUME(Plus) }, { ALT: () => this.CONSUME(Minus) }]);
+      this.OR([{ ALT: () => this.CONSUME(tokens.Plus) }, { ALT: () => this.CONSUME(tokens.Minus) }]);
       this.SUBRULE2(this.multiplicationExpression);
     });
   });
@@ -169,7 +121,7 @@ class SimpleCParser extends CstParser {
   public multiplicationExpression = this.RULE("multiplicationExpression", () => {
     this.SUBRULE(this.atomicExpression);
     this.MANY(() => {
-      this.OR([{ ALT: () => this.CONSUME(Times) }, { ALT: () => this.CONSUME(Divide) }]);
+      this.OR([{ ALT: () => this.CONSUME(tokens.Times) }, { ALT: () => this.CONSUME(tokens.Divide) }]);
       this.SUBRULE2(this.atomicExpression);
     });
   });
@@ -187,7 +139,7 @@ class SimpleCParser extends CstParser {
   public expressionList = this.RULE("expressionList", () => {
     this.SUBRULE(this.additionExpression);
     this.MANY(() => {
-      this.CONSUME(Comma);
+      this.CONSUME(tokens.Comma);
       this.SUBRULE2(this.additionExpression);
     });
   });
@@ -196,43 +148,44 @@ class SimpleCParser extends CstParser {
 
   public functionCallExpression = this.RULE("functionCallExpression", () => {
     this.SUBRULE(this.identifierExpression);
-    this.CONSUME(LParen);
+    this.CONSUME(tokens.LParen);
     this.OPTION(() => this.SUBRULE(this.expressionList));
-    this.CONSUME(RParen);
+    this.CONSUME(tokens.RParen);
   });
 
   public parenExpression = this.RULE("parenExpression", () => {
-    this.CONSUME(LParen);
+    this.CONSUME(tokens.LParen);
     this.SUBRULE(this.additionExpression);
-    this.CONSUME(RParen);
+    this.CONSUME(tokens.RParen);
   });
 
   public unaryExpression = this.RULE("unaryExpression", () => {
-    this.CONSUME(Plus);
+    this.CONSUME(tokens.Plus);
     this.SUBRULE(this.additionExpression);
   });
 
   public identifierExpression = this.RULE("identifierExpression", () => {
-    this.CONSUME(ID);
+    this.CONSUME(tokens.ID);
   });
 
   public integerLiteralExpression = this.RULE("integerLiteralExpression", () => {
-    this.CONSUME(INT);
+    this.CONSUME(tokens.IntegerLiteral);
   });
 
   // ------------------ utils ----------------------------------
 
   public typeSpecifier = this.RULE("typeSpecifier", () => {
-    this.OR([{ ALT: () => this.CONSUME(IntType) }, { ALT: () => this.CONSUME(VoidType) }]);
+    this.OR([{ ALT: () => this.CONSUME(tokens.IntType) }, { ALT: () => this.CONSUME(tokens.VoidType) }]);
   });
 }
 
 // run
 
-const parserInstance = new SimpleCParser();
+export const parserInstance = new SimpleCParser();
 export const productions: Record<string, Rule> = parserInstance.getGAstProductions();
 
 import { generateCstDts } from "chevrotain";
+
 const dtsString = generateCstDts(productions, { includeVisitorInterface: true });
 console.log({ dst: dtsString });
 

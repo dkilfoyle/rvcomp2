@@ -7,6 +7,7 @@ import SimpleCFormattingProvider from "./SimpleCFormattingProvider";
 import { SimpleCWorker } from "./SimpleCWorker";
 import SimpleCSymbolProvider from "./SimpleCSymbolProvider";
 import SimpleCSignatureHelpProvider from "./SimpleCSignatureHelpProvider";
+import { SimpleCCompletionProvider } from "./SimpleCCompletionProvider";
 
 export function setupLanguage() {
   monaco.languages.register(languageExtensionPoint);
@@ -19,10 +20,11 @@ export function setupLanguage() {
       return client.getLanguageServiceWorker(...uris);
     };
 
-    monaco.languages.registerDocumentFormattingEditProvider(languageID, new SimpleCFormattingProvider(worker));
     new DiagnosticsAdapter(worker); // TODO: rewrite as registerDocumentMarkerProvider from https://github.com/remcohaszing/monaco-marker-data-provider/blob/main/index.ts
+    monaco.languages.registerDocumentFormattingEditProvider(languageID, new SimpleCFormattingProvider(worker));
     monaco.languages.registerDocumentSymbolProvider(languageID, new SimpleCSymbolProvider(worker));
     monaco.languages.registerSignatureHelpProvider(languageID, new SimpleCSignatureHelpProvider(worker));
+    monaco.languages.registerCompletionItemProvider(languageID, new SimpleCCompletionProvider(worker));
   });
 }
 

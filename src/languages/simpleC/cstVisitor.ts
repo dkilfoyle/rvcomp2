@@ -111,7 +111,19 @@ class ScopeStack {
   }
 
   isPosInScopeRange(offset: number, scope: IScope) {
+    let x: number;
     return offset >= scope.location.startOffset && scope.location.endOffset && offset < scope.location.endOffset;
+  }
+
+  getScopeAtLocation(offset: number, scope: IScope = this.stack): IScope | null {
+    if (scope.children.length == 0) return scope;
+
+    for (let i = 0; i < scope.children.length; i++) {
+      let child = this.getScopeAtLocation(offset, scope.children[i]);
+      if (child) return child;
+    }
+
+    return null;
   }
 
   getSignatureAtLocation(testid: string, offset: number, scope = this.currentScope) {
@@ -135,13 +147,25 @@ class ScopeStack {
     return this.getSignature(testid, scope);
   }
 
-  flatten(scope = this.stack): ISignature[] {
+  flattenDown(scope = this.stack): ISignature[] {
     const sigs: ISignature[] = [];
     const getScopeSymbols = (scope: IScope) => {
       scope.signatures.forEach((sig) => {
         sigs.push(sig);
       });
       scope.children.forEach((child) => getScopeSymbols(child));
+    };
+    getScopeSymbols(scope);
+    return sigs;
+  }
+
+  flattenUp(scope = this.stack): ISignature[] {
+    const sigs: ISignature[] = [];
+    const getScopeSymbols = (scope: IScope) => {
+      scope.signatures.forEach((sig) => {
+        sigs.push(sig);
+      });
+      if (scope.parent) getScopeSymbols(scope.parent);
     };
     getScopeSymbols(scope);
     return sigs;
