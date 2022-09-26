@@ -1,6 +1,6 @@
 import { ISimpleCLangError } from "./DiagnosticsAdapter";
 import { parse } from "../../../languages/simpleC/parser";
-import { cstVisitor, IFunctionDeclaration, IVariableDeclaration } from "../../../languages/simpleC/cstVisitor";
+import { cstVisitor, FunctionSignature } from "../../../languages/simpleC/cstVisitor";
 import * as monaco from "monaco-editor";
 import { SimpleCLexer } from "../../../languages/simpleC/lexer";
 import { tokenMatcher } from "chevrotain";
@@ -51,7 +51,7 @@ export default class SimpleCLanguageService {
       return {
         range: sig.pos,
         name: sig.name,
-        kind: sig.kind === "function" ? 11 : 12,
+        kind: sig instanceof FunctionSignature ? 11 : 12,
         detail: "",
         tags: [],
         selectionRange: sig.pos,
@@ -63,9 +63,9 @@ export default class SimpleCLanguageService {
     // todo: parse code up to pos, return cstVisitor.scopeStack.getSignature(identifier)
     let sig = cstVisitor.scopeStack.getSignatureAtLocation(identifier, offset);
     if (!sig) return [];
-    if (sig.kind != "function") return [];
+    if (sig instanceof FunctionSignature) return [];
 
-    const sig2 = sig as IFunctionDeclaration;
+    const sig2 = sig as FunctionSignature;
 
     return [
       {
@@ -125,7 +125,7 @@ export default class SimpleCLanguageService {
             insertText: sig.name,
             range,
             kind: 1,
-            documentation: sig.docComment?.toSuggestionString(),
+            documentation: { value: sig.toSuggestionString() },
           }));
           symbols.forEach((sym) => {
             if (!finalSuggestions.find((suggestion: monaco.languages.CompletionItem) => suggestion.label === sym.label)) {

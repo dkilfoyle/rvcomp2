@@ -18,6 +18,7 @@ export class DocComment {
     // TODO: refactor
     comment = comment.replace(/\r\n/gm, "\n"); // for windows
     comment = comment.replace(/\/\*\*/, ""); // remove /**
+    comment = comment.replace(/\*\/$/, ""); // remove */ at end
     comment = comment.replace(/^[\t \n]*/gm, ""); // remove line head space
     comment = comment.replace(/^\*[\t ]?/, ""); // remove first '*'
     comment = comment.replace(/[\t ]$/, ""); // remove last space
@@ -60,6 +61,6 @@ export class DocComment {
 
   toSuggestionString(): string {
     console.log(this);
-    return `${this.desc}\n\n${this.params.map((p) => p + "\n")}returns ${this.returns}`;
+    return `${this.desc}\n\n${this.params.map((p) => "_@param_ " + p + "\n")}\nreturns ${this.returns}`;
   }
 }

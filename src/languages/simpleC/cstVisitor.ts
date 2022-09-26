@@ -31,27 +31,69 @@ interface IPos {
   endColumn: number;
 }
 
-interface IDeclaration {
-  name: string;
-  type: string;
-  pos: IPos;
-  docComment?: DocComment;
+// interface IDeclaration {
+//   name: string;
+//   type: string;
+//   pos: IPos;
+//   docComment?: DocComment;
+// }
+
+// export interface IVariableDeclaration extends IDeclaration {
+//   kind: "variable";
+// }
+
+// export interface IFunctionDeclaration extends IDeclaration {
+//   kind: "function";
+//   params: IVariableDeclaration[];
+// }
+
+// type ISignature = IVariableDeclaration | IFunctionDeclaration;
+
+export class Signature {
+  public name: string;
+  public type: string;
+  public pos: IPos;
+  constructor(name: string, type: string, pos: IPos) {
+    this.name = name;
+    this.type = type;
+    this.pos = pos;
+  }
+  toString() {
+    return "base Signature";
+  }
+  toSuggestionString() {
+    return "base suggestion";
+  }
 }
 
-export interface IVariableDeclaration extends IDeclaration {
-  kind: "variable";
+export class VariableSignature extends Signature {
+  toString() {
+    return `${this.type} ${this.name}`;
+  }
+  toSuggestionString() {
+    return this.toString() + "var";
+  }
 }
 
-export interface IFunctionDeclaration extends IDeclaration {
-  kind: "function";
-  params: IVariableDeclaration[];
+export class FunctionSignature extends Signature {
+  public params: VariableSignature[];
+  public docComment?: DocComment;
+  constructor(name: string, type: string, params: VariableSignature[], pos: IPos, docComment?: DocComment) {
+    super(name, type, pos);
+    this.params = params;
+    this.docComment = docComment;
+  }
+  toString() {
+    return `${this.type} ${this.name} (${this.params.map((p) => p.toString()).join(", ")})`;
+  }
+  toSuggestionString() {
+    return this.toString() + (this.docComment ? "\n\n" + this.docComment?.toSuggestionString() : "");
+  }
 }
-
-type ISignature = IVariableDeclaration | IFunctionDeclaration;
 
 export interface IScope {
   name: string;
-  signatures: ISignature[];
+  signatures: Signature[];
   location: CstNodeLocation;
   parent: IScope | undefined;
   children: IScope[];
@@ -79,14 +121,13 @@ class ScopeStack {
       parent: undefined,
       children: [],
       signatures: [
-        {
-          kind: "function",
-          name: "print_int",
-          type: "void",
-          pos: getLibPos(),
-          docComment: new DocComment("/**\n* @desc Print an integer to console\n* @param [int num] Number to print\n*/"),
-          params: [{ kind: "variable", name: "num", type: "int", pos: getLibPos() }],
-        },
+        new FunctionSignature(
+          "print_int",
+          "void",
+          [new VariableSignature("x", "int", getLibPos())],
+          getLibPos(),
+          new DocComment("/**\n* @desc Print an integer to console\n* @param [int num] Number to print\n*/")
+        ),
       ],
     };
   }
@@ -102,11 +143,15 @@ class ScopeStack {
     if (this.currentScope.parent) this.currentScope = this.currentScope.parent;
   }
 
-  addToScope(name: string, type: string, pos: IPos, params?: IVariableDeclaration[], docComment?: DocComment) {
-    this.currentScope.signatures.push({ name, type, pos, docComment, params: params ? params : [], kind: params ? "function" : "variable" });
+  // addToScope(name: string, type: string, pos: IPos, params?: IVariableDeclaration[], docComment?: DocComment) {
+  //   this.currentScope.signatures.push({ name, type, pos, docComment, params: params ? params : [], kind: params ? "function" : "variable" });
+  // }
+
+  addToScope(signature: Signature) {
+    this.currentScope.signatures.push(signature);
   }
 
-  getSignature(testid: string, scope = this.currentScope): ISignature | undefined {
+  getSignature(testid: string, scope = this.currentScope): Signature | undefined {
     const found = scope.signatures.find((sig) => sig.name == testid);
     if (found) return found;
     if (scope.parent) return this.getSignature(testid, scope.parent);
@@ -146,12 +191,12 @@ class ScopeStack {
     return signature;
   }
 
-  isInScope(testid: string, scope = this.currentScope): ISignature | undefined {
+  isInScope(testid: string, scope = this.currentScope): Signature | undefined {
     return this.getSignature(testid, scope);
   }
 
-  flattenDown(scope = this.stack): ISignature[] {
-    const sigs: ISignature[] = [];
+  flattenDown(scope = this.stack): Signature[] {
+    const sigs: Signature[] = [];
     const getScopeSymbols = (scope: IScope) => {
       scope.signatures.forEach((sig) => {
         sigs.push(sig);
@@ -162,8 +207,8 @@ class ScopeStack {
     return sigs;
   }
 
-  flattenUp(scope = this.stack): ISignature[] {
-    const sigs: ISignature[] = [];
+  flattenUp(scope = this.stack): Signature[] {
+    const sigs: Signature[] = [];
     const getScopeSymbols = (scope: IScope) => {
       scope.signatures.forEach((sig) => {
         sigs.push(sig);
@@ -220,11 +265,9 @@ class CstVisitor extends CstBaseVisitor {
     return sig;
   }
 
-  checkParams(fnid: string, pos: IPos, params: IVariableDeclaration[]) {
-    const fn = this.scopeStack.getSignature(fnid);
-    if (fn && fn.kind === "function") {
-      if (fn.params.length != params.length) this.pushError(`Expecting ${fn.params.length} parameters`, pos);
-    } else debugger;
+  checkParams(fnid: string, pos: IPos, params: VariableSignature[]) {
+    const fn = this.scopeStack.getSignature(fnid) as FunctionSignature;
+    if (fn && fn.params.length != params.length) this.pushError(`Expecting ${fn.params.length} parameters`, pos);
   }
 
   pushError(message: string, pos: IPos) {
@@ -249,14 +292,15 @@ class CstVisitor extends CstBaseVisitor {
 
   functionDeclaration(ctx: FunctionDeclarationCstChildren) {
     const docComment = ctx.DocComment ? new DocComment(ctx.DocComment[0].image) : undefined;
-    const decl: IVariableDeclaration = this.visit(ctx.variableDeclaration);
-    const params: IVariableDeclaration[] = ctx.params ? this.visit(ctx.params).declarations : [];
+    const decl: VariableSignature = this.visit(ctx.variableDeclaration);
+    const params: VariableSignature[] = ctx.params ? this.visit(ctx.params).declarations : [];
+
     console.log(docComment);
 
-    this.scopeStack.addToScope(decl.name, decl.type, decl.pos, params, docComment);
+    this.scopeStack.addToScope(new FunctionSignature(decl.name, decl.type, params, decl.pos, docComment));
 
     this.scopeStack.pushScope(decl.name, ctx.blockStatement[0].location);
-    params.forEach((p) => this.scopeStack.addToScope(p.name, p.type, p.pos));
+    params.forEach((p) => this.scopeStack.addToScope(p));
 
     const block = this.visit(ctx.blockStatement);
 
@@ -304,7 +348,7 @@ class CstVisitor extends CstBaseVisitor {
 
   variableDeclarationStatement(ctx: VariableDeclarationStatementCstChildren) {
     const decl = this.visit(ctx.variableDeclaration);
-    this.scopeStack.addToScope(decl.name, decl.type, decl.pos);
+    this.scopeStack.addToScope(new VariableSignature(decl.name, decl.type, decl.pos));
     return decl;
   }
 
