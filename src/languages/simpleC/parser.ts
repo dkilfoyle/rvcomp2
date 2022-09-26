@@ -25,9 +25,12 @@ class SimpleCParser extends CstParser {
   });
 
   public functionDeclaration = this.RULE("functionDeclaration", () => {
+    this.OPTION(() => {
+      this.CONSUME(tokens.DocComment);
+    });
     this.SUBRULE(this.variableDeclaration);
     this.CONSUME(tokens.LParen);
-    this.OPTION(() => {
+    this.OPTION2(() => {
       this.SUBRULE(this.variableDeclarationList, { LABEL: "params" });
     });
     this.CONSUME(tokens.RParen);

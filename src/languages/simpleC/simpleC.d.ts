@@ -16,6 +16,7 @@ export interface FunctionDeclarationCstNode extends CstNode {
 }
 
 export type FunctionDeclarationCstChildren = {
+  DocComment?: IToken[];
   variableDeclaration: VariableDeclarationCstNode[];
   LParen: IToken[];
   params?: VariableDeclarationListCstNode[];

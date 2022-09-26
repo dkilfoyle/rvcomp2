@@ -125,6 +125,7 @@ export default class SimpleCLanguageService {
             insertText: sig.name,
             range,
             kind: 1,
+            documentation: sig.docComment?.toSuggestionString(),
           }));
           symbols.forEach((sym) => {
             if (!finalSuggestions.find((suggestion: monaco.languages.CompletionItem) => suggestion.label === sym.label)) {

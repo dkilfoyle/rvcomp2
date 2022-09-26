@@ -3,7 +3,7 @@ import chevrotain, { Lexer } from "chevrotain";
 export const allTokens: chevrotain.TokenType[] = [];
 
 // Utility to avoid manually building the allTokens array
-function createToken(options: { name: string; pattern: RegExp; group?: string }) {
+function createToken(options: { name: string; pattern: RegExp; group?: string; line_breaks?: boolean }) {
   const newToken = chevrotain.createToken(options);
   allTokens.push(newToken);
   return newToken;
@@ -20,6 +20,22 @@ createToken({
   pattern: /\s+/,
   group: Lexer.SKIPPED,
 });
+
+// comments
+const LineComment = createToken({
+  name: "LineComment",
+  pattern: /\/\/[^\n\r]*/,
+});
+
+const DocComment = createToken({
+  name: "DocComment",
+  pattern: /\/\*\*([^*]|\*(?!\/))*\*\//,
+  line_breaks: true,
+});
+
+// const DocCommentStart = createToken({ name: "DocCommentStart", pattern: /\/\*\*/ });
+// const DocCommentEnd = createToken({ name: "DocCommentEnd", pattern: /\*\// });
+// const DocCommentSummary = createToken({ name: "DocCommentSummary", pattern: /\*.*/ });
 
 const ID = chevrotain.createToken({ name: "ID", pattern: /[a-zA-Z_][a-zA-Z_0-9]*/ });
 
@@ -75,4 +91,6 @@ export const tokens = {
   Comma,
   IntegerLiteral,
   Keyword,
+  DocComment,
+  LineComment,
 };

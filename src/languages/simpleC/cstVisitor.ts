@@ -1,5 +1,6 @@
 import { CstNode, CstNodeLocation, IToken } from "chevrotain";
 import { ISimpleCLangError } from "../../components/simpleCEditor/monaco/DiagnosticsAdapter";
+import { DocComment } from "./CommentParser";
 import parser from "./parser";
 import {
   AdditionExpressionCstChildren,
@@ -34,6 +35,7 @@ interface IDeclaration {
   name: string;
   type: string;
   pos: IPos;
+  docComment?: DocComment;
 }
 
 export interface IVariableDeclaration extends IDeclaration {
@@ -82,6 +84,7 @@ class ScopeStack {
           name: "print_int",
           type: "void",
           pos: getLibPos(),
+          docComment: new DocComment("/**\n* @desc Print an integer to console\n* @param [int num] Number to print\n*/"),
           params: [{ kind: "variable", name: "num", type: "int", pos: getLibPos() }],
         },
       ],
@@ -99,8 +102,8 @@ class ScopeStack {
     if (this.currentScope.parent) this.currentScope = this.currentScope.parent;
   }
 
-  addToScope(name: string, type: string, pos: IPos, params?: IVariableDeclaration[]) {
-    this.currentScope.signatures.push({ name, type, pos, params: params ? params : [], kind: params ? "function" : "variable" });
+  addToScope(name: string, type: string, pos: IPos, params?: IVariableDeclaration[], docComment?: DocComment) {
+    this.currentScope.signatures.push({ name, type, pos, docComment, params: params ? params : [], kind: params ? "function" : "variable" });
   }
 
   getSignature(testid: string, scope = this.currentScope): ISignature | undefined {
@@ -245,10 +248,12 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   functionDeclaration(ctx: FunctionDeclarationCstChildren) {
+    const docComment = ctx.DocComment ? new DocComment(ctx.DocComment[0].image) : undefined;
     const decl: IVariableDeclaration = this.visit(ctx.variableDeclaration);
     const params: IVariableDeclaration[] = ctx.params ? this.visit(ctx.params).declarations : [];
+    console.log(docComment);
 
-    this.scopeStack.addToScope(decl.name, decl.type, decl.pos, params);
+    this.scopeStack.addToScope(decl.name, decl.type, decl.pos, params, docComment);
 
     this.scopeStack.pushScope(decl.name, ctx.blockStatement[0].location);
     params.forEach((p) => this.scopeStack.addToScope(p.name, p.type, p.pos));
@@ -262,6 +267,7 @@ class CstVisitor extends CstBaseVisitor {
       id: decl.name,
       params,
       block,
+      docComment,
     };
   }
 
