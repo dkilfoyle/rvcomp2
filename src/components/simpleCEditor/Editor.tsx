@@ -2,6 +2,7 @@ import { VFC, useRef, useState, useEffect } from "react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import styles from "./Editor.module.css";
 import { setupLanguage } from "./monaco/setup";
+import code from "../../examples/helloint.sc?raw";
 
 export const Editor: VFC = () => {
   const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -12,7 +13,7 @@ export const Editor: VFC = () => {
       setupLanguage();
       setEditor(
         monaco.editor.create(monacoEl.current!, {
-          value: ["void main() {", "\tint x;", "\tx=5;", "\tprint_int(x);", "}"].join("\n"),
+          value: code, //["void main() {", "\tint x;", "\tx=5;", "\tprint_int(x);", "}"].join("\n"),
           language: "simpleC",
         })
       );
