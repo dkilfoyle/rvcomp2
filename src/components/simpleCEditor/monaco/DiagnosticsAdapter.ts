@@ -28,6 +28,7 @@ export default class DiagnosticsAdapter {
   }
   private async validate(resource: monaco.Uri): Promise<void> {
     // get the worker proxy
+    console.log("Diagnostics Adapter.validate");
     const worker = await this.worker(resource);
     // call the validate methode proxy from the langaueg service and get errors
     const errorMarkers = await worker.doValidation();

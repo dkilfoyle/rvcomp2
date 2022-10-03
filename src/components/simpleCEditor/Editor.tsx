@@ -2,7 +2,7 @@ import { VFC, useRef, useState, useEffect } from "react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import styles from "./Editor.module.css";
 import { setupLanguage } from "./monaco/setup";
-import code from "../../examples/helloint.sc?raw";
+import code from "../../examples/semanticerrors.sc?raw";
 
 export const Editor: VFC = () => {
   const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);

@@ -6,17 +6,21 @@ import {
   AdditionExpressionCstChildren,
   AtomicExpressionCstChildren,
   BlockStatementCstChildren,
+  BoolLiteralExpressionCstChildren,
   ExpressionListCstChildren,
   ExpressionStatementCstChildren,
   FunctionCallExpressionCstChildren,
   FunctionDeclarationCstChildren,
   IdentifierExpressionCstChildren,
   IntegerLiteralExpressionCstChildren,
+  LiteralExpressionCstChildren,
   MultiplicationExpressionCstChildren,
   ParenExpressionCstChildren,
   ProgramCstChildren,
   StatementCstChildren,
+  StringLiteralExpressionCstChildren,
   TypeSpecifierCstChildren,
+  UnaryExpressionCstChildren,
   VariableDeclarationCstChildren,
   VariableDeclarationListCstChildren,
   VariableDeclarationStatementCstChildren,
@@ -49,14 +53,19 @@ interface IPos {
 
 // type ISignature = IVariableDeclaration | IFunctionDeclaration;
 
+type IDeclarationType = "int" | "string" | "bool" | "void";
+type IDeclarationValue = number | string | boolean | undefined;
+
 export class Signature {
   public name: string;
-  public type: string;
+  public type: IDeclarationType;
   public pos: IPos;
-  constructor(name: string, type: string, pos: IPos) {
+  public value: IDeclarationValue;
+  constructor(name: string, type: IDeclarationType, pos: IPos, value?: IDeclarationValue) {
     this.name = name;
     this.type = type;
     this.pos = pos;
+    this.value = value;
   }
   toString() {
     return "base Signature";
@@ -78,7 +87,7 @@ export class VariableSignature extends Signature {
 export class FunctionSignature extends Signature {
   public params: VariableSignature[];
   public docComment?: DocComment;
-  constructor(name: string, type: string, params: VariableSignature[], pos: IPos, docComment?: DocComment) {
+  constructor(name: string, type: IDeclarationType, params: VariableSignature[], pos: IPos, docComment?: DocComment) {
     super(name, type, pos);
     this.params = params;
     this.docComment = docComment;
@@ -234,6 +243,22 @@ class ScopeStack {
 // variableDeclarationStatement
 //   typedIdentifier ';'
 
+// interface IAstNode {
+//   name: string;
+// }
+
+// type IAstOperator = "+" | "-" | "*" | "/";
+
+// interface IAstExpression extends IAstNode {
+//   lhs: IAstExpression | IAstAtomic;
+//   rhs: IAstExpression | IAstAtomic;
+//   op: IAstOperator;
+// }
+
+// interface IAstAtomic {
+
+// }
+
 class CstVisitor extends CstBaseVisitor {
   public errors: ISimpleCLangError[];
   public scopeStack: ScopeStack;
@@ -359,6 +384,8 @@ class CstVisitor extends CstBaseVisitor {
   assignStatement(ctx: any) {
     const lhs = this.visit(ctx.identifierExpression);
     const rhs = this.visit(ctx.additionExpression);
+    console.log(lhs, rhs);
+    if (lhs.type !== rhs.type) this.errors.push({ ...rhs.pos, code: "2", message: "type mismatch (assign)" });
     return { _name: "assignExpression", lhs, rhs };
   }
 
@@ -367,35 +394,49 @@ class CstVisitor extends CstBaseVisitor {
   additionExpression(ctx: AdditionExpressionCstChildren) {
     const lhs = this.visit(ctx.multiplicationExpression[0]);
     const rhs = this.visit(ctx.multiplicationExpression[1]);
+    if (!rhs && lhs.type === "void") return lhs;
+
+    if (lhs.type !== "int") {
+      console.log("AdditionExpression LHS", lhs);
+      this.errors.push({ ...lhs.pos, code: "2", message: "The LHS of arthrimetic operation must be of type int" });
+      return { _name: "invalidOperation", type: "int" };
+    }
     if (!rhs) return lhs;
-    return { _name: "additionExpression", lhs, rhs, op: ctx.Minus ? "-" : "+" };
+
+    if (rhs.type !== "int") {
+      console.log("AdditionExpression RHS", rhs);
+      this.errors.push({ ...rhs.pos, code: "2", message: "The RHS of arthrimetic operation must be of type int" });
+      return { _name: "invalidOperation", type: "int" };
+    }
+    return { _name: "additionExpression", lhs, rhs, op: ctx.Minus ? "-" : "+", type: "int" };
   }
 
   multiplicationExpression(ctx: MultiplicationExpressionCstChildren) {
     const lhs = this.visit(ctx.atomicExpression[0]);
     const rhs = this.visit(ctx.atomicExpression[1]);
     if (!rhs) return lhs;
+    if (lhs.type !== rhs.type) this.errors.push({ ...rhs.pos, code: "2", message: "type mismatch (mult expression)" });
     else return { _name: "multiplicationExpression", lhs, rhs, op: ctx.Divide ? "/" : "*" };
   }
 
   atomicExpression(ctx: AtomicExpressionCstChildren) {
     if (ctx.identifierExpression) return this.visit(ctx.identifierExpression);
-    if (ctx.integerLiteralExpression) return this.visit(ctx.integerLiteralExpression);
+    if (ctx.literalExpression) return this.visit(ctx.literalExpression);
     if (ctx.functionCallExpression) return this.visit(ctx.functionCallExpression);
     if (ctx.parenExpression) return this.visit(ctx.parenExpression);
-    // return this.visit(ctx.);
+    if (ctx.unaryExpression) return this.visit(ctx.unaryExpression);
   }
 
-  unaryExpression(ctx: any) {
-    console.log("unaryExpression", ctx);
-    return { name: "bla" };
+  unaryExpression(ctx: UnaryExpressionCstChildren) {
+    const lhs = this.visit(ctx.additionExpression);
+    return { name: "unaryExpression", lhs, type: lhs.type };
   }
 
   functionCallExpression(ctx: FunctionCallExpressionCstChildren) {
-    const fndecl = this.visit(ctx.identifierExpression);
+    const fndecl: Signature = this.visit(ctx.identifierExpression);
     const params = ctx.expressionList ? this.visit(ctx.expressionList).params : [];
     this.checkParams(fndecl.name, fndecl.pos, params);
-    return { _name: "functionCallExpression", id: fndecl.name, params: params.params };
+    return { _name: "functionCallExpression", id: fndecl.name, params: params.params, type: fndecl.type };
   }
 
   identifierExpression(ctx: IdentifierExpressionCstChildren) {
@@ -404,9 +445,30 @@ class CstVisitor extends CstBaseVisitor {
     return { _name: "identifierExpression", ...decl, pos: this.getTokenPos(ctx.ID[0]) };
   }
 
+  literalExpression(ctx: LiteralExpressionCstChildren) {
+    if (ctx.integerLiteralExpression) return this.visit(ctx.integerLiteralExpression);
+    else if (ctx.stringLiteralExpression) return this.visit(ctx.stringLiteralExpression);
+    else if (ctx.boolLiteralExpression) return this.visit(ctx.boolLiteralExpression);
+    else {
+      throw new Error();
+    }
+  }
+
   integerLiteralExpression(ctx: IntegerLiteralExpressionCstChildren) {
-    const value = parseInt(ctx.INT[0].image);
-    return { _name: "integerLiteralExpression", value };
+    const value: number = parseInt(ctx.IntegerLiteral[0].image);
+    return { _name: "integerLiteralExpression", value, type: "int", pos: this.getTokenPos(ctx.IntegerLiteral[0]) };
+  }
+
+  stringLiteralExpression(ctx: StringLiteralExpressionCstChildren) {
+    let value: string = ctx.StringLiteral[0].image.substring(1);
+    value = value.substring(0, value.length - 1);
+    return { _name: "stringLiteralExpression", value, type: "string", pos: this.getTokenPos(ctx.StringLiteral[0]) };
+  }
+
+  boolLiteralExpression(ctx: BoolLiteralExpressionCstChildren) {
+    const token = ctx.True || ctx.False;
+    const value: boolean = ctx.True !== undefined;
+    return { _name: "boolLiteralExpression", value, type: "bool", pos: this.getTokenPos(token![0]) };
   }
 
   parenExpression(ctx: ParenExpressionCstChildren) {
@@ -419,8 +481,10 @@ class CstVisitor extends CstBaseVisitor {
 
   typeSpecifier(ctx: TypeSpecifierCstChildren) {
     let t;
-    if (ctx.intType) t = ctx.intType[0].image;
-    else if (ctx.voidType) t = ctx.voidType[0].image;
+    if (ctx.Int) t = "int";
+    else if (ctx.Void) t = "void";
+    else if (ctx.Bool) t = "bool";
+    else if (ctx.String) t = "string";
     else throw new Error();
 
     return { _name: "typeSpecifier", type: t };
@@ -430,7 +494,9 @@ class CstVisitor extends CstBaseVisitor {
     const name = ctx.ID[0].image;
     const pos = this.getTokenPos(ctx.ID[0]);
     const type = this.visit(ctx.typeSpecifier).type;
-    return { _name: "variableDeclaration", name, pos, type };
+    let value = ctx.literalExpression ? this.visit(ctx.literalExpression) : undefined;
+    if (value && value.type !== type) this.errors.push({ ...pos, code: "2", message: "type mismatch (var decl)" });
+    return { _name: "variableDeclaration", name, pos, type, value };
   }
 }
 

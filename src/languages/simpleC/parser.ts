@@ -3,16 +3,45 @@
  * https://tomassetti.me/ebnf/#examples (Scroll down a bit)
  */
 
-import chevrotain, { CstParser, Rule } from "chevrotain";
+import chevrotain, { CstParser, IToken, Rule, tokenMatcher } from "chevrotain";
 import { tokens, allTokens } from "./tokens";
 import { SimpleCLexer } from "./lexer";
 
 // ----------------- parser -----------------
 
+// add to @chevrotain/types/api.d.ts in BaseParser
+// consumeToken(): void
+// cstPostTerminal(key: string, consumedToken: IToken): void
+
 class SimpleCParser extends CstParser {
   constructor() {
     super(allTokens, { nodeLocationTracking: "full" });
     this.performSelfAnalysis();
+  }
+
+  LA(howMuch: number) {
+    // Skip Comments during regular parsing as we wish to auto-magically insert them
+    // into our CST
+    while (tokenMatcher(super.LA(howMuch), tokens.LineComment)) {
+      super.consumeToken();
+    }
+
+    return super.LA(howMuch);
+  }
+
+  cstPostTerminal(key: string, consumedToken: IToken) {
+    super.cstPostTerminal(key, consumedToken);
+
+    let lookBehindIdx = -1;
+    let prevToken = super.LA(lookBehindIdx);
+
+    // After every Token (terminal) is successfully consumed
+    // We will add all the comment that appeared before it to the CST (Parse Tree)
+    while (tokenMatcher(prevToken, tokens.LineComment)) {
+      super.cstPostTerminal(tokens.LineComment.name, prevToken);
+      lookBehindIdx--;
+      prevToken = super.LA(lookBehindIdx);
+    }
   }
 
   public program = this.RULE("program", () => {
@@ -48,6 +77,10 @@ class SimpleCParser extends CstParser {
   public variableDeclaration = this.RULE("variableDeclaration", () => {
     this.SUBRULE(this.typeSpecifier);
     this.CONSUME(tokens.ID);
+    this.OPTION(() => {
+      this.CONSUME(tokens.Equals);
+      this.SUBRULE2(this.literalExpression);
+    });
   });
 
   public statement = this.RULE("statement", () => {
@@ -134,7 +167,7 @@ class SimpleCParser extends CstParser {
       { ALT: () => this.SUBRULE(this.unaryExpression) },
       { ALT: () => this.SUBRULE(this.functionCallExpression) },
       { ALT: () => this.SUBRULE(this.identifierExpression) },
-      { ALT: () => this.SUBRULE(this.integerLiteralExpression) },
+      { ALT: () => this.SUBRULE(this.literalExpression) },
       { ALT: () => this.SUBRULE(this.parenExpression) },
     ]);
   });
@@ -171,14 +204,35 @@ class SimpleCParser extends CstParser {
     this.CONSUME(tokens.ID);
   });
 
+  public literalExpression = this.RULE("literalExpression", () => {
+    this.OR([
+      { ALT: () => this.SUBRULE(this.integerLiteralExpression) },
+      { ALT: () => this.SUBRULE(this.stringLiteralExpression) },
+      { ALT: () => this.SUBRULE(this.boolLiteralExpression) },
+    ]);
+  });
+
   public integerLiteralExpression = this.RULE("integerLiteralExpression", () => {
     this.CONSUME(tokens.IntegerLiteral);
+  });
+
+  public stringLiteralExpression = this.RULE("stringLiteralExpression", () => {
+    this.CONSUME(tokens.StringLiteral);
+  });
+
+  public boolLiteralExpression = this.RULE("boolLiteralExpression", () => {
+    this.OR([{ ALT: () => this.CONSUME(tokens.True) }, { ALT: () => this.CONSUME(tokens.False) }]);
   });
 
   // ------------------ utils ----------------------------------
 
   public typeSpecifier = this.RULE("typeSpecifier", () => {
-    this.OR([{ ALT: () => this.CONSUME(tokens.IntType) }, { ALT: () => this.CONSUME(tokens.VoidType) }]);
+    this.OR([
+      { ALT: () => this.CONSUME(tokens.Int) },
+      { ALT: () => this.CONSUME(tokens.Void) },
+      { ALT: () => this.CONSUME(tokens.String) },
+      { ALT: () => this.CONSUME(tokens.Bool) },
+    ]);
   });
 }
 

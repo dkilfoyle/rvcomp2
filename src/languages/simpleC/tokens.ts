@@ -25,6 +25,7 @@ createToken({
 const LineComment = createToken({
   name: "LineComment",
   pattern: /\/\/[^\n\r]*/,
+  // group: Lexer.SKIPPED,
 });
 
 const DocComment = createToken({
@@ -45,10 +46,14 @@ const If = createKeywordToken({ name: "If", pattern: /if/ });
 const Else = createKeywordToken({ name: "Else", pattern: /else/ });
 const While = createKeywordToken({ name: "While", pattern: /while/ });
 const Do = createKeywordToken({ name: "Do", pattern: /do/ });
+const True = createKeywordToken({ name: "True", pattern: /true/ });
+const False = createKeywordToken({ name: "False", pattern: /false/ });
 
 // types
-const IntType = createKeywordToken({ name: "intType", pattern: /int/ });
-const VoidType = createKeywordToken({ name: "voidType", pattern: /void/ });
+const Int = createKeywordToken({ name: "Int", pattern: /int/ });
+const Void = createKeywordToken({ name: "Void", pattern: /void/ });
+const String = createKeywordToken({ name: "String", pattern: /string/ });
+const Bool = createKeywordToken({ name: "Bool", pattern: /bool/ });
 
 // punctuation
 const LCurly = createToken({ name: "LCurly", pattern: /{/ });
@@ -65,18 +70,24 @@ const Divide = createToken({ name: "Divide", pattern: /\// });
 const Comma = createToken({ name: "Comma", pattern: /,/ });
 
 // literals
-const IntegerLiteral = createToken({ name: "INT", pattern: /[0-9]+/ });
+const IntegerLiteral = createToken({ name: "IntegerLiteral", pattern: /[0-9]+/ });
+const StringLiteral = createToken({ name: "StringLiteral", pattern: /"(?:""|[^"])*"/ });
 
 allTokens.push(ID);
 
 export const tokens = {
   ID,
+  // keywords
   If,
   Else,
   While,
   Do,
-  IntType,
-  VoidType,
+  // types
+  Int,
+  Void,
+  Bool,
+  String,
+  // Punc
   LCurly,
   RCurly,
   LParen,
@@ -89,8 +100,12 @@ export const tokens = {
   Times,
   Divide,
   Comma,
-  IntegerLiteral,
   Keyword,
   DocComment,
   LineComment,
+  // literals
+  StringLiteral,
+  IntegerLiteral,
+  True,
+  False,
 };

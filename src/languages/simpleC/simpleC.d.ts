@@ -42,6 +42,8 @@ export interface VariableDeclarationCstNode extends CstNode {
 export type VariableDeclarationCstChildren = {
   typeSpecifier: TypeSpecifierCstNode[];
   ID: IToken[];
+  Equals?: IToken[];
+  literalExpression?: LiteralExpressionCstNode[];
 };
 
 export interface StatementCstNode extends CstNode {
@@ -169,7 +171,7 @@ export type AtomicExpressionCstChildren = {
   unaryExpression?: UnaryExpressionCstNode[];
   functionCallExpression?: FunctionCallExpressionCstNode[];
   identifierExpression?: IdentifierExpressionCstNode[];
-  integerLiteralExpression?: IntegerLiteralExpressionCstNode[];
+  literalExpression?: LiteralExpressionCstNode[];
   parenExpression?: ParenExpressionCstNode[];
 };
 
@@ -225,13 +227,43 @@ export type IdentifierExpressionCstChildren = {
   ID: IToken[];
 };
 
+export interface LiteralExpressionCstNode extends CstNode {
+  name: "literalExpression";
+  children: LiteralExpressionCstChildren;
+}
+
+export type LiteralExpressionCstChildren = {
+  integerLiteralExpression?: IntegerLiteralExpressionCstNode[];
+  stringLiteralExpression?: StringLiteralExpressionCstNode[];
+  boolLiteralExpression?: BoolLiteralExpressionCstNode[];
+};
+
 export interface IntegerLiteralExpressionCstNode extends CstNode {
   name: "integerLiteralExpression";
   children: IntegerLiteralExpressionCstChildren;
 }
 
 export type IntegerLiteralExpressionCstChildren = {
-  INT: IToken[];
+  IntegerLiteral: IToken[];
+};
+
+export interface StringLiteralExpressionCstNode extends CstNode {
+  name: "stringLiteralExpression";
+  children: StringLiteralExpressionCstChildren;
+}
+
+export type StringLiteralExpressionCstChildren = {
+  StringLiteral: IToken[];
+};
+
+export interface BoolLiteralExpressionCstNode extends CstNode {
+  name: "boolLiteralExpression";
+  children: BoolLiteralExpressionCstChildren;
+}
+
+export type BoolLiteralExpressionCstChildren = {
+  True?: IToken[];
+  False?: IToken[];
 };
 
 export interface TypeSpecifierCstNode extends CstNode {
@@ -240,8 +272,10 @@ export interface TypeSpecifierCstNode extends CstNode {
 }
 
 export type TypeSpecifierCstChildren = {
-  intType?: IToken[];
-  voidType?: IToken[];
+  Int?: IToken[];
+  Void?: IToken[];
+  String?: IToken[];
+  Bool?: IToken[];
 };
 
 export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
@@ -265,6 +299,9 @@ export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   parenExpression(children: ParenExpressionCstChildren, param?: IN): OUT;
   unaryExpression(children: UnaryExpressionCstChildren, param?: IN): OUT;
   identifierExpression(children: IdentifierExpressionCstChildren, param?: IN): OUT;
+  literalExpression(children: LiteralExpressionCstChildren, param?: IN): OUT;
   integerLiteralExpression(children: IntegerLiteralExpressionCstChildren, param?: IN): OUT;
+  stringLiteralExpression(children: StringLiteralExpressionCstChildren, param?: IN): OUT;
+  boolLiteralExpression(children: BoolLiteralExpressionCstChildren, param?: IN): OUT;
   typeSpecifier(children: TypeSpecifierCstChildren, param?: IN): OUT;
 }

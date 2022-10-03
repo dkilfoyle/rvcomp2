@@ -12,6 +12,7 @@ export class SimpleCWorker {
   }
 
   doValidation(): Promise<ISimpleCLangError[]> {
+    console.log("SimpleCWorker.doValidation");
     const code = this.getTextDocument();
     return Promise.resolve(this.languageService.validate(code));
   }

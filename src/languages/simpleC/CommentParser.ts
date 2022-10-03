@@ -60,7 +60,6 @@ export class DocComment {
   }
 
   toSuggestionString(): string {
-    console.log(this);
     return `${this.desc}\n\n${this.params.map((p) => "_@param_ " + p + "\n")}\nreturns ${this.returns}`;
   }
 }
