@@ -320,8 +320,6 @@ class CstVisitor extends CstBaseVisitor {
     const decl: VariableSignature = this.visit(ctx.variableDeclaration);
     const params: VariableSignature[] = ctx.params ? this.visit(ctx.params).declarations : [];
 
-    console.log(docComment);
-
     this.scopeStack.addToScope(new FunctionSignature(decl.name, decl.type, params, decl.pos, docComment));
 
     this.scopeStack.pushScope(decl.name, ctx.blockStatement[0].location);
@@ -384,7 +382,6 @@ class CstVisitor extends CstBaseVisitor {
   assignStatement(ctx: any) {
     const lhs = this.visit(ctx.identifierExpression);
     const rhs = this.visit(ctx.additionExpression);
-    console.log(lhs, rhs);
     if (lhs.type !== rhs.type) this.errors.push({ ...rhs.pos, code: "2", message: "type mismatch (assign)" });
     return { _name: "assignExpression", lhs, rhs };
   }
@@ -397,14 +394,14 @@ class CstVisitor extends CstBaseVisitor {
     if (!rhs && lhs.type === "void") return lhs;
 
     if (lhs.type !== "int") {
-      console.log("AdditionExpression LHS", lhs);
+      // console.log("AdditionExpression LHS", lhs);
       this.errors.push({ ...lhs.pos, code: "2", message: "The LHS of arthrimetic operation must be of type int" });
       return { _name: "invalidOperation", type: "int" };
     }
     if (!rhs) return lhs;
 
     if (rhs.type !== "int") {
-      console.log("AdditionExpression RHS", rhs);
+      // console.log("AdditionExpression RHS", rhs);
       this.errors.push({ ...rhs.pos, code: "2", message: "The RHS of arthrimetic operation must be of type int" });
       return { _name: "invalidOperation", type: "int" };
     }

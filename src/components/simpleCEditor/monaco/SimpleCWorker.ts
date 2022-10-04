@@ -1,5 +1,5 @@
 import * as monaco from "monaco-editor";
-import { ISimpleCLangError } from "./DiagnosticsAdapter";
+import { ISimpleCLangError, IValidationResult } from "./DiagnosticsAdapter";
 import SimpleCLanguageService from "./LanguageService";
 
 export class SimpleCWorker {
@@ -11,8 +11,7 @@ export class SimpleCWorker {
     this.languageService = new SimpleCLanguageService();
   }
 
-  doValidation(): Promise<ISimpleCLangError[]> {
-    console.log("SimpleCWorker.doValidation");
+  doValidation(): Promise<IValidationResult> {
     const code = this.getTextDocument();
     return Promise.resolve(this.languageService.validate(code));
   }

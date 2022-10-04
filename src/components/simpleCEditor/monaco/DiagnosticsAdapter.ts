@@ -1,6 +1,8 @@
 import * as monaco from "monaco-editor";
 import { WorkerAccessor } from "./setup";
 import { languageID } from "./config";
+import { setCst, setAst } from "../../../store/ParseState";
+import { CstNode } from "chevrotain";
 
 export interface ISimpleCLangError {
   startLineNumber: number;
@@ -11,6 +13,12 @@ export interface ISimpleCLangError {
   code: string;
 }
 
+export interface IValidationResult {
+  errors: ISimpleCLangError[];
+  cst?: CstNode;
+  ast?: Record<string, unknown>;
+}
+
 export default class DiagnosticsAdapter {
   constructor(private worker: WorkerAccessor) {
     const onModelAdd = (model: monaco.editor.IModel): void => {
@@ -19,7 +27,10 @@ export default class DiagnosticsAdapter {
         // here we are Debouncing the user changes, so everytime a new change is done, we wait 500ms before validating
         // otherwise if the user is still typing, we cancel the
         clearTimeout(handle);
-        handle = setTimeout(() => this.validate(model.uri), 500);
+        handle = setTimeout(() => {
+          this.validate(model.uri);
+          // console.log("CST:", cst);
+        }, 500);
       });
       this.validate(model.uri);
     };
@@ -28,14 +39,15 @@ export default class DiagnosticsAdapter {
   }
   private async validate(resource: monaco.Uri): Promise<void> {
     // get the worker proxy
-    console.log("Diagnostics Adapter.validate");
     const worker = await this.worker(resource);
     // call the validate methode proxy from the langaueg service and get errors
-    const errorMarkers = await worker.doValidation();
+    const { errors, cst: wcst, ast: wast } = await worker.doValidation();
+    if (wcst) setCst(wcst);
+    if (wast) setAst(wast);
     // get the current model(editor or file) which is only one
     const model = monaco.editor.getModel(resource);
     // add the error markers and underline them with severity of Error
-    if (model) monaco.editor.setModelMarkers(model, languageID, errorMarkers.map(toDiagnostics));
+    if (model) monaco.editor.setModelMarkers(model, languageID, errors.map(toDiagnostics));
   }
 }
 function toDiagnostics(error: ISimpleCLangError): monaco.editor.IMarkerData {

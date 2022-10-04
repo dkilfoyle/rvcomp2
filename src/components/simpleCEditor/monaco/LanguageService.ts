@@ -8,7 +8,7 @@ import { tokens } from "../../../languages/simpleC/tokens";
 import { parserInstance } from "../../../languages/simpleC/parser";
 
 export default class SimpleCLanguageService {
-  validate(code: string): ISimpleCLangError[] {
+  validate(code: string): { errors: ISimpleCLangError[]; cst: any; ast: any } {
     // return parseAndGetSyntaxErrors(code);
     // console.log(parseAndGetASTRoot);
     const { cst, lexErrors, parseErrors } = parse(code);
@@ -34,13 +34,13 @@ export default class SimpleCLanguageService {
       })),
     ];
     if (ast) errors.push(...ast.errors);
-    return errors;
+    return { errors, cst, ast };
   }
 
   format(code: string): string {
     // if the code contains errors, no need to format, because this way of formating the code, will remove some of the code
     // to make things simple, we only allow formatting a valide code
-    if (this.validate(code).length > 0) return code;
+    if (this.validate(code).errors.length > 0) return code;
     let formattedCode = code;
     return formattedCode;
   }

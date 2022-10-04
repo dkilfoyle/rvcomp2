@@ -15,14 +15,15 @@ export const Editor: VFC = () => {
         monaco.editor.create(monacoEl.current!, {
           value: code, //["void main() {", "\tint x;", "\tx=5;", "\tprint_int(x);", "}"].join("\n"),
           language: "simpleC",
+          automaticLayout: true,
         })
       );
       monaco.editor.onDidChangeMarkers(([uri]) => {
         const markers = monaco.editor.getModelMarkers({ resource: uri });
-        console.log(
-          "markers: ",
-          markers.map((m) => `${m.message} ${m.startLineNumber} ${m.startColumn}`)
-        );
+        // console.log(
+        //   "markers: ",
+        //   markers.map((m) => `${m.message} ${m.startLineNumber} ${m.startColumn}`)
+        // );
       });
     }
 
