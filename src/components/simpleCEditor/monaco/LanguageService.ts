@@ -1,20 +1,18 @@
 import { ISimpleCLangError } from "./DiagnosticsAdapter";
 import { parse } from "../../../languages/simpleC/parser";
-import { cstVisitor, FunctionSignature } from "../../../languages/simpleC/cstVisitor";
+import { cstVisitor } from "../../../languages/simpleC/cstToAstVisitor";
 import * as monaco from "monaco-editor";
 import { SimpleCLexer } from "../../../languages/simpleC/lexer";
 import { tokenMatcher } from "chevrotain";
 import { tokens } from "../../../languages/simpleC/tokens";
 import { parserInstance } from "../../../languages/simpleC/parser";
+import { convertDocCommentToSuggestionString, IAstFunctionDeclaration } from "../../../languages/simpleC/ast";
 
 export default class SimpleCLanguageService {
   validate(code: string): { errors: ISimpleCLangError[]; cst: any; ast: any } {
     // return parseAndGetSyntaxErrors(code);
     // console.log(parseAndGetASTRoot);
     const { cst, lexErrors, parseErrors } = parse(code);
-    let ast;
-    if (lexErrors.length == 0 && parseErrors.length == 0) ast = cstVisitor.go(cst);
-
     const errors = [
       ...parseErrors.map((e) => ({
         message: e.message,
@@ -33,8 +31,14 @@ export default class SimpleCLanguageService {
         endLineNumber: e.line || 0,
       })),
     ];
-    if (ast) errors.push(...ast.errors);
-    return { errors, cst, ast };
+
+    if (lexErrors.length == 0 && parseErrors.length == 0) {
+      const astResult = cstVisitor.go(cst);
+      errors.push(...astResult.errors);
+      return { errors, cst, ast: astResult.ast };
+    } else {
+      return { errors, cst, ast: {} };
+    }
   }
 
   format(code: string): string {
@@ -48,13 +52,14 @@ export default class SimpleCLanguageService {
   symbols(): monaco.languages.DocumentSymbol[] {
     // todo: containerName and children
     return cstVisitor.scopeStack.flattenDown().map((sig) => {
+      const pos = sig.pos || { startLineNumber: 0, endLineNumber: 0, startColumn: 0, endColumn: 0 };
       return {
-        range: sig.pos,
-        name: sig.name,
-        kind: sig instanceof FunctionSignature ? 11 : 12,
+        range: pos,
+        name: sig.id,
+        kind: sig._name == "functionDeclaration" ? 11 : 12,
         detail: "",
         tags: [],
-        selectionRange: sig.pos,
+        selectionRange: pos,
       };
     });
   }
@@ -63,14 +68,12 @@ export default class SimpleCLanguageService {
     // todo: parse code up to pos, return cstVisitor.scopeStack.getSignature(identifier)
     let sig = cstVisitor.scopeStack.getSignatureAtLocation(identifier, offset);
     if (!sig) return [];
-    if (sig instanceof FunctionSignature) return [];
-
-    const sig2 = sig as FunctionSignature;
+    const sig2 = sig as IAstFunctionDeclaration;
 
     return [
       {
-        label: `${sig2.name}(${sig2.params.map((p) => p.name).join(",")})`,
-        parameters: sig2.params.map((p) => ({ label: p.name, documentation: p.type })),
+        label: `${sig2.id}(${sig2.params.map((p) => p.id).join(",")})`,
+        parameters: sig2.params.map((p) => ({ label: p.id, documentation: p.type })),
       },
     ];
   }
@@ -121,11 +124,11 @@ export default class SimpleCLanguageService {
           const scope = cstVisitor.scopeStack.getScopeAtLocation(offset);
           if (!scope) throw new Error();
           const symbols = cstVisitor.scopeStack.flattenUp(scope).map((sig) => ({
-            label: sig.name,
-            insertText: sig.name,
+            label: sig.id,
+            insertText: sig.id,
             range,
             kind: 1,
-            documentation: { value: sig.toSuggestionString() },
+            documentation: { value: convertDocCommentToSuggestionString(sig.docComment) },
           }));
           symbols.forEach((sym) => {
             if (!finalSuggestions.find((suggestion: monaco.languages.CompletionItem) => suggestion.label === sym.label)) {

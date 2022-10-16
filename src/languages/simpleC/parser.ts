@@ -7,6 +7,36 @@ import chevrotain, { CstParser, IToken, Rule, tokenMatcher } from "chevrotain";
 import { tokens, allTokens } from "./tokens";
 import { SimpleCLexer } from "./lexer";
 
+// program:
+//   functionDeclaration*
+//   | statement*
+// functionDeclaration:
+//   typedIdentifier
+//   '(' parameterList? ')'
+//    block
+// parameterList:
+//   typedIdentifier (',' typedIdentifier)*
+// typedIdtentifier: typeSpecifier ID
+// typeSpecifier: (IntType | VoidType)
+// variableDeclarationStatement
+//   typedIdentifier ';'
+
+// interface IAstNode {
+//   name: string;
+// }
+
+// type IAstOperator = "+" | "-" | "*" | "/";
+
+// interface IAstExpression extends IAstNode {
+//   lhs: IAstExpression | IAstAtomic;
+//   rhs: IAstExpression | IAstAtomic;
+//   op: IAstOperator;
+// }
+
+// interface IAstAtomic {
+
+// }
+
 // ----------------- parser -----------------
 
 // add to @chevrotain/types/api.d.ts in BaseParser
@@ -48,9 +78,9 @@ class SimpleCParser extends CstParser {
     this.MANY(() => {
       this.SUBRULE(this.functionDeclaration);
     });
-    this.MANY2(() => {
-      this.SUBRULE(this.statement);
-    });
+    // this.MANY2(() => {
+    //   this.SUBRULE(this.statement);
+    // });
   });
 
   public functionDeclaration = this.RULE("functionDeclaration", () => {

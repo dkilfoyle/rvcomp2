@@ -1,12 +1,18 @@
 import { Editor } from "../components/simpleCEditor/Editor";
 import { ExpandButton, Mosaic, MosaicWindow } from "react-mosaic-component";
-import React from "react";
+import React, { useMemo } from "react";
 import "react-mosaic-component/react-mosaic-component.css";
 import "@blueprintjs/core/lib/css/blueprint.css";
 import "@blueprintjs/icons/lib/css/blueprint-icons.css";
 import "./ui.css";
-import { JSONTree } from "react-json-tree";
 import { astEntity, cstEntity } from "../store/ParseState";
+import { Sidebar } from "../components/SideBar";
+import { ChakraProvider } from "@chakra-ui/react";
+import "rc-tree/assets/index.css";
+
+import { CstView } from "../components/cst";
+import { AstView } from "../components/ast";
+import { Tabs, TabList, TabPanels, Tab, TabPanel } from "@chakra-ui/react";
 
 const theme = {
   scheme: "monokai",
@@ -33,47 +39,55 @@ export const UI: React.FC = () => {
   const cst = cstEntity.use();
   const ast = astEntity.use();
 
-  const ELEMENT_MAP: { [viewId: string]: JSX.Element } = {
-    Code: <Editor></Editor>,
-    Menu: <div>Menu</div>,
-    CST: (
-      <div>
-        <JSONTree data={cst} theme={theme} invertTheme></JSONTree>
-      </div>
-    ),
-    AST: (
-      <div>
-        <JSONTree data={ast} theme={theme} invertTheme></JSONTree>
-      </div>
-    ),
-  };
+  const ELEMENT_MAP: { [viewId: string]: JSX.Element } = useMemo(
+    () => ({
+      Code: <Editor></Editor>,
+      Menu: <Sidebar></Sidebar>,
+      View: (
+        <Tabs size="sm" variant="enclosed">
+          <TabList>
+            <Tab>CST</Tab>
+            <Tab>AST</Tab>
+            <Tab>IR</Tab>
+            <Tab>CFG</Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel>
+              <CstView></CstView>
+            </TabPanel>
+            <TabPanel>
+              <AstView></AstView>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+      ),
+    }),
+    [cst, ast]
+  );
 
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
-      <Mosaic<string>
-        renderTile={(id, path) => (
-          <MosaicWindow<string> path={path} createNode={() => "new"} title={id} toolbarControls={React.Children.toArray([<ExpandButton />])}>
-            {ELEMENT_MAP[id]}
-          </MosaicWindow>
-        )}
-        initialValue={{
-          direction: "row",
-          splitPercentage: 10,
-          first: "Menu",
-          second: {
+    <ChakraProvider>
+      <div style={{ width: "100vw", height: "100vh" }}>
+        <Mosaic<string>
+          renderTile={(id, path) => (
+            <MosaicWindow<string> path={path} createNode={() => "new"} title={id} toolbarControls={React.Children.toArray([<ExpandButton />])}>
+              {ELEMENT_MAP[id]}
+            </MosaicWindow>
+          )}
+          initialValue={{
             direction: "row",
-            splitPercentage: 30,
-            first: "Code",
+            splitPercentage: 20,
+            first: "Menu",
             second: {
               direction: "row",
-              splitPercentage: 32,
-              first: "CST",
-              second: "AST",
+              splitPercentage: 50,
+              first: "Code",
+              second: "View",
             },
-          },
-        }}
-        blueprintNamespace="bp4"
-      />
-    </div>
+          }}
+          blueprintNamespace="bp4"
+        />
+      </div>
+    </ChakraProvider>
   );
 };
