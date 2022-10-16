@@ -26,8 +26,9 @@ import {
   VariableDeclarationStatementCstChildren,
 } from "./simpleC";
 import {
-  IAstExpressionIdentifier,
+  IAstAssignStatement,
   IAstFunctionDeclaration,
+  IAstIdentifierExpression,
   IAstProgram,
   IAstResult,
   IAstVariableDeclaration,
@@ -171,11 +172,11 @@ class CstVisitor extends CstBaseVisitor {
     return this.visit(ctx.additionExpression);
   }
 
-  assignStatement(ctx: any) {
+  assignStatement(ctx: any): IAstAssignStatement {
     const lhs = this.visit(ctx.identifierExpression);
     const rhs = this.visit(ctx.additionExpression);
     if (lhs.type !== rhs.type) this.errors.push({ ...rhs.pos, code: "2", message: "type mismatch (assign)" });
-    return { _name: "assignExpression", lhs, rhs };
+    return { _name: "assignStatement", lhs, rhs };
   }
 
   // expressions
@@ -222,7 +223,7 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   functionCallExpression(ctx: FunctionCallExpressionCstChildren) {
-    const fndecl: IAstExpressionIdentifier = this.visit(ctx.identifierExpression);
+    const fndecl: IAstIdentifierExpression = this.visit(ctx.identifierExpression);
     const params = ctx.expressionList ? this.visit(ctx.expressionList).params : [];
     this.checkParams(fndecl.id, fndecl.pos!, params);
     return { _name: "functionCallExpression", id: fndecl.id, params: params.params, type: fndecl.type };

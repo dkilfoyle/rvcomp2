@@ -50,7 +50,46 @@ export interface IAstFunctionDeclaration extends IAstDeclaration {
   block?: IAstBlock;
 }
 
-export interface IAstExpressionIdentifier extends IAstDeclaration {}
+export interface IAstIdentifierExpression extends IAstDeclaration {}
+
+export interface IAstLiteralExpression extends IAstNode {}
+export interface IAstFunctionCallExpression extends IAstNode {}
+export interface IAstParenExpression extends IAstNode {}
+export interface IAstLiteralExpression extends IAstNode {}
+export interface IAstUnaryExpression extends IAstNode {}
+
+export interface IAstIntegerLiteralExpression extends IAstLiteralExpression {
+  _name: "integerLiteralExpression";
+  value: number;
+  type: "int";
+}
+
+export type IAstAtomicExpression =
+  | IAstIdentifierExpression
+  | IAstLiteralExpression
+  | IAstFunctionCallExpression
+  | IAstParenExpression
+  | IAstUnaryExpression;
+
+export interface IAstMultiplicationExpression extends IAstNode {
+  _name: "multiplicationExpression";
+  lhs: IAstAtomicExpression;
+  rhs?: IAstAtomicExpression;
+  op: "*" | "/";
+}
+
+export interface IAstAdditionExpression extends IAstNode {
+  _name: "additionExpression";
+  lhs: IAstMultiplicationExpression;
+  rhs?: IAstMultiplicationExpression;
+  op: "+" | "-";
+}
+
+export interface IAstAssignStatement extends IAstNode {
+  _name: "assignStatement";
+  lhs: IAstIdentifierExpression;
+  rhs?: IAstAdditionExpression;
+}
 
 export interface IAstProgram extends IAstNode {
   functionDeclarations: IAstFunctionDeclaration[];
