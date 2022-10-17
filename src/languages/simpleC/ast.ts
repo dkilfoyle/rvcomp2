@@ -1,3 +1,4 @@
+import { isReactNodeEmpty } from "@blueprintjs/core/lib/esm/common/utils";
 import { ISimpleCLangError } from "../../components/simpleCEditor/monaco/DiagnosticsAdapter";
 import { ScopeStack } from "./ScopeStack";
 
@@ -50,18 +51,25 @@ export interface IAstFunctionDeclaration extends IAstDeclaration {
   block?: IAstBlock;
 }
 
-export interface IAstIdentifierExpression extends IAstDeclaration {}
+export interface IAstExpression extends IAstNode {}
 
-export interface IAstLiteralExpression extends IAstNode {}
-export interface IAstFunctionCallExpression extends IAstNode {}
-export interface IAstParenExpression extends IAstNode {}
-export interface IAstLiteralExpression extends IAstNode {}
-export interface IAstUnaryExpression extends IAstNode {}
+export interface IAstIdentifierExpression extends IAstDeclaration, IAstExpression {}
+
+export interface IAstLiteralExpression extends IAstExpression {}
+export interface IAstFunctionCallExpression extends IAstExpression {}
+export interface IAstParenExpression extends IAstExpression {}
+export interface IAstLiteralExpression extends IAstExpression {}
+export interface IAstUnaryExpression extends IAstExpression {}
 
 export interface IAstIntegerLiteralExpression extends IAstLiteralExpression {
   _name: "integerLiteralExpression";
   value: number;
   type: "int";
+}
+export interface IAstBoolLiteralExpression extends IAstLiteralExpression {
+  _name: "boolLiteralExpression";
+  value: boolean;
+  type: "bool";
 }
 
 export type IAstAtomicExpression =
@@ -71,7 +79,7 @@ export type IAstAtomicExpression =
   | IAstParenExpression
   | IAstUnaryExpression;
 
-export interface IAstMultiplicationExpression extends IAstNode {
+export interface IAstMultiplicationExpression extends IAstExpression {
   _name: "multiplicationExpression";
   lhs: IAstAtomicExpression;
   rhs?: IAstAtomicExpression;
@@ -80,15 +88,15 @@ export interface IAstMultiplicationExpression extends IAstNode {
 
 export interface IAstAdditionExpression extends IAstNode {
   _name: "additionExpression";
-  lhs: IAstMultiplicationExpression;
-  rhs?: IAstMultiplicationExpression;
+  lhs: IAstExpression;
+  rhs?: IAstExpression;
   op: "+" | "-";
 }
 
 export interface IAstAssignStatement extends IAstNode {
   _name: "assignStatement";
   lhs: IAstIdentifierExpression;
-  rhs?: IAstAdditionExpression;
+  rhs: IAstExpression;
 }
 
 export interface IAstProgram extends IAstNode {
