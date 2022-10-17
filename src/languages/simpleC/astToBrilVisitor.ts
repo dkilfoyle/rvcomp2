@@ -1,4 +1,13 @@
-import { IAstAssignStatement, IAstFunctionDeclaration, IAstNode, IAstProgram, IAstStatement } from "./ast";
+import {
+  IAstAssignStatement,
+  IAstBoolLiteralExpression,
+  IAstFunctionDeclaration,
+  IAstIntegerLiteralExpression,
+  IAstNode,
+  IAstProgram,
+  IAstStatement,
+  IAstVariableDeclaration,
+} from "./ast";
 
 type IBrilType = "bool" | "int";
 
@@ -56,7 +65,7 @@ interface IBrilProgram {
 }
 
 class AstToBrilVisitor {
-  public bril:IBrilProgram = { functions: [] };
+  public bril: IBrilProgram = { functions: [] };
   constructor() {}
   go(node: IAstProgram): IBrilProgram {
     for (let fd of node.functionDeclarations) {
@@ -75,17 +84,46 @@ class AstToBrilVisitor {
   statement(node: IAstStatement): IBrilInstruction {
     switch (node._name) {
       case "assignStatement":
-        return this.assignStatement(node);
-      case "ifStatement":
-        return this.ifStatement(node);
+        return this.assignStatement(node as IAstAssignStatement);
+      case "variableDeclarationStatement":
+        return this.variableDeclarationStatement(node as IAstVariableDeclaration);
+      // case "ifStatement":
+      //   return this.ifStatement(node);
       default:
         throw new Error();
-    };
+    }
   }
   assignStatement(node: IAstAssignStatement) {
-    if (node.rhs.)
+    switch (node.rhs._name) {
+      case "integerLiteralExpression": {
+        const rhs = node.rhs as IAstIntegerLiteralExpression;
+        return {
+          op: "const",
+          dest: node.lhs.id,
+          type: "int",
+          value: rhs.value,
+        } as IBrilConstOperation;
+      }
+      case "boolLiteralExpression": {
+        const rhs = node.rhs as IAstBoolLiteralExpression;
+        return {
+          op: "const",
+          dest: node.lhs.id,
+          type: "bool",
+          value: rhs.value,
+        } as IBrilConstOperation;
+      }
+      default:
+        throw new Error();
+    }
   }
-
+  variableDeclarationStatement(node: IAstVariableDeclaration) {
+    return {
+      op: "eq",
+      dest: node.id,
+      type: node.type,
+    } as IBrilValueOperation;
+  }
 }
 
 export const astToBrilVisitor = new AstToBrilVisitor();
