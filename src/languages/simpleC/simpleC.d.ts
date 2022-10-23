@@ -7,7 +7,6 @@ export interface ProgramCstNode extends CstNode {
 
 export type ProgramCstChildren = {
   functionDeclaration?: FunctionDeclarationCstNode[];
-  statement?: StatementCstNode[];
 };
 
 export interface FunctionDeclarationCstNode extends CstNode {
@@ -146,9 +145,8 @@ export interface AdditionExpressionCstNode extends CstNode {
 }
 
 export type AdditionExpressionCstChildren = {
-  multiplicationExpression: MultiplicationExpressionCstNode[];
-  Plus?: IToken[];
-  Minus?: IToken[];
+  operands: MultiplicationExpressionCstNode[];
+  operators?: IToken[];
 };
 
 export interface MultiplicationExpressionCstNode extends CstNode {
@@ -157,9 +155,8 @@ export interface MultiplicationExpressionCstNode extends CstNode {
 }
 
 export type MultiplicationExpressionCstChildren = {
-  atomicExpression: AtomicExpressionCstNode[];
-  Times?: IToken[];
-  Divide?: IToken[];
+  operands: AtomicExpressionCstNode[];
+  operators?: IToken[];
 };
 
 export interface AtomicExpressionCstNode extends CstNode {

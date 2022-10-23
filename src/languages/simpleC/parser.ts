@@ -177,18 +177,18 @@ class SimpleCParser extends CstParser {
   // Expressions
 
   public additionExpression = this.RULE("additionExpression", () => {
-    this.SUBRULE(this.multiplicationExpression);
+    this.SUBRULE(this.multiplicationExpression, { LABEL: "operands" });
     this.MANY(() => {
-      this.OR([{ ALT: () => this.CONSUME(tokens.Plus) }, { ALT: () => this.CONSUME(tokens.Minus) }]);
-      this.SUBRULE2(this.multiplicationExpression);
+      this.CONSUME(tokens.AdditionOperator, { LABEL: "operators" });
+      this.SUBRULE2(this.multiplicationExpression, { LABEL: "operands" });
     });
   });
 
   public multiplicationExpression = this.RULE("multiplicationExpression", () => {
-    this.SUBRULE(this.atomicExpression);
+    this.SUBRULE(this.atomicExpression, { LABEL: "operands" });
     this.MANY(() => {
-      this.OR([{ ALT: () => this.CONSUME(tokens.Times) }, { ALT: () => this.CONSUME(tokens.Divide) }]);
-      this.SUBRULE2(this.atomicExpression);
+      this.CONSUME(tokens.MultiplicationOperator, { LABEL: "operators" });
+      this.SUBRULE2(this.atomicExpression, { LABEL: "operands" });
     });
   });
 

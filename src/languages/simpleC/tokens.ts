@@ -3,7 +3,7 @@ import chevrotain, { Lexer } from "chevrotain";
 export const allTokens: chevrotain.TokenType[] = [];
 
 // Utility to avoid manually building the allTokens array
-function createToken(options: { name: string; pattern: RegExp; group?: string; line_breaks?: boolean }) {
+function createToken(options: { name: string; pattern: RegExp; group?: string; categories?: chevrotain.TokenType; line_breaks?: boolean }) {
   const newToken = chevrotain.createToken(options);
   allTokens.push(newToken);
   return newToken;
@@ -55,6 +55,9 @@ const Void = createKeywordToken({ name: "Void", pattern: /void/ });
 const String = createKeywordToken({ name: "String", pattern: /string/ });
 const Bool = createKeywordToken({ name: "Bool", pattern: /bool/ });
 
+const AdditionOperator = createToken({ name: "AdditionOperator", pattern: Lexer.NA });
+const MultiplicationOperator = createToken({ name: "MultiplicationOperator", pattern: Lexer.NA });
+
 // punctuation
 const LCurly = createToken({ name: "LCurly", pattern: /{/ });
 const RCurly = createToken({ name: "RCurly", pattern: /}/ });
@@ -63,10 +66,10 @@ const RParen = createToken({ name: "RParen", pattern: /\)/ });
 const SemiColon = createToken({ name: "SemiColon", pattern: /;/ });
 const Equals = createToken({ name: "Equals", pattern: /=/ });
 const LessThan = createToken({ name: "LessThan", pattern: /</ });
-const Plus = createToken({ name: "Plus", pattern: /\+/ });
-const Minus = createToken({ name: "Minus", pattern: /-/ });
-const Times = createToken({ name: "Times", pattern: /\*/ });
-const Divide = createToken({ name: "Divide", pattern: /\// });
+const Plus = createToken({ name: "Plus", pattern: /\+/, categories: AdditionOperator });
+const Minus = createToken({ name: "Minus", pattern: /-/, categories: AdditionOperator });
+const Times = createToken({ name: "Times", pattern: /\*/, categories: MultiplicationOperator });
+const Divide = createToken({ name: "Divide", pattern: /\//, categories: MultiplicationOperator });
 const Comma = createToken({ name: "Comma", pattern: /,/ });
 
 // literals
@@ -108,4 +111,6 @@ export const tokens = {
   IntegerLiteral,
   True,
   False,
+  MultiplicationOperator,
+  AdditionOperator,
 };

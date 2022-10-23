@@ -1,8 +1,10 @@
 import * as monaco from "monaco-editor";
 import { WorkerAccessor } from "./setup";
 import { languageID } from "./config";
-import { setCst, setAst } from "../../../store/ParseState";
+import { setCst, setAst, setBril } from "../../../store/ParseState";
 import { CstNode } from "chevrotain";
+import { astToBrilVisitor } from "../../../languages/simpleC/astToBrilVisitor";
+import { IAstProgram, IAstResult } from "../../../languages/simpleC/ast";
 
 export interface ISimpleCLangError {
   startLineNumber: number;
@@ -16,7 +18,7 @@ export interface ISimpleCLangError {
 export interface IValidationResult {
   errors: ISimpleCLangError[];
   cst?: CstNode;
-  ast?: Record<string, unknown>;
+  ast?: IAstProgram; //Record<string, unknown>;
 }
 
 export default class DiagnosticsAdapter {
@@ -43,7 +45,13 @@ export default class DiagnosticsAdapter {
     // call the validate methode proxy from the langaueg service and get errors
     const { errors, cst: wcst, ast: wast } = await worker.doValidation();
     if (wcst) setCst(wcst);
-    if (wast) setAst(wast);
+    if (wast) {
+      setAst(wast);
+      const bril = astToBrilVisitor.visit(wast);
+      console.log(bril);
+      setBril(bril);
+    }
+
     // get the current model(editor or file) which is only one
     const model = monaco.editor.getModel(resource);
     // add the error markers and underline them with severity of Error

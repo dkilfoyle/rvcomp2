@@ -7,7 +7,6 @@ import { Icon } from "@chakra-ui/react";
 import { VscSymbolClass } from "react-icons/vsc";
 
 export const AstView: React.FC = () => {
-  const cst = cstEntity.use();
   const ast = astEntity.use();
 
   const astTreeData = useMemo(() => {
@@ -29,6 +28,20 @@ export const AstView: React.FC = () => {
             title = (
               <span>
                 {objDisplayName} varDecl: <strong>{node.id}</strong>:{node.type}
+              </span>
+            );
+            break;
+          case "binaryExpression":
+            title = (
+              <span>
+                {objDisplayName} binaryExpression: <strong>{node.op}</strong>
+              </span>
+            );
+            break;
+          case "integerLiteralExpression":
+            title = (
+              <span>
+                {objDisplayName} integerLiteralExpression: <strong>{node.value}</strong>
               </span>
             );
             break;
@@ -85,7 +98,7 @@ export const AstView: React.FC = () => {
 
   return (
     <div>
-      <Tree treeData={[astTreeData]}></Tree>
+      <Tree treeData={[astTreeData]} defaultExpandParent defaultExpandedKeys={[1]}></Tree>
       {/* <JSONTree data={ast} theme={theme} invertTheme></JSONTree> */}
     </div>
   );

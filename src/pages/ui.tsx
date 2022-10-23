@@ -13,6 +13,7 @@ import "rc-tree/assets/index.css";
 import { CstView } from "../components/cst";
 import { AstView } from "../components/ast";
 import { Tabs, TabList, TabPanels, Tab, TabPanel } from "@chakra-ui/react";
+import { BrilView } from "../components/bril";
 
 const theme = {
   scheme: "monokai",
@@ -44,7 +45,7 @@ export const UI: React.FC = () => {
       Code: <Editor></Editor>,
       Menu: <Sidebar></Sidebar>,
       View: (
-        <Tabs size="sm" variant="enclosed">
+        <Tabs size="sm" variant="enclosed" defaultIndex={1}>
           <TabList>
             <Tab>CST</Tab>
             <Tab>AST</Tab>
@@ -57,6 +58,9 @@ export const UI: React.FC = () => {
             </TabPanel>
             <TabPanel>
               <AstView></AstView>
+            </TabPanel>
+            <TabPanel>
+              <BrilView></BrilView>
             </TabPanel>
           </TabPanels>
         </Tabs>

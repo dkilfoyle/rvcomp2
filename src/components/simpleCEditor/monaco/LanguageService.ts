@@ -37,7 +37,7 @@ export default class SimpleCLanguageService {
       errors.push(...astResult.errors);
       return { errors, cst, ast: astResult.ast };
     } else {
-      return { errors, cst, ast: {} };
+      return { errors, cst, ast: undefined };
     }
   }
 

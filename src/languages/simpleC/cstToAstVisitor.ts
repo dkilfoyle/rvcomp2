@@ -27,8 +27,12 @@ import {
 } from "./simpleC";
 import {
   IAstAssignStatement,
+  IAstAtomicExpression,
+  IAstExpression,
   IAstFunctionDeclaration,
   IAstIdentifierExpression,
+  IAstInvalidExpression,
+  IAstNode,
   IAstProgram,
   IAstResult,
   IAstVariableDeclaration,
@@ -181,40 +185,61 @@ class CstVisitor extends CstBaseVisitor {
 
   // expressions
 
-  additionExpression(ctx: AdditionExpressionCstChildren) {
-    const lhs = this.visit(ctx.multiplicationExpression[0]);
-    const rhs = this.visit(ctx.multiplicationExpression[1]);
-    if (!rhs && lhs.type === "void") return lhs;
+  getOperator(op: string) {
+    switch (op) {
+      case "+":
+        return "add";
+      case "-":
+        return "sub";
+      case "*":
+        return "mul";
+      case "/":
+        return "div";
+    }
+  }
 
-    if (lhs.type !== "int") {
+  binaryExpression(ctx: AdditionExpressionCstChildren | MultiplicationExpressionCstChildren) {
+    const typeError = (node: any): IAstInvalidExpression => {
+      this.errors.push({ ...node.pos, code: "2", message: "Arthrimetic operand must be of type int" });
+      return { _name: "invalidExpression", type: "int" };
+    };
+
+    let lhs = this.visit(ctx.operands[0]);
+    if (lhs.type !== "int") return typeError(lhs);
+
+    for (let i = 1; i < ctx.operands.length; i++) {
+      const rhs = this.visit(ctx.operands[i]);
+      if (rhs.type !== "int") return typeError(rhs);
+
+      lhs = {
+        _name: "binaryExpression",
+        lhs: { ...lhs },
+        rhs,
+        op: ctx.operators ? this.getOperator(ctx.operators[i - 1].image) : undefined,
+        type: "int",
+      };
+
       // console.log("AdditionExpression LHS", lhs);
-      this.errors.push({ ...lhs.pos, code: "2", message: "The LHS of arthrimetic operation must be of type int" });
-      return { _name: "invalidOperation", type: "int" };
     }
-    if (!rhs) return lhs;
 
-    if (rhs.type !== "int") {
-      // console.log("AdditionExpression RHS", rhs);
-      this.errors.push({ ...rhs.pos, code: "2", message: "The RHS of arthrimetic operation must be of type int" });
-      return { _name: "invalidOperation", type: "int" };
-    }
-    return { _name: "additionExpression", lhs, rhs, op: ctx.Minus ? "-" : "+", type: "int" };
+    return lhs;
   }
 
-  multiplicationExpression(ctx: MultiplicationExpressionCstChildren) {
-    const lhs = this.visit(ctx.atomicExpression[0]);
-    const rhs = this.visit(ctx.atomicExpression[1]);
-    if (!rhs) return lhs;
-    if (lhs.type !== rhs.type) this.errors.push({ ...rhs.pos, code: "2", message: "type mismatch (mult expression)" });
-    else return { _name: "multiplicationExpression", lhs, rhs, op: ctx.Divide ? "/" : "*" };
+  additionExpression(ctx: AdditionExpressionCstChildren): IAstExpression {
+    return this.binaryExpression(ctx);
   }
 
-  atomicExpression(ctx: AtomicExpressionCstChildren) {
+  multiplicationExpression(ctx: MultiplicationExpressionCstChildren): IAstExpression {
+    return this.binaryExpression(ctx);
+  }
+
+  atomicExpression(ctx: AtomicExpressionCstChildren): IAstAtomicExpression {
     if (ctx.identifierExpression) return this.visit(ctx.identifierExpression);
     if (ctx.literalExpression) return this.visit(ctx.literalExpression);
     if (ctx.functionCallExpression) return this.visit(ctx.functionCallExpression);
     if (ctx.parenExpression) return this.visit(ctx.parenExpression);
     if (ctx.unaryExpression) return this.visit(ctx.unaryExpression);
+    throw Error();
   }
 
   unaryExpression(ctx: UnaryExpressionCstChildren) {
