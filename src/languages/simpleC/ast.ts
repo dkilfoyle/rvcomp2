@@ -51,6 +51,11 @@ export interface IAstFunctionDeclaration extends IAstDeclaration {
   block?: IAstBlock;
 }
 
+export interface IAstReturnStatement extends IAstStatement {
+  _name: "returnStatement";
+  lhs: IAstExpression;
+}
+
 export interface IAstExpression extends IAstNode {
   _name:
     | "integerLiteralExpression"
@@ -67,49 +72,46 @@ export interface IAstInvalidExpression extends IAstExpression {
   _name: "invalidExpression";
   type: "int";
 }
+
 export interface IAstIdentifierExpression extends IAstDeclaration, IAstExpression {
   _name: "identifierExpression";
+  id: string;
+  type: IDeclarationType;
 }
+
 export interface IAstFunctionCallExpression extends IAstExpression {
   _name: "functionCallExpression";
+  id: string;
+  params: IAstExpression[];
+  type: IDeclarationType;
 }
-export interface IAstParenExpression extends IAstExpression {}
+
 export interface IAstUnaryExpression extends IAstExpression {}
 
 export interface IAstLiteralExpression extends IAstExpression {
   value: number | boolean;
   type: "int" | "bool";
 }
+
 export interface IAstIntegerLiteralExpression extends IAstLiteralExpression {
   _name: "integerLiteralExpression";
   value: number;
   type: "int";
 }
+
 export interface IAstBoolLiteralExpression extends IAstLiteralExpression {
   _name: "boolLiteralExpression";
   value: boolean;
   type: "bool";
 }
 
-export type IAstAtomicExpression =
-  | IAstIdentifierExpression
-  | IAstLiteralExpression
-  | IAstFunctionCallExpression
-  | IAstParenExpression
-  | IAstUnaryExpression;
+export type IAstAtomicExpression = IAstIdentifierExpression | IAstLiteralExpression | IAstFunctionCallExpression | IAstUnaryExpression;
 
-export interface IAstMultiplicationExpression extends IAstExpression {
-  _name: "multiplicationExpression";
-  lhs: IAstAtomicExpression;
-  rhs: IAstAtomicExpression;
-  op: "mul" | "div";
-}
-
-export interface IAstAdditionExpression extends IAstExpression {
-  _name: "additionExpression";
+export interface IAstBinaryExpression extends IAstExpression {
+  _name: "binaryExpression";
   lhs: IAstExpression;
   rhs: IAstExpression;
-  op: "add" | "sub";
+  op: "add" | "sub" | "mul" | "div";
 }
 
 export interface IAstAssignStatement extends IAstNode {

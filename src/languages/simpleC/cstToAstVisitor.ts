@@ -17,6 +17,7 @@ import {
   MultiplicationExpressionCstChildren,
   ParenExpressionCstChildren,
   ProgramCstChildren,
+  ReturnStatementCstChildren,
   StatementCstChildren,
   StringLiteralExpressionCstChildren,
   TypeSpecifierCstChildren,
@@ -29,12 +30,14 @@ import {
   IAstAssignStatement,
   IAstAtomicExpression,
   IAstExpression,
+  IAstFunctionCallExpression,
   IAstFunctionDeclaration,
   IAstIdentifierExpression,
   IAstInvalidExpression,
   IAstNode,
   IAstProgram,
   IAstResult,
+  IAstReturnStatement,
   IAstVariableDeclaration,
   IPos,
   parseDocCommentString,
@@ -147,19 +150,25 @@ class CstVisitor extends CstBaseVisitor {
     if (ctx.variableDeclarationStatement) return this.visit(ctx.variableDeclarationStatement);
     if (ctx.expressionStatement) return this.visit(ctx.expressionStatement);
     if (ctx.assignStatement) return this.visit(ctx.assignStatement);
+    if (ctx.returnStatement) return this.visit(ctx.returnStatement);
     throw new Error();
   }
 
   ifStatement(ctx: any) {
-    return { name: "unimplented_if" };
+    return { _name: "unimplented_if" };
   }
 
   whileStatement(ctx: any) {
-    return { name: "unimplemented_while" };
+    return { _name: "unimplemented_while" };
   }
 
   doStatement(ctx: any) {
-    return { name: "unimplented_do" };
+    return { _name: "unimplented_do" };
+  }
+
+  returnStatement(ctx: ReturnStatementCstChildren): IAstReturnStatement {
+    const lhs = this.visit(ctx.additionExpression);
+    return { _name: "returnStatement", lhs };
   }
 
   blockStatement(ctx: BlockStatementCstChildren) {
@@ -247,7 +256,7 @@ class CstVisitor extends CstBaseVisitor {
     return { name: "unaryExpression", lhs, type: lhs.type };
   }
 
-  functionCallExpression(ctx: FunctionCallExpressionCstChildren) {
+  functionCallExpression(ctx: FunctionCallExpressionCstChildren): IAstFunctionCallExpression {
     const fndecl: IAstIdentifierExpression = this.visit(ctx.identifierExpression);
     const params = ctx.expressionList ? this.visit(ctx.expressionList).params : [];
     this.checkParams(fndecl.id, fndecl.pos!, params);

@@ -1,10 +1,13 @@
 import {
   IAstAdditionExpression,
   IAstAssignStatement,
+  IAstBinaryExpression,
   IAstExpression,
+  IAstFunctionCallExpression,
   IAstFunctionDeclaration,
   IAstIntegerLiteralExpression,
   IAstProgram,
+  IAstReturnStatement,
   IAstStatement,
   IAstVariableDeclaration,
   IPos,
@@ -143,11 +146,17 @@ class BrilBuilder {
 
 class AstToBrilVisitor {
   public builder: BrilBuilder = new BrilBuilder();
+  public inExpressionStatement = false;
 
   constructor() {}
 
+  reset() {
+    this.inExpressionStatement = false;
+  }
+
   visit(node: IAstProgram): IBrilProgram {
     this.builder.reset();
+    this.reset();
     for (let fd of node.functionDeclarations) {
       this.functionDeclaration(fd);
     }
@@ -170,7 +179,12 @@ class AstToBrilVisitor {
         this.variableDeclarationStatement(node as IAstVariableDeclaration);
         break;
       case "expressionStatement":
-        // this.additionExpression(node as IAstAdditionExpression);
+        this.inExpressionStatement = true;
+        this.expression(node as IAstExpression);
+        this.inExpressionStatement = false;
+        break;
+      case "returnStatement":
+        this.returnStatement(node as IAstReturnStatement);
         break;
       default:
         this.builder.nop(node._name);
@@ -190,6 +204,15 @@ class AstToBrilVisitor {
     return this.builder.buildValue("id", node.lhs.type as IBrilType, [rhs.dest], undefined, undefined, node.lhs.id);
   }
 
+  returnStatement(node: IAstReturnStatement) {
+    const lhs = this.expression(node.lhs);
+    this.builder.buildEffect("ret", [lhs.dest]);
+  }
+
+  // ==========================================================================================================
+  // Expressions
+  // ==========================================================================================================
+
   expression(node: IAstExpression): IBrilValueInstruction {
     let n, lhs, rhs;
     switch (node._name) {
@@ -197,12 +220,30 @@ class AstToBrilVisitor {
         n = node as IAstIntegerLiteralExpression;
         return this.builder.buildConst(n.value, n.type);
       case "binaryExpression":
-        n = node as IAstAdditionExpression;
+        n = node as IAstBinaryExpression;
         lhs = this.expression(n.lhs);
         rhs = this.expression(n.rhs);
         return this.builder.buildValue(n.op, n.type as IBrilType, [lhs.dest, rhs.dest], undefined, undefined);
+      case "functionCallExpression":
+        n = node as IAstFunctionCallExpression;
+        const params = n.params ? n.params.map((p) => this.expression(p)) : [];
+        if (this.inExpressionStatement) {
+          this.builder.buildCall(
+            n.id,
+            params.map((p) => p.dest),
+            n.type as IBrilType
+          );
+          return this.builder.buildConst(0, "int");
+        } else {
+          return this.builder.buildCall(
+            n.id,
+            params.map((p) => p.dest),
+            n.type as IBrilType
+          );
+        }
+
       default:
-        throw Error();
+        throw new Error(node.toString());
     }
   }
 }

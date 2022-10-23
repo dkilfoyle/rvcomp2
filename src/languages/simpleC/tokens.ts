@@ -48,6 +48,7 @@ const While = createKeywordToken({ name: "While", pattern: /while/ });
 const Do = createKeywordToken({ name: "Do", pattern: /do/ });
 const True = createKeywordToken({ name: "True", pattern: /true/ });
 const False = createKeywordToken({ name: "False", pattern: /false/ });
+const Return = createKeywordToken({ name: "Return", pattern: /return/ });
 
 // types
 const Int = createKeywordToken({ name: "Int", pattern: /int/ });
@@ -85,6 +86,7 @@ export const tokens = {
   Else,
   While,
   Do,
+  Return,
   // types
   Int,
   Void,

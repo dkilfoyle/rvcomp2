@@ -122,6 +122,7 @@ class SimpleCParser extends CstParser {
       { ALT: () => this.SUBRULE(this.variableDeclarationStatement) },
       { ALT: () => this.SUBRULE(this.assignStatement) },
       { ALT: () => this.SUBRULE(this.expressionStatement) },
+      { ALT: () => this.SUBRULE(this.returnStatement) },
     ]);
   });
 
@@ -163,6 +164,12 @@ class SimpleCParser extends CstParser {
   });
 
   public expressionStatement = this.RULE("expressionStatement", () => {
+    this.SUBRULE(this.additionExpression);
+    this.CONSUME(tokens.SemiColon);
+  });
+
+  public returnStatement = this.RULE("returnStatement", () => {
+    this.CONSUME(tokens.Return);
     this.SUBRULE(this.additionExpression);
     this.CONSUME(tokens.SemiColon);
   });

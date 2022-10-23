@@ -58,6 +58,7 @@ export type StatementCstChildren = {
   variableDeclarationStatement?: VariableDeclarationStatementCstNode[];
   assignStatement?: AssignStatementCstNode[];
   expressionStatement?: ExpressionStatementCstNode[];
+  returnStatement?: ReturnStatementCstNode[];
 };
 
 export interface IfStatementCstNode extends CstNode {
@@ -123,6 +124,17 @@ export interface ExpressionStatementCstNode extends CstNode {
 }
 
 export type ExpressionStatementCstChildren = {
+  additionExpression: AdditionExpressionCstNode[];
+  SemiColon: IToken[];
+};
+
+export interface ReturnStatementCstNode extends CstNode {
+  name: "returnStatement";
+  children: ReturnStatementCstChildren;
+}
+
+export type ReturnStatementCstChildren = {
+  Return: IToken[];
   additionExpression: AdditionExpressionCstNode[];
   SemiColon: IToken[];
 };
@@ -287,6 +299,7 @@ export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   blockStatement(children: BlockStatementCstChildren, param?: IN): OUT;
   variableDeclarationStatement(children: VariableDeclarationStatementCstChildren, param?: IN): OUT;
   expressionStatement(children: ExpressionStatementCstChildren, param?: IN): OUT;
+  returnStatement(children: ReturnStatementCstChildren, param?: IN): OUT;
   assignStatement(children: AssignStatementCstChildren, param?: IN): OUT;
   additionExpression(children: AdditionExpressionCstChildren, param?: IN): OUT;
   multiplicationExpression(children: MultiplicationExpressionCstChildren, param?: IN): OUT;
