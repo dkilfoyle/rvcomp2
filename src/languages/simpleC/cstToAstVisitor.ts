@@ -7,11 +7,14 @@ import {
   AtomicExpressionCstChildren,
   BlockStatementCstChildren,
   BoolLiteralExpressionCstChildren,
+  ComparisonExpressionCstChildren,
   ExpressionListCstChildren,
   ExpressionStatementCstChildren,
+  ForStatementCstChildren,
   FunctionCallExpressionCstChildren,
   FunctionDeclarationCstChildren,
   IdentifierExpressionCstChildren,
+  IfStatementCstChildren,
   IntegerLiteralExpressionCstChildren,
   LiteralExpressionCstChildren,
   MultiplicationExpressionCstChildren,
@@ -29,10 +32,14 @@ import {
 import {
   IAstAssignStatement,
   IAstAtomicExpression,
+  IAstComparisonExpression,
+  IAstComparisonOperator,
   IAstExpression,
+  IAstForStatement,
   IAstFunctionCallExpression,
   IAstFunctionDeclaration,
   IAstIdentifierExpression,
+  IAstIfStatement,
   IAstInvalidExpression,
   IAstNode,
   IAstProgram,
@@ -142,10 +149,14 @@ class CstVisitor extends CstBaseVisitor {
     return { _name: "variableDeclarationList", declarations: ctx.variableDeclaration.map((p) => this.visit(p)) };
   }
 
+  // ==========================================================================================================
+  // Statements
+  // ==========================================================================================================
+
   statement(ctx: StatementCstChildren) {
     if (ctx.blockStatement) return this.visit(ctx.blockStatement);
     if (ctx.ifStatement) return this.visit(ctx.ifStatement);
-    if (ctx.doStatement) return this.visit(ctx.doStatement);
+    if (ctx.forStatement) return this.visit(ctx.forStatement);
     if (ctx.whileStatement) return this.visit(ctx.whileStatement);
     if (ctx.variableDeclarationStatement) return this.visit(ctx.variableDeclarationStatement);
     if (ctx.expressionStatement) return this.visit(ctx.expressionStatement);
@@ -154,8 +165,23 @@ class CstVisitor extends CstBaseVisitor {
     throw new Error();
   }
 
-  ifStatement(ctx: any) {
-    return { _name: "unimplented_if" };
+  ifStatement(ctx: IfStatementCstChildren): IAstIfStatement {
+    return {
+      _name: "ifStatement",
+      cond: this.visit(ctx.comparisonExpression),
+      then: this.visit(ctx.statement[0]),
+      else: ctx.statement.length == 2 ? this.visit(ctx.statement[1]) : undefined,
+    };
+  }
+
+  forStatement(ctx: ForStatementCstChildren): IAstForStatement {
+    return {
+      _name: "forStatement",
+      init: this.visit(ctx.initStatement),
+      test: this.visit(ctx.test),
+      step: this.visit(ctx.stepStatement),
+      loop: this.visit(ctx.loopStatement),
+    };
   }
 
   whileStatement(ctx: any) {
@@ -192,7 +218,35 @@ class CstVisitor extends CstBaseVisitor {
     return { _name: "assignStatement", lhs, rhs };
   }
 
-  // expressions
+  // ==========================================================================================================
+  // Expressions
+  // ==========================================================================================================
+
+  comparisonExpression(ctx: ComparisonExpressionCstChildren): IAstComparisonExpression {
+    const lhs = this.visit(ctx.lhs);
+    const rhs = this.visit(ctx.rhs);
+    let op: IAstComparisonOperator;
+    switch (ctx.ComparisonOperator[0].image) {
+      case ">":
+        op = "gt";
+        break;
+      case ">=":
+        op = "ge";
+        break;
+      case "<":
+        op = "lt";
+        break;
+      case "<=":
+        op = "le";
+        break;
+      case "==":
+        op = "eq";
+        break;
+      default:
+        op = "gt";
+    }
+    return { _name: "comparisonExpression", lhs, rhs, op, type: "bool" };
+  }
 
   getOperator(op: string) {
     switch (op) {
@@ -266,7 +320,7 @@ class CstVisitor extends CstBaseVisitor {
   identifierExpression(ctx: IdentifierExpressionCstChildren) {
     const id = ctx.ID[0].image;
     const decl = this.checkInScope(id, this.getTokenPos(ctx.ID[0]));
-    return { _name: "identifierExpression", ...decl, pos: this.getTokenPos(ctx.ID[0]) };
+    return { ...decl, _name: "identifierExpression", pos: this.getTokenPos(ctx.ID[0]) };
   }
 
   literalExpression(ctx: LiteralExpressionCstChildren) {

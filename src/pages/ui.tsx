@@ -14,6 +14,7 @@ import { CstView } from "../components/cst";
 import { AstView } from "../components/ast";
 import { Tabs, TabList, TabPanels, Tab, TabPanel } from "@chakra-ui/react";
 import { BrilView } from "../components/bril";
+import { BrilEditor } from "../components/brilEditor/BrilEditor";
 
 const theme = {
   scheme: "monokai",
@@ -43,6 +44,7 @@ export const UI: React.FC = () => {
   const ELEMENT_MAP: { [viewId: string]: JSX.Element } = useMemo(
     () => ({
       Code: <Editor></Editor>,
+      Bril: <BrilEditor></BrilEditor>,
       Menu: <Sidebar></Sidebar>,
       View: (
         <Tabs size="sm" variant="enclosed" defaultIndex={1}>
@@ -85,7 +87,12 @@ export const UI: React.FC = () => {
             second: {
               direction: "row",
               splitPercentage: 50,
-              first: "Code",
+              first: {
+                direction: "column",
+                first: "Code",
+                second: "Bril",
+                splitPercentage: 70,
+              },
               second: "View",
             },
           }}

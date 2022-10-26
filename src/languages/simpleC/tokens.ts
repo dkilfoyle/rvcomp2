@@ -45,7 +45,7 @@ const Keyword = createToken({ name: "Keyword", pattern: Lexer.NA });
 const If = createKeywordToken({ name: "If", pattern: /if/ });
 const Else = createKeywordToken({ name: "Else", pattern: /else/ });
 const While = createKeywordToken({ name: "While", pattern: /while/ });
-const Do = createKeywordToken({ name: "Do", pattern: /do/ });
+const For = createKeywordToken({ name: "For", pattern: /for/ });
 const True = createKeywordToken({ name: "True", pattern: /true/ });
 const False = createKeywordToken({ name: "False", pattern: /false/ });
 const Return = createKeywordToken({ name: "Return", pattern: /return/ });
@@ -58,6 +58,7 @@ const Bool = createKeywordToken({ name: "Bool", pattern: /bool/ });
 
 const AdditionOperator = createToken({ name: "AdditionOperator", pattern: Lexer.NA });
 const MultiplicationOperator = createToken({ name: "MultiplicationOperator", pattern: Lexer.NA });
+const ComparisonOperator = createToken({ name: "ComparisonOperator", pattern: Lexer.NA });
 
 // punctuation
 const LCurly = createToken({ name: "LCurly", pattern: /{/ });
@@ -65,8 +66,14 @@ const RCurly = createToken({ name: "RCurly", pattern: /}/ });
 const LParen = createToken({ name: "LParen", pattern: /\(/ });
 const RParen = createToken({ name: "RParen", pattern: /\)/ });
 const SemiColon = createToken({ name: "SemiColon", pattern: /;/ });
+
+const LessThanEqual = createToken({ name: "LessThanEqual", pattern: /<=/, categories: ComparisonOperator });
+const LessThan = createToken({ name: "LessThan", pattern: /</, categories: ComparisonOperator });
+const GreaterThanEqual = createToken({ name: "GreaterThanEqual", pattern: />=/, categories: ComparisonOperator });
+const GreaterThan = createToken({ name: "GreaterThan", pattern: />/, categories: ComparisonOperator });
+const EqualsEquals = createToken({ name: "EqualsEquals", pattern: /==/, categories: ComparisonOperator });
+
 const Equals = createToken({ name: "Equals", pattern: /=/ });
-const LessThan = createToken({ name: "LessThan", pattern: /</ });
 const Plus = createToken({ name: "Plus", pattern: /\+/, categories: AdditionOperator });
 const Minus = createToken({ name: "Minus", pattern: /-/, categories: AdditionOperator });
 const Times = createToken({ name: "Times", pattern: /\*/, categories: MultiplicationOperator });
@@ -85,7 +92,7 @@ export const tokens = {
   If,
   Else,
   While,
-  Do,
+  For,
   Return,
   // types
   Int,
@@ -98,8 +105,12 @@ export const tokens = {
   LParen,
   RParen,
   SemiColon,
-  Equals,
   LessThan,
+  LessThanEqual,
+  GreaterThan,
+  GreaterThanEqual,
+  EqualsEquals,
+  Equals,
   Plus,
   Minus,
   Times,
@@ -115,4 +126,5 @@ export const tokens = {
   False,
   MultiplicationOperator,
   AdditionOperator,
+  ComparisonOperator,
 };

@@ -31,6 +31,13 @@ export const AstView: React.FC = () => {
               </span>
             );
             break;
+          case "identifierExpression":
+            title = (
+              <span>
+                {objDisplayName} idExpression: <strong>{node.id}</strong>
+              </span>
+            );
+            break;
           case "binaryExpression":
             title = (
               <span>

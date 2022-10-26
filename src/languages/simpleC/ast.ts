@@ -30,8 +30,19 @@ export interface IAstBlock extends IAstNode {
   statements: IAstStatement[];
 }
 
+export interface IAstIfStatement extends IAstStatement {
+  _name: "ifStatement";
+  cond: IAstComparisonExpression;
+  then: IAstStatement;
+  else?: IAstStatement;
+}
+
 export interface IAstForStatement extends IAstStatement {
-  _name: "for";
+  _name: "forStatement";
+  init: IAstStatement;
+  test: IAstComparisonExpression;
+  step: IAstStatement;
+  loop: IAstStatement;
 }
 
 export interface IAstDeclaration extends IAstNode {
@@ -66,6 +77,16 @@ export interface IAstExpression extends IAstNode {
     | "binaryExpression"
     | "invalidExpression";
   type: IDeclarationType;
+}
+
+export type IAstComparisonOperator = "gt" | "lt" | "ge" | "le" | "eq";
+
+export interface IAstComparisonExpression {
+  _name: "comparisonExpression";
+  lhs: IAstExpression;
+  rhs: IAstExpression;
+  op: IAstComparisonOperator;
+  type: "bool";
 }
 
 export interface IAstInvalidExpression extends IAstExpression {
@@ -112,6 +133,7 @@ export interface IAstBinaryExpression extends IAstExpression {
   lhs: IAstExpression;
   rhs: IAstExpression;
   op: "add" | "sub" | "mul" | "div";
+  type: "int";
 }
 
 export interface IAstAssignStatement extends IAstNode {

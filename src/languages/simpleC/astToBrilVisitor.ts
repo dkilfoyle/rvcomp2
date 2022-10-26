@@ -1,10 +1,15 @@
+import { ThemeProvider } from "@emotion/react";
 import {
-  IAstAdditionExpression,
   IAstAssignStatement,
   IAstBinaryExpression,
+  IAstBlock,
+  IAstComparisonExpression,
   IAstExpression,
+  IAstForStatement,
   IAstFunctionCallExpression,
   IAstFunctionDeclaration,
+  IAstIdentifierExpression,
+  IAstIfStatement,
   IAstIntegerLiteralExpression,
   IAstProgram,
   IAstReturnStatement,
@@ -18,7 +23,7 @@ type IBrilPrimType = "int" | "bool" | "float";
 type IBrilParamType = { ptr: IBrilType };
 type IBrilType = IBrilPrimType | IBrilParamType;
 
-interface IBrilOp {
+interface IBrilOp extends IBrilNode {
   args?: string[];
   funcs?: string[];
   labels?: string[];
@@ -30,7 +35,7 @@ export interface IBrilEffectOperation extends IBrilOp {
 }
 
 export interface IBrilValueOperation extends IBrilOp {
-  op: "add" | "sub" | "mul" | "div" | "call" | "id" | "nop" | "phi";
+  op: "add" | "sub" | "mul" | "div" | "call" | "id" | "nop" | "phi" | "eq" | "lt" | "gt" | "ge" | "le" | "not" | "and" | "or";
   dest: string;
   type: IBrilType;
 }
@@ -38,7 +43,7 @@ export interface IBrilValueOperation extends IBrilOp {
 export type IBrilValueOpCode = IBrilValueOperation["op"];
 export type IBrilEffectOpCode = IBrilEffectOperation["op"];
 
-export interface IBrilConst {
+export interface IBrilConst extends IBrilNode {
   op: "const";
   value: IBrilValueType;
   dest: string;
@@ -50,7 +55,7 @@ export type IBrilOperation = IBrilValueOperation | IBrilEffectOperation;
 export type IBrilInstruction = IBrilOperation | IBrilConst;
 export type IBrilValueInstruction = IBrilConst | IBrilValueOperation;
 
-interface IBrilLabel {
+interface IBrilLabel extends IBrilNode {
   label: string;
   pos?: IPos;
 }
@@ -60,7 +65,7 @@ interface IBrilArgument {
   type: IBrilType;
 }
 
-interface IBrilFunction {
+interface IBrilFunction extends IBrilNode {
   name: string;
   args?: IBrilArgument[];
   type?: IBrilType;
@@ -68,21 +73,27 @@ interface IBrilFunction {
   pos?: IPos;
 }
 
-export interface IBrilProgram {
+export interface IBrilNode {
+  key?: number;
+}
+
+export interface IBrilProgram extends IBrilNode {
   functions: IBrilFunction[];
 }
 
 class BrilBuilder {
-  public program: IBrilProgram = { functions: [] };
+  public program: IBrilProgram = { functions: [], key: 0 };
   public curFunction?: IBrilFunction;
   public nextFresh: number = 0;
+  public keyIndex: number = 1;
 
   constructor() {}
 
   reset() {
-    this.program = { functions: [] };
+    this.program = { functions: [], key: 0 };
     this.curFunction = undefined;
     this.nextFresh = 0;
+    this.keyIndex = 1;
   }
 
   freshVar() {
@@ -91,8 +102,15 @@ class BrilBuilder {
     return out;
   }
 
+  freshSuffix() {
+    let out = "." + this.nextFresh.toString();
+    this.nextFresh += 1;
+    return out;
+  }
+
   insert(instr: IBrilInstruction | IBrilLabel) {
     if (!this.curFunction) throw "bla";
+    instr.key = this.keyIndex++;
     this.curFunction.instrs.push(instr);
   }
 
@@ -107,6 +125,7 @@ class BrilBuilder {
     } else {
       func = { name: name, instrs: [], args: args, type: type };
     }
+    func.key = this.keyIndex++;
     this.program.functions.push(func);
     this.curFunction = func;
     this.nextFresh = 0;
@@ -142,7 +161,57 @@ class BrilBuilder {
     this.insert(instr);
     return instr;
   }
+
+  buildLabel(name: string) {
+    let label = { label: name };
+    this.insert(label);
+  }
 }
+
+class BrilPrinter {
+  public hr: string = "";
+  line(l: string) {
+    this.hr = this.hr + l + "\n";
+  }
+  print(bril: IBrilProgram) {
+    this.hr = "";
+    bril.functions.forEach((fn) => this.printFunction(fn));
+    return this.hr;
+  }
+  formatArgument(arg: IBrilArgument) {
+    return `${arg.name}: ${arg.type}`;
+  }
+  printFunction(fn: IBrilFunction) {
+    const args = fn.args ? "(" + fn.args.map((arg) => this.formatArgument(arg)).join(", ") + ")" : "";
+    const kind = fn.type ? `: ${fn.type}` : "";
+    this.line(`@${fn.name}${args}${kind} {`);
+    fn.instrs.forEach((instr) => this.printInstruction(instr));
+    this.line("}");
+  }
+  printInstruction(ins: IBrilInstruction | IBrilLabel) {
+    if ((<IBrilInstruction>ins).op) {
+      ins = ins as IBrilInstruction;
+      if (ins.op === "const") this.line(`  ${ins.dest}: ${ins.type} = const ${ins.value};`);
+      else {
+        let rhs = `${ins.op}`;
+        if (ins.funcs) rhs += ` ${ins.funcs.join(" @")}`;
+        if (ins.args) rhs += ` ${ins.args.join(" ")}`;
+        if (ins.labels) rhs += ` .${ins.labels.join(" .")}`;
+        const insAsValue = ins as IBrilValueInstruction;
+        if (insAsValue.dest) {
+          let tyann = `: ${insAsValue.type}`;
+          this.line(`  ${insAsValue.dest}${tyann} = ${rhs}`);
+        } else return this.line(`  ${rhs}`);
+      }
+    } else {
+      // label
+      ins = ins as IBrilLabel;
+      this.line(`.${ins.label}:`);
+    }
+  }
+}
+
+export const brilPrinter = new BrilPrinter();
 
 class AstToBrilVisitor {
   public builder: BrilBuilder = new BrilBuilder();
@@ -170,6 +239,10 @@ class AstToBrilVisitor {
     if (node.block) node.block.statements.forEach((s) => this.statement(s));
   }
 
+  // ==========================================================================================================
+  // Statements
+  // ==========================================================================================================
+
   statement(node: IAstStatement) {
     switch (node._name) {
       case "assignStatement":
@@ -178,6 +251,12 @@ class AstToBrilVisitor {
       case "variableDeclaration":
         this.variableDeclarationStatement(node as IAstVariableDeclaration);
         break;
+      case "ifStatement":
+        this.ifStatement(node as IAstIfStatement);
+        break;
+      case "forStatement":
+        this.forStatement(node as IAstForStatement);
+        break;
       case "expressionStatement":
         this.inExpressionStatement = true;
         this.expression(node as IAstExpression);
@@ -185,6 +264,9 @@ class AstToBrilVisitor {
         break;
       case "returnStatement":
         this.returnStatement(node as IAstReturnStatement);
+        break;
+      case "blockStatement":
+        this.blockStatement(node as IAstBlock);
         break;
       default:
         this.builder.nop(node._name);
@@ -204,6 +286,52 @@ class AstToBrilVisitor {
     return this.builder.buildValue("id", node.lhs.type as IBrilType, [rhs.dest], undefined, undefined, node.lhs.id);
   }
 
+  ifStatement(node: IAstIfStatement) {
+    // Label names.
+    let sfx = this.builder.freshSuffix();
+    let thenLab = "then" + sfx;
+    let elseLab = "else" + sfx;
+    let endLab = "endif" + sfx;
+
+    // branch
+    const cond = this.comparisonExpression(node.cond);
+    this.builder.buildEffect("br", [cond.dest], undefined, [thenLab, elseLab]);
+
+    this.builder.buildLabel(thenLab);
+    this.statement(node.then);
+    this.builder.buildEffect("jmp", [], undefined, [endLab]);
+
+    this.builder.buildLabel(elseLab);
+    if (node.else) this.statement(node.else);
+
+    this.builder.buildLabel(endLab);
+  }
+
+  forStatement(node: IAstForStatement) {
+    this.statement(node.init);
+
+    let sfx = this.builder.freshSuffix();
+    let fortestLab = "fortest" + sfx;
+    let forloopLab = "forloop" + sfx;
+    let endforLab = "endfor" + sfx;
+
+    this.builder.buildLabel(fortestLab);
+    const test = this.comparisonExpression(node.test);
+
+    this.builder.buildEffect("br", [test.dest], undefined, [forloopLab, endforLab]);
+
+    this.builder.buildLabel(forloopLab);
+    this.statement(node.loop);
+    this.statement(node.step);
+    this.builder.buildEffect("jmp", [], undefined, [fortestLab]);
+
+    this.builder.buildLabel(endforLab);
+  }
+
+  blockStatement(node: IAstBlock) {
+    node.statements.forEach((s) => this.statement(s));
+  }
+
   returnStatement(node: IAstReturnStatement) {
     const lhs = this.expression(node.lhs);
     this.builder.buildEffect("ret", [lhs.dest]);
@@ -219,6 +347,9 @@ class AstToBrilVisitor {
       case "integerLiteralExpression":
         n = node as IAstIntegerLiteralExpression;
         return this.builder.buildConst(n.value, n.type);
+      case "identifierExpression": // ie an identifier
+        n = node as IAstIdentifierExpression;
+        return this.builder.buildValue("id", n.type as IBrilType, [n.id]);
       case "binaryExpression":
         n = node as IAstBinaryExpression;
         lhs = this.expression(n.lhs);
@@ -245,6 +376,12 @@ class AstToBrilVisitor {
       default:
         throw new Error(node.toString());
     }
+  }
+
+  comparisonExpression(node: IAstComparisonExpression): IBrilValueInstruction {
+    const lhs = this.expression(node.lhs);
+    const rhs = this.expression(node.rhs);
+    return this.builder.buildValue(node.op, "bool", [lhs.dest, rhs.dest]);
   }
 }
 

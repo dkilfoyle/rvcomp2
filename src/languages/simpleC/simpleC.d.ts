@@ -52,8 +52,8 @@ export interface StatementCstNode extends CstNode {
 
 export type StatementCstChildren = {
   ifStatement?: IfStatementCstNode[];
+  forStatement?: ForStatementCstNode[];
   whileStatement?: WhileStatementCstNode[];
-  doStatement?: DoStatementCstNode[];
   blockStatement?: BlockStatementCstNode[];
   variableDeclarationStatement?: VariableDeclarationStatementCstNode[];
   assignStatement?: AssignStatementCstNode[];
@@ -68,7 +68,9 @@ export interface IfStatementCstNode extends CstNode {
 
 export type IfStatementCstChildren = {
   If: IToken[];
-  parenExpression: ParenExpressionCstNode[];
+  LParen: IToken[];
+  comparisonExpression: ComparisonExpressionCstNode[];
+  RParen: IToken[];
   statement: StatementCstNode[];
   Else?: IToken[];
 };
@@ -80,21 +82,26 @@ export interface WhileStatementCstNode extends CstNode {
 
 export type WhileStatementCstChildren = {
   While: IToken[];
-  parenExpression: ParenExpressionCstNode[];
+  LParen: IToken[];
+  comparisonExpression: ComparisonExpressionCstNode[];
+  RParen: IToken[];
   statement: StatementCstNode[];
 };
 
-export interface DoStatementCstNode extends CstNode {
-  name: "doStatement";
-  children: DoStatementCstChildren;
+export interface ForStatementCstNode extends CstNode {
+  name: "forStatement";
+  children: ForStatementCstChildren;
 }
 
-export type DoStatementCstChildren = {
-  Do: IToken[];
-  statement: StatementCstNode[];
-  While: IToken[];
-  parenExpression: ParenExpressionCstNode[];
+export type ForStatementCstChildren = {
+  For: IToken[];
+  LParen: IToken[];
+  initStatement: StatementCstNode[];
+  test: ComparisonExpressionCstNode[];
   SemiColon: IToken[];
+  stepStatement: StatementCstNode[];
+  RParen: IToken[];
+  loopStatement: StatementCstNode[];
 };
 
 export interface BlockStatementCstNode extends CstNode {
@@ -149,6 +156,17 @@ export type AssignStatementCstChildren = {
   Equals: IToken[];
   additionExpression: AdditionExpressionCstNode[];
   SemiColon: IToken[];
+};
+
+export interface ComparisonExpressionCstNode extends CstNode {
+  name: "comparisonExpression";
+  children: ComparisonExpressionCstChildren;
+}
+
+export type ComparisonExpressionCstChildren = {
+  lhs: AdditionExpressionCstNode[];
+  ComparisonOperator: IToken[];
+  rhs: AdditionExpressionCstNode[];
 };
 
 export interface AdditionExpressionCstNode extends CstNode {
@@ -295,12 +313,13 @@ export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   statement(children: StatementCstChildren, param?: IN): OUT;
   ifStatement(children: IfStatementCstChildren, param?: IN): OUT;
   whileStatement(children: WhileStatementCstChildren, param?: IN): OUT;
-  doStatement(children: DoStatementCstChildren, param?: IN): OUT;
+  forStatement(children: ForStatementCstChildren, param?: IN): OUT;
   blockStatement(children: BlockStatementCstChildren, param?: IN): OUT;
   variableDeclarationStatement(children: VariableDeclarationStatementCstChildren, param?: IN): OUT;
   expressionStatement(children: ExpressionStatementCstChildren, param?: IN): OUT;
   returnStatement(children: ReturnStatementCstChildren, param?: IN): OUT;
   assignStatement(children: AssignStatementCstChildren, param?: IN): OUT;
+  comparisonExpression(children: ComparisonExpressionCstChildren, param?: IN): OUT;
   additionExpression(children: AdditionExpressionCstChildren, param?: IN): OUT;
   multiplicationExpression(children: MultiplicationExpressionCstChildren, param?: IN): OUT;
   atomicExpression(children: AtomicExpressionCstChildren, param?: IN): OUT;

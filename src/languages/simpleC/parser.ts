@@ -113,11 +113,15 @@ class SimpleCParser extends CstParser {
     });
   });
 
+  // ==========================================================================================================
+  // Statements
+  // ==========================================================================================================
+
   public statement = this.RULE("statement", () => {
     this.OR([
       { ALT: () => this.SUBRULE(this.ifStatement) },
+      { ALT: () => this.SUBRULE(this.forStatement) },
       { ALT: () => this.SUBRULE(this.whileStatement) },
-      { ALT: () => this.SUBRULE(this.doStatement) },
       { ALT: () => this.SUBRULE(this.blockStatement) },
       { ALT: () => this.SUBRULE(this.variableDeclarationStatement) },
       { ALT: () => this.SUBRULE(this.assignStatement) },
@@ -128,7 +132,9 @@ class SimpleCParser extends CstParser {
 
   public ifStatement = this.RULE("ifStatement", () => {
     this.CONSUME(tokens.If);
-    this.SUBRULE(this.parenExpression);
+    this.CONSUME(tokens.LParen);
+    this.SUBRULE(this.comparisonExpression);
+    this.CONSUME(tokens.RParen);
     this.SUBRULE(this.statement);
     this.OPTION(() => {
       this.CONSUME(tokens.Else);
@@ -138,16 +144,24 @@ class SimpleCParser extends CstParser {
 
   public whileStatement = this.RULE("whileStatement", () => {
     this.CONSUME(tokens.While);
-    this.SUBRULE(this.parenExpression);
+    this.CONSUME(tokens.LParen);
+    this.SUBRULE(this.comparisonExpression);
+    this.CONSUME(tokens.RParen);
     this.SUBRULE(this.statement);
   });
 
-  public doStatement = this.RULE("doStatement", () => {
-    this.CONSUME(tokens.Do);
-    this.SUBRULE(this.statement);
-    this.CONSUME(tokens.While);
-    this.SUBRULE(this.parenExpression);
+  public forStatement = this.RULE("forStatement", () => {
+    this.CONSUME(tokens.For);
+    this.CONSUME(tokens.LParen);
+    // int i = 0; i = 0;
+    this.SUBRULE(this.statement, { LABEL: "initStatement" });
+    // i < 10;
+    this.SUBRULE(this.comparisonExpression, { LABEL: "test" });
     this.CONSUME(tokens.SemiColon);
+    // i = i + 1;
+    this.SUBRULE2(this.statement, { LABEL: "stepStatement" });
+    this.CONSUME(tokens.RParen);
+    this.SUBRULE3(this.statement, { LABEL: "loopStatement" });
   });
 
   public blockStatement = this.RULE("blockStatement", () => {
@@ -181,7 +195,15 @@ class SimpleCParser extends CstParser {
     this.CONSUME(tokens.SemiColon);
   });
 
+  // ==========================================================================================================
   // Expressions
+  // ==========================================================================================================
+
+  public comparisonExpression = this.RULE("comparisonExpression", () => {
+    this.SUBRULE(this.additionExpression, { LABEL: "lhs" });
+    this.CONSUME(tokens.ComparisonOperator);
+    this.SUBRULE2(this.additionExpression, { LABEL: "rhs" });
+  });
 
   public additionExpression = this.RULE("additionExpression", () => {
     this.SUBRULE(this.multiplicationExpression, { LABEL: "operands" });

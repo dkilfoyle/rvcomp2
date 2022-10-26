@@ -6,6 +6,7 @@ import "rc-tree/assets/index.css";
 import { Icon } from "@chakra-ui/react";
 import { VscSymbolClass } from "react-icons/vsc";
 import { formatWithOptions } from "util";
+import { brilPrinter } from "../languages/simpleC/astToBrilVisitor";
 
 export const BrilView: React.FC = () => {
   const bril = brilEntity.use();
@@ -17,42 +18,44 @@ export const BrilView: React.FC = () => {
   );
 
   const brilTreeData = useMemo(() => {
-    let i = 0;
     const dumpInstruction = (ins: any) => {
+      let i = 0;
       let title;
       if (ins.op)
         title = (
           <span>
-            {ins.op} <strong>[{ins.dest}]</strong>
+            {ins.op} <strong>{ins.dest ? `[${ins.dest}]` : ""}</strong>
           </span>
         );
-      else title = ins.label;
+      else title = <span style={{ color: "red" }}>{ins.label}</span>;
       return {
         title,
-        key: `${i++}`,
+        key: ins.key,
         children: Object.entries(ins).map(([key, value]) => ({
           title: keyValue(key, value),
-          key: i++,
+          key: `${ins.key}-${i++}`,
         })),
       };
     };
     const root = {
       title: `functions[${bril.functions.length}]`,
-      key: `${i++}`,
+      key: `${bril.key}`,
       children: bril.functions.map((fn) => {
         return {
           title: fn.name,
-          key: `${i++}`,
+          key: `${fn.key}`,
           children: [
-            { title: keyValue("type", fn.type), key: `${i++}` },
-            { title: keyValue("args", fn.args || "[]"), key: `${i++}` },
-            { title: `instrs[${fn.instrs.length}]`, key: `${i++}`, children: fn.instrs.map((ins) => dumpInstruction(ins)) },
+            { title: keyValue("type", fn.type), key: `${fn.key}-0` },
+            { title: keyValue("args", fn.args || "[]"), key: `${fn.key}-1` },
+            { title: `instrs[${fn.instrs.length}]`, key: `${fn.key}-2`, children: fn.instrs.map((ins) => dumpInstruction(ins)) },
           ],
         };
       }),
     };
     return root;
   }, [bril]);
+
+  console.log(brilPrinter.print(bril));
 
   return (
     <div>

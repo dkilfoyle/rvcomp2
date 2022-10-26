@@ -3,8 +3,13 @@ int getz() {
 }
 
 void main() {
+  int z = 6;
   int x;
-  x = 5 + 6 - getz();
+  if (z > 5) {
+    x = 1;
+  } else {
+    x = 2;
+  }
 //  int x = 5;
 //  print_int(x); 
 }
