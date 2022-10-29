@@ -15,6 +15,7 @@ import { AstView } from "../components/ast";
 import { Tabs, TabList, TabPanels, Tab, TabPanel } from "@chakra-ui/react";
 import { BrilView } from "../components/bril";
 import { BrilEditor } from "../components/brilEditor/BrilEditor";
+import { CfgView } from "../components/cfg";
 
 const theme = {
   scheme: "monokai",
@@ -47,14 +48,17 @@ export const UI: React.FC = () => {
       Bril: <BrilEditor></BrilEditor>,
       Menu: <Sidebar></Sidebar>,
       View: (
-        <Tabs size="sm" variant="enclosed" defaultIndex={1}>
+        <Tabs size="sm" variant="enclosed" defaultIndex={0} isLazy={false} style={{ height: "100%" }}>
           <TabList>
+            <Tab>CFG</Tab>
             <Tab>CST</Tab>
             <Tab>AST</Tab>
             <Tab>IR</Tab>
-            <Tab>CFG</Tab>
           </TabList>
-          <TabPanels>
+          <TabPanels style={{ height: "100%", margin: "0px" }}>
+            <TabPanel style={{ height: "100%", padding: "0px" }}>
+              <CfgView></CfgView>
+            </TabPanel>
             <TabPanel>
               <CstView></CstView>
             </TabPanel>

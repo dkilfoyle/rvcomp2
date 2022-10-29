@@ -37,7 +37,6 @@ export const Editor: VFC = () => {
         );
       });
     }
-
     return () => editor?.dispose();
   }, [monacoEl.current]);
 

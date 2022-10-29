@@ -1,10 +1,12 @@
 import * as monaco from "monaco-editor";
 import { WorkerAccessor } from "./setup";
 import { languageID } from "./config";
-import { setCst, setAst, setBril } from "../../../store/ParseState";
+import { setCst, setAst, setBril, setCfg } from "../../../store/ParseState";
 import { CstNode } from "chevrotain";
-import { astToBrilVisitor } from "../../../languages/simpleC/astToBrilVisitor";
+import { astToBrilVisitor } from "../../../languages/bril/astToBrilVisitor";
 import { IAstProgram, IAstResult } from "../../../languages/simpleC/ast";
+import { useStyleConfig } from "@chakra-ui/react";
+import { cfgBuilder } from "../../../languages/bril/cfgBuilder";
 
 export interface ISimpleCLangError {
   startLineNumber: number;
@@ -48,8 +50,9 @@ export default class DiagnosticsAdapter {
     if (wast) {
       setAst(wast);
       const bril = astToBrilVisitor.visit(wast);
-      console.log(bril);
       setBril(bril);
+      const cfg = cfgBuilder.buildProgram(bril);
+      setCfg(cfg);
     }
 
     // get the current model(editor or file) which is only one

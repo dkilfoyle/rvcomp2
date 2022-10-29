@@ -1,21 +1,17 @@
 import React, { useMemo } from "react";
-import { brilEntity } from "../store/ParseState";
+import { brilIR } from "../store/ParseState";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
+import { cfgBuilder } from "../languages/bril/cfgBuilder";
 
-import { Icon } from "@chakra-ui/react";
-import { VscSymbolClass } from "react-icons/vsc";
-import { formatWithOptions } from "util";
-import { brilPrinter } from "../languages/simpleC/astToBrilVisitor";
+const keyValue = (key: string, value: any) => (
+  <div>
+    <span style={{ color: "green" }}>{key}</span>: <span style={{ color: "blue" }}>{`${value}`}</span>
+  </div>
+);
 
 export const BrilView: React.FC = () => {
-  const bril = brilEntity.use();
-
-  const keyValue = (key: string, value: any) => (
-    <div>
-      <span style={{ color: "green" }}>{key}</span>: <span style={{ color: "blue" }}>{`${value}`}</span>
-    </div>
-  );
+  const bril = brilIR.use();
 
   const brilTreeData = useMemo(() => {
     const dumpInstruction = (ins: any) => {
@@ -55,7 +51,7 @@ export const BrilView: React.FC = () => {
     return root;
   }, [bril]);
 
-  console.log(brilPrinter.print(bril));
+  console.log(cfgBuilder.buildProgram(bril));
 
   return (
     <div>
