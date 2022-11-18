@@ -3,7 +3,9 @@ import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import styles from "./Editor.module.css";
 import { setupLanguage } from "./monaco/setup";
 import { examples } from "../../examples/examples";
-import * as Settings from "../../store/Settings";
+// import * as Settings from "../../store/Settings";
+import type { RootState } from "../../store/store";
+import { useSelector, useDispatch } from "react-redux";
 
 // import code from "../../examples/semanticerrors.sc?raw";
 
@@ -11,7 +13,8 @@ export const Editor: VFC = () => {
   const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoEl = useRef(null);
 
-  const filename = Settings.filename.use();
+  // const filename = Settings.filename.use();
+  const filename = useSelector((state: RootState) => state.settings.filename);
 
   useEffect(() => {
     if (editor) {

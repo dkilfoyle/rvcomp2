@@ -38,46 +38,47 @@ const theme = {
   base0F: "#cc6633",
 };
 
-export const UI: React.FC = () => {
-  const cst = cstEntity.use();
-  const ast = astEntity.use();
+const fullHeight = { height: "100%" };
+const fullHeightNoMargin = { height: "100%", margin: "0px", padding: "0px" };
+const fullWindow = { height: "100vh", width: "100vw" };
 
-  const ELEMENT_MAP: { [viewId: string]: JSX.Element } = useMemo(
-    () => ({
-      Code: <Editor></Editor>,
-      Bril: <BrilEditor></BrilEditor>,
-      Menu: <Sidebar></Sidebar>,
-      View: (
-        <Tabs size="sm" variant="enclosed" defaultIndex={0} isLazy={false} style={{ height: "100%" }}>
-          <TabList>
-            <Tab>CFG</Tab>
-            <Tab>CST</Tab>
-            <Tab>AST</Tab>
-            <Tab>IR</Tab>
-          </TabList>
-          <TabPanels style={{ height: "100%", margin: "0px" }}>
-            <TabPanel style={{ height: "100%", padding: "0px" }}>
-              <CfgView></CfgView>
-            </TabPanel>
-            <TabPanel>
-              <CstView></CstView>
-            </TabPanel>
-            <TabPanel>
-              <AstView></AstView>
-            </TabPanel>
-            <TabPanel>
-              <BrilView></BrilView>
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-      ),
-    }),
-    [cst, ast]
-  );
+const ELEMENT_MAP: { [viewId: string]: JSX.Element } = {
+  Code: <Editor></Editor>,
+  Bril: <BrilEditor></BrilEditor>,
+  Menu: <Sidebar></Sidebar>,
+  View: (
+    <Tabs size="sm" variant="enclosed" defaultIndex={0} isLazy={false} style={fullHeight}>
+      <TabList>
+        <Tab>CFG</Tab>
+        <Tab>CST</Tab>
+        <Tab>AST</Tab>
+        <Tab>IR</Tab>
+      </TabList>
+      <TabPanels style={fullHeightNoMargin}>
+        <TabPanel style={fullHeightNoMargin}>
+          <CfgView></CfgView>
+        </TabPanel>
+        <TabPanel>
+          <CstView></CstView>
+        </TabPanel>
+        <TabPanel>
+          <AstView></AstView>
+        </TabPanel>
+        <TabPanel>
+          <BrilView></BrilView>
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
+  ),
+};
+
+export const UI: React.FC = () => {
+  // const cst = cstEntity.use();
+  const ast = astEntity.use();
 
   return (
     <ChakraProvider>
-      <div style={{ width: "100vw", height: "100vh" }}>
+      <div style={fullWindow}>
         <Mosaic<string>
           renderTile={(id, path) => (
             <MosaicWindow<string> path={path} createNode={() => "new"} title={id} toolbarControls={React.Children.toArray([<ExpandButton />])}>

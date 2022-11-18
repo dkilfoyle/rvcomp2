@@ -193,7 +193,7 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   returnStatement(ctx: ReturnStatementCstChildren): IAstReturnStatement {
-    const lhs = this.visit(ctx.additionExpression);
+    const lhs = ctx.additionExpression ? this.visit(ctx.additionExpression) : undefined;
     return { _name: "returnStatement", lhs };
   }
 

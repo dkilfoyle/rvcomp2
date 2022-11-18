@@ -64,7 +64,7 @@ export interface IAstFunctionDeclaration extends IAstDeclaration {
 
 export interface IAstReturnStatement extends IAstStatement {
   _name: "returnStatement";
-  lhs: IAstExpression;
+  lhs?: IAstExpression;
 }
 
 export interface IAstExpression extends IAstNode {

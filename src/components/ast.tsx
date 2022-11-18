@@ -1,13 +1,16 @@
 import React, { useMemo } from "react";
-import { astEntity, cstEntity } from "../store/ParseState";
+// import { astEntity, cstEntity } from "../store/ParseState";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 
 import { Icon } from "@chakra-ui/react";
 import { VscSymbolClass } from "react-icons/vsc";
+import { RootState } from "../store/store";
+import { useSelector } from "react-redux";
 
 export const AstView: React.FC = () => {
-  const ast = astEntity.use();
+  // const ast = astEntity.use();
+  const ast = useSelector((state: RootState) => state.parse.ast);
 
   const astTreeData = useMemo(() => {
     let i = 0;

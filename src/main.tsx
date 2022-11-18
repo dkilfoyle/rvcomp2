@@ -2,11 +2,15 @@ import React from "react";
 import ReactDOM from "react-dom";
 import { UI } from "./pages/ui";
 import "./useWorker";
+import { store } from "./store/store";
+import { Provider } from "react-redux";
 
 ReactDOM.render(
-  <React.StrictMode>
-    <UI></UI>
-  </React.StrictMode>,
+  <Provider store={store}>
+    <React.StrictMode>
+      <UI></UI>
+    </React.StrictMode>
+  </Provider>,
   document.getElementById("root")
 );
 

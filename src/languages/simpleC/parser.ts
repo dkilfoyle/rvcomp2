@@ -184,7 +184,9 @@ class SimpleCParser extends CstParser {
 
   public returnStatement = this.RULE("returnStatement", () => {
     this.CONSUME(tokens.Return);
-    this.SUBRULE(this.additionExpression);
+    this.OPTION(() => {
+      this.SUBRULE(this.additionExpression);
+    });
     this.CONSUME(tokens.SemiColon);
   });
 

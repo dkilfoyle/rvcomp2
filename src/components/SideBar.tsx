@@ -1,7 +1,11 @@
 import { Accordion, AccordionButton, AccordionIcon, AccordionItem, AccordionPanel, Box, Checkbox, VStack } from "@chakra-ui/react";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
-import * as Settings from "../store/Settings";
+// import * as Settings from "../store/Settings";
+import type { RootState } from "../store/store";
+import { useAppDispatch } from "../store/hooks";
+import { useSelector, useDispatch } from "react-redux";
+import { setFilename } from "../store/settingsSlice";
 
 const fileTreeData = [
   {
@@ -30,7 +34,9 @@ const fileTreeData = [
 ];
 
 export const Sidebar = () => {
-  const filename = Settings.filename.use();
+  // const filename = Settings.filename.use();
+  const filename = useSelector((state: RootState) => state.settings.filename);
+  const dispatch = useAppDispatch();
 
   return (
     <Accordion defaultIndex={[0]} allowMultiple size="sm">
@@ -53,7 +59,7 @@ export const Sidebar = () => {
             fieldNames={{ key: "title" }}
             showLine
             onSelect={(keys, info) => {
-              if (!info.node.children) Settings.filename.set(keys[0].toString());
+              if (!info.node.children) dispatch(setFilename(keys[0].toString()));
             }}></Tree>
         </AccordionPanel>
       </AccordionItem>

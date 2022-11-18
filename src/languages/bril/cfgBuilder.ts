@@ -11,10 +11,10 @@ export interface IControlFlowGraphNode {
   level: number;
 }
 
-export type ICFG = Map<string, IControlFlowGraphNode[]>;
+export type ICFG = Record<string, IControlFlowGraphNode[]>;
 
 export class CfgBuilder {
-  public program: ICFG = new Map();
+  public program: ICFG = {};
   public blocks: IControlFlowGraphNode[] = [];
   public cur_block: IControlFlowGraphNode = this.startBlock({});
 
@@ -29,9 +29,9 @@ export class CfgBuilder {
   }
 
   buildProgram(prog: IBrilProgram) {
-    this.program = new Map();
+    this.program = {};
     prog.functions.forEach((fn) => {
-      this.program.set(fn.name, this.buildFunction(fn));
+      this.program[fn.name] = this.buildFunction(fn);
     });
     return this.program;
   }

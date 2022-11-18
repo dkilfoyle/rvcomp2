@@ -1,12 +1,13 @@
 import * as monaco from "monaco-editor";
 import { WorkerAccessor } from "./setup";
 import { languageID } from "./config";
-import { setCst, setAst, setBril, setCfg } from "../../../store/ParseState";
+// import { setCst, setAst, setBril, setCfg } from "../../../store/ParseState";
 import { CstNode } from "chevrotain";
 import { astToBrilVisitor } from "../../../languages/bril/astToBrilVisitor";
 import { IAstProgram, IAstResult } from "../../../languages/simpleC/ast";
-import { useStyleConfig } from "@chakra-ui/react";
 import { cfgBuilder } from "../../../languages/bril/cfgBuilder";
+import { setCst, setAst, setBril, setCfg } from "../../../store/parseSlice";
+import store from "../../../store/store";
 
 export interface ISimpleCLangError {
   startLineNumber: number;
@@ -26,17 +27,19 @@ export interface IValidationResult {
 export default class DiagnosticsAdapter {
   constructor(private worker: WorkerAccessor) {
     const onModelAdd = (model: monaco.editor.IModel): void => {
-      let handle: any;
-      model.onDidChangeContent(() => {
-        // here we are Debouncing the user changes, so everytime a new change is done, we wait 500ms before validating
-        // otherwise if the user is still typing, we cancel the
-        clearTimeout(handle);
-        handle = setTimeout(() => {
-          this.validate(model.uri);
-          // console.log("CST:", cst);
-        }, 500);
-      });
-      this.validate(model.uri);
+      if (model.getLanguageId() == "simpleC") {
+        let handle: any;
+        model.onDidChangeContent(() => {
+          // here we are Debouncing the user changes, so everytime a new change is done, we wait 500ms before validating
+          // otherwise if the user is still typing, we cancel the
+          clearTimeout(handle);
+          handle = setTimeout(() => {
+            this.validate(model.uri);
+            // console.log("CST:", cst);
+          }, 500);
+        });
+        this.validate(model.uri);
+      }
     };
     monaco.editor.onDidCreateModel(onModelAdd);
     monaco.editor.getModels().forEach(onModelAdd);
@@ -46,13 +49,14 @@ export default class DiagnosticsAdapter {
     const worker = await this.worker(resource);
     // call the validate methode proxy from the langaueg service and get errors
     const { errors, cst: wcst, ast: wast } = await worker.doValidation();
-    if (wcst) setCst(wcst);
+    if (wcst) store.dispatch(setCst(wcst));
     if (wast) {
-      setAst(wast);
+      // console.log("validate");
+      store.dispatch(setAst(wast));
       const bril = astToBrilVisitor.visit(wast);
-      setBril(bril);
+      store.dispatch(setBril(bril));
       const cfg = cfgBuilder.buildProgram(bril);
-      setCfg(cfg);
+      store.dispatch(setCfg(cfg));
     }
 
     // get the current model(editor or file) which is only one

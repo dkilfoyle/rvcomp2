@@ -1,8 +1,10 @@
 import React, { useMemo } from "react";
-import { brilIR } from "../store/ParseState";
+// import { brilIR } from "../store/ParseState";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 import { cfgBuilder } from "../languages/bril/cfgBuilder";
+import { RootState } from "../store/store";
+import { useSelector } from "react-redux";
 
 const keyValue = (key: string, value: any) => (
   <div>
@@ -11,7 +13,8 @@ const keyValue = (key: string, value: any) => (
 );
 
 export const BrilView: React.FC = () => {
-  const bril = brilIR.use();
+  // const bril = brilIR.use();
+  const bril = useSelector((state: RootState) => state.parse.bril);
 
   const brilTreeData = useMemo(() => {
     const dumpInstruction = (ins: any) => {
@@ -48,10 +51,11 @@ export const BrilView: React.FC = () => {
         };
       }),
     };
+    console.log("brilTreeDataMemo", bril);
     return root;
   }, [bril]);
 
-  console.log(cfgBuilder.buildProgram(bril));
+  // console.log(cfgBuilder.buildProgram(bril));
 
   return (
     <div>

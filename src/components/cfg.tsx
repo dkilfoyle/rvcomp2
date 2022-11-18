@@ -1,17 +1,24 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { DataSet, Options } from "vis-network";
-import { brilIR, cfg, selectedFunctionName, setSelectedCfgNodeName } from "../store/ParseState";
+// import { brilIR, cfg, selectedFunctionName, setSelectedCfgNodeName } from "../store/ParseState";
 import { Network } from "vis-network";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
+import { setCfgNodeName } from "../store/settingsSlice";
+import { useAppDispatch } from "../store/hooks";
 
 export const CfgView: React.FC = () => {
-  const _cfg = cfg.use();
-  const _selectedFunctionName = selectedFunctionName.use();
+  // const _cfg = cfg.use();
+  // const _selectedFunctionName = selectedFunctionName.use();
+  const cfg = useSelector((state: RootState) => state.parse.cfg);
+  const functionName = useSelector((state: RootState) => state.settings.cfg.functionName);
+  const dispatch = useAppDispatch();
 
   const visJsRef = useRef<HTMLDivElement>(null);
   let network: Network;
 
   const cfgData = useMemo(() => {
-    const fn = _cfg.get(_selectedFunctionName);
+    const fn = cfg[functionName];
     if (!fn)
       return {
         nodes: [{ id: 1, label: "No Main Fn" }],
@@ -32,7 +39,7 @@ export const CfgView: React.FC = () => {
     });
 
     return { nodes, edges };
-  }, [_cfg, _selectedFunctionName]);
+  }, [cfg, functionName]);
 
   useEffect(() => {
     const options: Options = {
@@ -54,7 +61,7 @@ export const CfgView: React.FC = () => {
     };
     if (visJsRef.current) network = new Network(visJsRef.current, cfgData, options);
     network.on("selectNode", (params) => {
-      setSelectedCfgNodeName(params.nodes[0]);
+      dispatch(setCfgNodeName(params.nodes[0]));
       // console.log("selectNode", params);
     });
     network?.fit();

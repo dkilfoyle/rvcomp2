@@ -27,7 +27,7 @@ export const setBril = (newbril: IBrilProgram) => {
 };
 
 // CFG
-export const cfg = entity(new Map() as ICFG);
+export const cfg = entity<ICFG>({});
 export const selectedCfgNodeName = entity<string>("");
 export const selectedFunctionName = entity<string>("main");
 

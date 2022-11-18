@@ -42,7 +42,7 @@ class AstToBrilVisitor {
     const args = node.params.map((vd) => ({ name: vd.id, type: vd.type as IBrilType }));
     this.builder.buildFunction(node.id, args, node.type as IBrilType);
 
-    if (node.block) node.block.statements.forEach((s) => this.statement(s));
+    if (node.block && node.block.statements) node.block.statements.forEach((s) => this.statement(s));
   }
 
   // ==========================================================================================================
@@ -139,8 +139,8 @@ class AstToBrilVisitor {
   }
 
   returnStatement(node: IAstReturnStatement) {
-    const lhs = this.expression(node.lhs);
-    this.builder.buildEffect("ret", [lhs.dest]);
+    const lhs = node.lhs ? this.expression(node.lhs) : undefined;
+    this.builder.buildEffect("ret", lhs ? [lhs.dest] : []);
   }
 
   // ==========================================================================================================
@@ -178,7 +178,8 @@ class AstToBrilVisitor {
             n.type as IBrilType
           );
         }
-
+      case "invalidExpression":
+        return this.builder.buildConst(0, "int");
       default:
         throw new Error(node.toString());
     }
