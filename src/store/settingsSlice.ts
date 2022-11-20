@@ -11,7 +11,7 @@ interface SettingsState {
 }
 
 const initialState: SettingsState = {
-  filename: "helloint.sc",
+  filename: "lvn.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

@@ -263,12 +263,13 @@ class CstVisitor extends CstBaseVisitor {
 
   binaryExpression(ctx: AdditionExpressionCstChildren | MultiplicationExpressionCstChildren) {
     const typeError = (node: any): IAstInvalidExpression => {
+      debugger;
       this.errors.push({ ...node.pos, code: "2", message: "Arthrimetic operand must be of type int" });
       return { _name: "invalidExpression", type: "int" };
     };
 
     let lhs = this.visit(ctx.operands[0]);
-    if (lhs.type !== "int") return typeError(lhs);
+    // if (lhs.type !== "int") return typeError(lhs);
 
     for (let i = 1; i < ctx.operands.length; i++) {
       const rhs = this.visit(ctx.operands[i]);
@@ -314,7 +315,7 @@ class CstVisitor extends CstBaseVisitor {
     const fndecl: IAstIdentifierExpression = this.visit(ctx.identifierExpression);
     const params = ctx.expressionList ? this.visit(ctx.expressionList).params : [];
     this.checkParams(fndecl.id, fndecl.pos!, params);
-    return { _name: "functionCallExpression", id: fndecl.id, params: params.params, type: fndecl.type };
+    return { _name: "functionCallExpression", id: fndecl.id, params, type: fndecl.type, pos: fndecl.pos };
   }
 
   identifierExpression(ctx: IdentifierExpressionCstChildren) {

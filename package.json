@@ -17,6 +17,7 @@
     "@emotion/styled": "^11.10.4",
     "@reduxjs/toolkit": "^1.9.0",
     "chevrotain": "^10.3.0",
+    "console-feed": "^3.3.0",
     "framer-motion": "^6.5.1",
     "monaco-editor": "^0.34.0",
     "rc-tree": "^5.7.0",

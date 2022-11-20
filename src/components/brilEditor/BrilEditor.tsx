@@ -7,7 +7,7 @@ import { brilPrinter } from "../../languages/bril/BrilPrinter";
 import { RootState } from "../../store/store";
 import { useSelector } from "react-redux";
 import { Box, Button, ButtonGroup, VStack } from "@chakra-ui/react";
-import { dce } from "../../languages/bril/BrilOptimiser";
+import { dce, lvn } from "../../languages/bril/BrilOptimiser";
 import { setupLanguage } from "./monaco/setup";
 // import code from "../../examples/semanticerrors.sc?raw";
 
@@ -84,8 +84,11 @@ export const BrilEditor: VFC = () => {
   }, [monacoEl.current]);
 
   const doDCE = useCallback(() => {
-    console.log("click", cfg);
     dce(cfg);
+  }, [cfg]);
+
+  const doLVN = useCallback(() => {
+    lvn(cfg);
   }, [cfg]);
 
   return (
@@ -93,6 +96,7 @@ export const BrilEditor: VFC = () => {
       <Box p="6px">
         <ButtonGroup size="xs">
           <Button onClick={doDCE}>DCE</Button>
+          <Button onClick={doLVN}>LVN</Button>
         </ButtonGroup>
       </Box>
       <div className={styles.Editor} ref={monacoEl}></div>

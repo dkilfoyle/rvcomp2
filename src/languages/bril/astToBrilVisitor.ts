@@ -155,7 +155,7 @@ class AstToBrilVisitor {
         return this.builder.buildConst(n.value, n.type);
       case "identifierExpression": // ie an identifier
         n = node as IAstIdentifierExpression;
-        return this.builder.buildValue("id", n.type as IBrilType, [n.id]);
+        return { op: "id", dest: n.id, args: [], type: "int" }; // this.builder.buildValue("id", n.type as IBrilType, [n.id]);
       case "binaryExpression":
         n = node as IAstBinaryExpression;
         lhs = this.expression(n.lhs);

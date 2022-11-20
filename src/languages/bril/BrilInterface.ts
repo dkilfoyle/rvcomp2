@@ -20,6 +20,7 @@ export interface IBrilValueOperation extends IBrilOp {
   op: "add" | "sub" | "mul" | "div" | "call" | "id" | "nop" | "phi" | "eq" | "lt" | "gt" | "ge" | "le" | "not" | "and" | "or";
   dest: string;
   type: IBrilType;
+  args: string[];
 }
 
 export type IBrilValueOpCode = IBrilValueOperation["op"];
