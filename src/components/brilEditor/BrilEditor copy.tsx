@@ -14,7 +14,7 @@ import { setupLanguage } from "./monaco/setup";
 let decorations: monaco.editor.IEditorDecorationsCollection;
 
 export const BrilEditor: VFC = () => {
-  const [editor, setEditor] = useState<monaco.editor.IStandaloneDiffEditor | null>(null);
+  const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoEl = useRef(null);
 
   // const _brilTxt = brilTxt.use();
@@ -25,17 +25,11 @@ export const BrilEditor: VFC = () => {
 
   const cfg = useSelector((state: RootState) => state.parse.cfg);
   const bril = useSelector((state: RootState) => state.parse.bril);
-  const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
   const cfgNodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
   const cfgFunctionName = useSelector((state: RootState) => state.settings.cfg.functionName);
-
   const brilTxt = useMemo(() => {
     return brilPrinter.print(bril);
   }, [bril]);
-
-  const brilTxtOptim = useMemo(() => {
-    return brilPrinter.print(brilOptim);
-  }, [brilOptim]);
 
   const selectedCfgNode = useMemo(() => {
     const fn = cfg[cfgFunctionName];
@@ -71,16 +65,20 @@ export const BrilEditor: VFC = () => {
 
   useEffect(() => {
     if (editor) {
-      const originalBril = monaco.editor.createModel(brilTxt);
-      const optimBril = monaco.editor.createModel(brilTxtOptim);
-      editor.setModel({ original: originalBril, modified: optimBril });
+      editor.getModel()?.setValue(brilTxt);
     }
-  }, [brilTxt, brilTxtOptim]);
+  }, [brilTxt]);
 
   useEffect(() => {
     if (monacoEl && !editor) {
       setupLanguage();
-      setEditor(monaco.editor.createDiffEditor(monacoEl.current!));
+      setEditor(
+        monaco.editor.create(monacoEl.current!, {
+          value: brilTxt,
+          language: "bril",
+          automaticLayout: true,
+        })
+      );
     }
     return () => editor?.dispose();
   }, [monacoEl.current]);

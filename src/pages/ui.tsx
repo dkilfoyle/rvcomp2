@@ -1,6 +1,6 @@
 import { Editor } from "../components/simpleCEditor/Editor";
 import { ExpandButton, Mosaic, MosaicWindow } from "react-mosaic-component";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "react-mosaic-component/react-mosaic-component.css";
 import "@blueprintjs/core/lib/css/blueprint.css";
 import "@blueprintjs/icons/lib/css/blueprint-icons.css";
@@ -17,6 +17,9 @@ import { BrilView } from "../components/bril";
 import { BrilEditor } from "../components/brilEditor/BrilEditor";
 import { CfgView } from "../components/cfg";
 import { Console, Hook, Unhook } from "console-feed";
+
+import "overlayscrollbars/overlayscrollbars.css";
+import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 
 const theme = {
   scheme: "monokai",
@@ -39,7 +42,8 @@ const theme = {
   base0F: "#cc6633",
 };
 
-const fullHeight = { height: "100%" };
+const fullHeight = { maxHeight: "100%" };
+const fullHeight2 = { height: "100%", display: "flex", flexDirection: "column" };
 const fullHeightNoMargin = { height: "100%", margin: "0px", padding: "0px" };
 const fullWindow = { height: "100vh", width: "100vw" };
 
@@ -48,20 +52,22 @@ export const UI: React.FC = () => {
   // const ast = astEntity.use();
   const [logs, setLogs] = useState<any[]>([]);
 
+  const consoleScollRef = useRef<OverlayScrollbarsComponentRef>(null);
+
   const ELEMENT_MAP = useMemo<{ [viewId: string]: JSX.Element }>(
     () => ({
       Code: <Editor></Editor>,
       Bril: <BrilEditor></BrilEditor>,
       Menu: <Sidebar></Sidebar>,
       View: (
-        <Tabs size="sm" variant="enclosed" defaultIndex={0} isLazy={false} style={fullHeight}>
+        <Tabs size="sm" variant="enclosed" defaultIndex={0} isLazy={false} style={fullHeight2}>
           <TabList>
             <Tab>CFG</Tab>
             <Tab>CST</Tab>
             <Tab>AST</Tab>
             <Tab>IR</Tab>
           </TabList>
-          <TabPanels style={fullHeightNoMargin}>
+          <TabPanels style={{ overflowY: "auto", height: "calc(100% - 30px)" }}>
             <TabPanel style={fullHeightNoMargin}>
               <CfgView></CfgView>
             </TabPanel>
@@ -77,9 +83,13 @@ export const UI: React.FC = () => {
           </TabPanels>
         </Tabs>
       ),
-      Console: <Console logs={logs} variant="light" filter={["info"]}></Console>,
+      Console: (
+        <OverlayScrollbarsComponent defer style={fullHeight}>
+          <Console logs={logs} variant="light" filter={["info"]}></Console>
+        </OverlayScrollbarsComponent>
+      ),
     }),
-    [logs]
+    [logs, consoleScollRef]
   );
 
   useEffect(() => {

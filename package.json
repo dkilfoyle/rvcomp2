@@ -20,6 +20,8 @@
     "console-feed": "^3.3.0",
     "framer-motion": "^6.5.1",
     "monaco-editor": "^0.34.0",
+    "overlayscrollbars": "^2.0.1",
+    "overlayscrollbars-react": "^0.5.0",
     "rc-tree": "^5.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

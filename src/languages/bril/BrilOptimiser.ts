@@ -1,4 +1,4 @@
-import { setBrilFunctionInstructions, setCfgBlockInstructions } from "../../store/parseSlice";
+import { setBrilOptimFunctionInstructions, setCfgBlockInstructions } from "../../store/parseSlice";
 import store from "../../store/store";
 import { IBrilConst, IBrilInstructionOrLabel, IBrilValueInstruction, IBrilValueOperation } from "./BrilInterface";
 import { ICFG, IControlFlowGraphNode } from "./cfgBuilder";
@@ -55,7 +55,7 @@ export const dce = (cfg: ICFG) => {
     }
     if (dceRemovedInsCount > 0) {
       console.info(`  Function ${fn}: Removed ${dceRemovedInsCount} instructions in ${dceIterations} iterations`);
-      store.dispatch(setBrilFunctionInstructions({ fn, instructions: flattenCfgInstructions(fn) }));
+      store.dispatch(setBrilOptimFunctionInstructions({ fn, instructions: flattenCfgInstructions(fn) }));
     } else console.info(`  Function ${fn}: No dead code detected`);
   });
 };
@@ -65,7 +65,7 @@ interface ILVNValue {
   args?: number[];
 }
 
-interface ILVNTableEntry {
+export interface ILVNTableEntry {
   value: ILVNValue;
   variable: string;
 }
@@ -80,10 +80,10 @@ export const lvn = (cfg: ICFG) => {
   console.info("Optimization: Performing LVN...");
   Object.keys(cfg).forEach((fn) => {
     const blocks = store.getState().parse.cfg[fn];
-    blocks.forEach((block, i) => {
+    blocks.forEach((block, blockIndex) => {
       const new_instructions: IBrilInstructionOrLabel[] = [];
       const lvntable: ILVNTableEntry[] = [];
-      const lookup: Record<string, number> = {};
+      const lvnlookup: Record<string, number> = {};
       for (let instruction of block.instructions) {
         if ("dest" in instruction) {
           switch (instruction.op) {
@@ -93,12 +93,12 @@ export const lvn = (cfg: ICFG) => {
                 const ti = lvntable.findIndex((te) => te.value.op === `const ${ins.value}`);
                 if (ti > -1) {
                   // this const value already exists so use that variable instead
-                  lookup[ins.dest] = ti;
-                  console.info(`  ${fn}: block ${i}: dropped duplicate const `, ins);
+                  lvnlookup[ins.dest] = ti;
+                  console.info(`  ${fn}: block ${blockIndex}: dropped duplicate const `, ins);
                 } else {
                   // a new const value so add to lvntable
                   lvntable.push({ value: { op: `const ${ins.value}` }, variable: ins.dest });
-                  lookup[ins.dest] = lvntable.length - 1;
+                  lvnlookup[ins.dest] = lvntable.length - 1;
                   new_instructions.push({ ...ins });
                 }
               }
@@ -106,25 +106,33 @@ export const lvn = (cfg: ICFG) => {
             case "add":
             case "mul": {
               const ins = instruction as IBrilValueOperation;
-              const args = ins.args.map((arg) => lookup[arg]).sort((a, b) => a - b); // sort so that a+b is same as b+a
+              const args = ins.args.map((arg) => lvnlookup[arg]).sort((a, b) => a - b); // sort so that a+b is same as b+a
               const op = `${ins.op} ${args[0]} ${args[1]}`;
               const ti = lvntable.findIndex((te) => te.value.op === op);
               if (ti > -1) {
                 // this same expression already exists so use that variable instead
                 new_instructions.push({ op: "id", args: [lvntable[ti].variable], dest: ins.dest, type: ins.type });
-                lookup[ins.dest] = ti;
+                lvnlookup[ins.dest] = ti;
               } else {
                 // a new expression value so add to lvntable
                 lvntable.push({ value: { op }, variable: ins.dest });
-                lookup[ins.dest] = lvntable.length - 1;
+                lvnlookup[ins.dest] = lvntable.length - 1;
                 new_instructions.push({ ...ins, args: [lvntable[args[0]].variable, lvntable[args[1]].variable] });
               }
             }
           }
         } else new_instructions.push({ ...instruction });
       }
-      console.info(`  ${fn}: block ${i}: Instruction count ${block.instructions.length} => ${new_instructions.length}`, lvntable);
+      console.info(`  ${fn}: block ${blockIndex}: Instruction count ${block.instructions.length} => ${new_instructions.length}`, lvntable);
       // todo updateCfgBlock with new_instructions, lvntable, lookup
+      store.dispatch(setCfgBlockInstructions({ fn, blockIndex, instructions: new_instructions, lvntable, lvnlookup }));
     });
+    const flattenedInstructions = flattenCfgInstructions(fn);
+    console.info(
+      `  ${fn}: Instruction count ${store.getState().parse.bril.functions.find((f) => f.name == fn)?.instrs.length} => ${
+        flattenedInstructions.length
+      }`
+    );
+    store.dispatch(setBrilOptimFunctionInstructions({ fn, instructions: flattenedInstructions }));
   });
 };

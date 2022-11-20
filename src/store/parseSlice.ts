@@ -7,11 +7,14 @@ import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
 import { BrilBuilder } from "../languages/bril/BrilBuilder";
+import { AnyTxtRecord } from "dns";
+import { ILVNTableEntry } from "../languages/bril/BrilOptimiser";
 
 interface ParseState {
   cst: CstNode;
   ast: IAstProgram;
   bril: IBrilProgram;
+  brilOptim: IBrilProgram;
   cfg: ICFG;
 }
 
@@ -19,6 +22,7 @@ const initialState: ParseState = {
   cst: { name: "root", children: {} },
   ast: { _name: "root", functionDeclarations: [] },
   bril: { functions: [] },
+  brilOptim: { functions: [] },
   cfg: {},
 };
 
@@ -26,6 +30,8 @@ interface ICfgBlockUpdate {
   fn: string;
   blockIndex: number;
   instructions: IBrilInstructionOrLabel[];
+  lvntable?: ILVNTableEntry[];
+  lvnlookup?: Record<string, number>;
 }
 
 interface IBrilFunctionUpdate {
@@ -47,9 +53,13 @@ export const parseSlice = createSlice({
     },
     setBril: (state: ParseState, action: PayloadAction<IBrilProgram>) => {
       state.bril = action.payload;
+      state.brilOptim = action.payload;
     },
-    setBrilFunctionInstructions: (state: ParseState, action: PayloadAction<IBrilFunctionUpdate>) => {
-      const fn = state.bril.functions.find((f) => f.name == action.payload.fn);
+    setBrilOptim: (state: ParseState, action: PayloadAction<IBrilProgram>) => {
+      state.brilOptim = action.payload;
+    },
+    setBrilOptimFunctionInstructions: (state: ParseState, action: PayloadAction<IBrilFunctionUpdate>) => {
+      const fn = state.brilOptim.functions.find((f) => f.name == action.payload.fn);
       if (!fn) throw new Error(`Function ${action.payload.fn} not found in bril`);
       fn.instrs = [...action.payload.instructions];
     },
@@ -58,19 +68,25 @@ export const parseSlice = createSlice({
     },
     setCfgBlockInstructions: (state: ParseState, action: PayloadAction<ICfgBlockUpdate>) => {
       state.cfg[action.payload.fn][action.payload.blockIndex].instructions = action.payload.instructions;
-      state.cfg[action.payload.fn][action.payload.blockIndex].keyStart = action.payload.instructions[0].key || -1;
-      state.cfg[action.payload.fn][action.payload.blockIndex].keyEnd =
-        action.payload.instructions[action.payload.instructions.length - 1].key || -1;
+      if (action.payload.instructions.length > 0) {
+        state.cfg[action.payload.fn][action.payload.blockIndex].keyStart = action.payload.instructions[0].key || -1;
+        state.cfg[action.payload.fn][action.payload.blockIndex].keyEnd =
+          action.payload.instructions[action.payload.instructions.length - 1].key || -1;
+      } else {
+        state.cfg[action.payload.fn][action.payload.blockIndex].keyStart = -1;
+        state.cfg[action.payload.fn][action.payload.blockIndex].keyEnd = -1;
+      }
     },
   },
 });
 
-export const { setCst, setAst, setBril, setCfg, setCfgBlockInstructions, setBrilFunctionInstructions } = parseSlice.actions;
+export const { setCst, setAst, setBril, setCfg, setCfgBlockInstructions, setBrilOptimFunctionInstructions } = parseSlice.actions;
 
 // Other code such as selectors can use the imported `RootState` type
 export const selectCst = (state: RootState) => state.parse.cst;
 export const selectAst = (state: RootState) => state.parse.ast;
 export const selectBril = (state: RootState) => state.parse.bril;
+export const selectBrilOptim = (state: RootState) => state.parse.brilOptim;
 export const selectCfg = (state: RootState) => state.parse.cfg;
 
 export default parseSlice.reducer;
