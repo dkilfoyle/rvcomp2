@@ -63,10 +63,14 @@ class AstToBrilVisitor {
       case "forStatement":
         this.forStatement(node as IAstForStatement);
         break;
-      case "expressionStatement":
-        this.inExpressionStatement = true;
-        this.expression(node as IAstExpression);
-        this.inExpressionStatement = false;
+      // case "expressionStatement":
+      case "functionCallExpression":
+        const n = node as IAstFunctionCallExpression;
+        const params = n.params ? n.params.map((p) => this.expression(p)) : [];
+        this.builder.buildCall(
+          "@" + n.id,
+          params.map((p) => p.dest)
+        );
         break;
       case "returnStatement":
         this.returnStatement(node as IAstReturnStatement);
@@ -75,6 +79,7 @@ class AstToBrilVisitor {
         this.blockStatement(node as IAstBlock);
         break;
       default:
+        debugger;
         this.builder.nop(node._name);
         break;
     }
@@ -164,20 +169,11 @@ class AstToBrilVisitor {
       case "functionCallExpression":
         n = node as IAstFunctionCallExpression;
         const params = n.params ? n.params.map((p) => this.expression(p)) : [];
-        if (this.inExpressionStatement) {
-          this.builder.buildCall(
-            n.id,
-            params.map((p) => p.dest),
-            n.type as IBrilType
-          );
-          return this.builder.buildConst(0, "int");
-        } else {
-          return this.builder.buildCall(
-            n.id,
-            params.map((p) => p.dest),
-            n.type as IBrilType
-          );
-        }
+        return this.builder.buildCall(
+          n.id,
+          params.map((p) => p.dest),
+          n.type as IBrilType
+        );
       case "invalidExpression":
         return this.builder.buildConst(0, "int");
       default:

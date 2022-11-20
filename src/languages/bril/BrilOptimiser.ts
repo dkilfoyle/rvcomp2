@@ -1,6 +1,6 @@
 import { setBrilOptimFunctionInstructions, setCfgBlockInstructions } from "../../store/parseSlice";
 import store from "../../store/store";
-import { IBrilConst, IBrilInstructionOrLabel, IBrilValueInstruction, IBrilValueOperation } from "./BrilInterface";
+import { IBrilConst, IBrilEffectOperation, IBrilInstructionOrLabel, IBrilValueInstruction, IBrilValueOperation } from "./BrilInterface";
 import { ICFG, IControlFlowGraphNode } from "./cfgBuilder";
 
 let dceRemovedInsCount = 0;
@@ -103,25 +103,40 @@ export const lvn = (cfg: ICFG) => {
                 }
               }
               break;
-            case "add":
-            case "mul": {
-              const ins = instruction as IBrilValueOperation;
-              const args = ins.args.map((arg) => lvnlookup[arg]).sort((a, b) => a - b); // sort so that a+b is same as b+a
-              const op = `${ins.op} ${args[0]} ${args[1]}`;
-              const ti = lvntable.findIndex((te) => te.value.op === op);
-              if (ti > -1) {
-                // this same expression already exists so use that variable instead
-                new_instructions.push({ op: "id", args: [lvntable[ti].variable], dest: ins.dest, type: ins.type });
-                lvnlookup[ins.dest] = ti;
-              } else {
-                // a new expression value so add to lvntable
-                lvntable.push({ value: { op }, variable: ins.dest });
-                lvnlookup[ins.dest] = lvntable.length - 1;
-                new_instructions.push({ ...ins, args: [lvntable[args[0]].variable, lvntable[args[1]].variable] });
+            // todo: case "id": copy propogation detection
+            default:
+              {
+                const ins = instruction as IBrilValueOperation;
+                let args = ins.args.map((arg) => lvnlookup[arg]);
+                if (ins.op == "add" || ins.op == "mul") args = args.sort((a, b) => a - b); // sort so that a+b is same as b+a
+                const op = `${ins.op} ${args[0]} ${args[1]}`;
+                const ti = lvntable.findIndex((te) => te.value.op === op);
+                if (ti > -1) {
+                  // this same expression already exists so use that variable instead
+                  new_instructions.push({ op: "id", args: [lvntable[ti].variable], dest: ins.dest, type: ins.type });
+                  lvnlookup[ins.dest] = ti;
+                } else {
+                  // a new expression value so add to lvntable
+                  lvntable.push({ value: { op }, variable: ins.dest });
+                  lvnlookup[ins.dest] = lvntable.length - 1;
+                  new_instructions.push({ ...ins, args: args.map((arg) => lvntable[arg].variable) });
+                }
               }
-            }
+              break;
           }
-        } else new_instructions.push({ ...instruction });
+        } else {
+          if ("args" in instruction) {
+            // effect operation
+            const ins = instruction as IBrilEffectOperation;
+            new_instructions.push({
+              ...instruction,
+              args: (ins.args || []).map((arg) => lvnlookup[arg]).map((index) => lvntable[index].variable),
+            });
+          } else {
+            // label
+            new_instructions.push({ ...instruction });
+          }
+        }
       }
       console.info(`  ${fn}: block ${blockIndex}: Instruction count ${block.instructions.length} => ${new_instructions.length}`, lvntable);
       // todo updateCfgBlock with new_instructions, lvntable, lookup

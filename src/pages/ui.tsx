@@ -85,7 +85,19 @@ export const UI: React.FC = () => {
       ),
       Console: (
         <OverlayScrollbarsComponent defer style={fullHeight}>
-          <Console logs={logs} variant="light" filter={["info"]}></Console>
+          <Console
+            logs={logs}
+            variant="light"
+            filter={["info"]}
+            styles={{
+              BASE_FONT_SIZE: 10,
+              BASE_LINE_HEIGHT: 0.8,
+              LOG_INFO_ICON: "",
+              LOG_ICON_WIDTH: 0,
+              TREENODE_FONT_SIZE: 8,
+              BASE_BACKGROUND_COLOR: "white",
+              LOG_BACKGROUND: "white",
+            }}></Console>
         </OverlayScrollbarsComponent>
       ),
     }),

@@ -80,7 +80,7 @@ export const BrilEditor: VFC = () => {
   useEffect(() => {
     if (monacoEl && !editor) {
       setupLanguage();
-      setEditor(monaco.editor.createDiffEditor(monacoEl.current!));
+      setEditor(monaco.editor.createDiffEditor(monacoEl.current!, { automaticLayout: true }));
     }
     return () => editor?.dispose();
   }, [monacoEl.current]);
