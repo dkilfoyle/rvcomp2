@@ -6,9 +6,7 @@ import { IAstProgram } from "../languages/simpleC/ast";
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
-import { BrilBuilder } from "../languages/bril/BrilBuilder";
-import { AnyTxtRecord } from "dns";
-import { ILVNTableEntry } from "../languages/bril/BrilOptimiser";
+import { LVNTable } from "../languages/bril/BrilOptimiser";
 
 interface ParseState {
   cst: CstNode;
@@ -30,7 +28,7 @@ interface ICfgBlockUpdate {
   fn: string;
   blockIndex: number;
   instructions: IBrilInstructionOrLabel[];
-  lvntable?: ILVNTableEntry[];
+  lvntable?: LVNTable;
   lvnlookup?: Record<string, number>;
 }
 

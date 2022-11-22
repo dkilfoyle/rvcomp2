@@ -1,3 +1,4 @@
+import { timeStamp } from "console";
 import { setBrilOptimFunctionInstructions, setCfgBlockInstructions } from "../../store/parseSlice";
 import store from "../../store/store";
 import { IBrilConst, IBrilEffectOperation, IBrilInstructionOrLabel, IBrilValueInstruction, IBrilValueOperation } from "./BrilInterface";
@@ -60,21 +61,102 @@ export const dce = (cfg: ICFG) => {
   });
 };
 
-interface ILVNValue {
+class LVNValue {
   op: string;
-  args?: number[];
+  args: number[];
+  constructor(op: string, args: number[] = []) {
+    this.op = op;
+    this.args = args;
+  }
+  toString() {
+    if (this.op == "const") return `${this.op} ${this.args[0]}`;
+    else return `${this.op} ${this.args.map((arg) => "#" + arg).join(" ")}`;
+  }
 }
 
-export interface ILVNTableEntry {
-  value: ILVNValue;
-  variable: string;
+export class LVNTable {
+  rows: { value: LVNValue; canonvar: string; constval?: number }[];
+  var2num: Record<string, number>;
+  constructor() {
+    this.rows = [];
+    this.var2num = {};
+  }
+  addVar(varname: string, num: number) {
+    this.var2num[varname] = num;
+  }
+  addValue(value: LVNValue, canonvar: string) {
+    if (this.hasValue(value)) throw new Error("LVNTable already has" + value.toString());
+    this.rows.push({ value, canonvar });
+    this.addVar(canonvar, this.rows.length - 1);
+    return this.rows.length - 1;
+  }
+  hasValue(value: LVNValue) {
+    return this.rows.some((r) => r.value.toString() == value.toString());
+  }
+  value2num(value: LVNValue) {
+    if (value.op == "id") return value.args[0]; // use the underlying value number
+    return this.rows.findIndex((r) => r.value.toString() == value.toString());
+  }
+  num2canonvar(num: number) {
+    return this.rows[num].canonvar;
+  }
+  instruction2value(instruction: IBrilValueInstruction) {
+    let args = "args" in instruction ? instruction.args : [];
+    let argsNum = args.map((arg) => this.var2num[arg]);
+    if (instruction.op == "add" || instruction.op == "mul") argsNum.sort((a, b) => a - b);
+    return new LVNValue(instruction.op, argsNum);
+  }
+  isConst(num: number) {
+    return typeof this.rows[num].constval !== "undefined";
+  }
+  num2const(num: number) {
+    return this.rows[num].constval;
+  }
+  var2canonvar(arg: string) {
+    return this.num2canonvar(this.var2num[arg]);
+  }
+  vars2canonvars(args: string[]) {
+    return args.map((arg) => this.var2canonvar(arg));
+  }
 }
 
 // lvntable
-// index | value      | variable
-// ------|------------|---------
-// 0     | const 6    | a
-// 1     | add #1, #2 | sum1
+// index | value      | canonvar | constval
+// ------|------------|----------|-----------
+// 0     | const 6    | a        | 6
+// 1     | add #1, #2 | sum1     |
+
+const read_first = (instructions: IBrilInstructionOrLabel[]) => {
+  const read = new Set<string>();
+  const written = new Set<string>();
+  for (let instr of instructions) {
+    if ("args" in instr) {
+      instr.args?.forEach((arg) => {
+        if (!written.has(arg)) read.add(arg);
+      });
+    }
+    if ("dest" in instr) written.add(instr.dest);
+  }
+  return read;
+};
+
+const last_writes = (instructions: IBrilInstructionOrLabel[]) => {
+  const seen = new Set<string>();
+  const out = new Array<boolean>(instructions.length);
+  [...instructions].reverse().forEach((instr, index) => {
+    if ("dest" in instr) {
+      if (seen.has(instr.dest) == false) {
+        out[instructions.length - 1 - index] = true;
+        seen.add(instr.dest);
+      }
+    }
+  });
+  return out;
+};
+
+const fold = (lvntable: LVNTable, value: LVNValue) => {
+  return undefined;
+};
 
 export const lvn = (cfg: ICFG) => {
   console.info("Optimization: Performing LVN...");
@@ -82,65 +164,72 @@ export const lvn = (cfg: ICFG) => {
     const blocks = store.getState().parse.cfg[fn];
     blocks.forEach((block, blockIndex) => {
       const new_instructions: IBrilInstructionOrLabel[] = [];
-      const lvntable: ILVNTableEntry[] = [];
-      const lvnlookup: Record<string, number> = {};
-      for (let instruction of block.instructions) {
-        if ("dest" in instruction) {
-          switch (instruction.op) {
-            case "const":
-              {
-                const ins = instruction as IBrilConst;
-                const ti = lvntable.findIndex((te) => te.value.op === `const ${ins.value}`);
-                if (ti > -1) {
-                  // this const value already exists so use that variable instead
-                  lvnlookup[ins.dest] = ti;
-                  console.info(`  ${fn}: block ${blockIndex}: dropped duplicate const `, ins);
-                } else {
-                  // a new const value so add to lvntable
-                  lvntable.push({ value: { op: `const ${ins.value}` }, variable: ins.dest });
-                  lvnlookup[ins.dest] = lvntable.length - 1;
-                  new_instructions.push({ ...ins });
-                }
-              }
-              break;
-            // todo: case "id": copy propogation detection
-            default:
-              {
-                const ins = instruction as IBrilValueOperation;
-                let args = ins.args.map((arg) => lvnlookup[arg]);
-                if (ins.op == "add" || ins.op == "mul") args = args.sort((a, b) => a - b); // sort so that a+b is same as b+a
-                const op = `${ins.op} ${args[0]} ${args[1]}`;
-                const ti = lvntable.findIndex((te) => te.value.op === op);
-                if (ti > -1) {
-                  // this same expression already exists so use that variable instead
-                  new_instructions.push({ op: "id", args: [lvntable[ti].variable], dest: ins.dest, type: ins.type });
-                  lvnlookup[ins.dest] = ti;
-                } else {
-                  // a new expression value so add to lvntable
-                  lvntable.push({ value: { op }, variable: ins.dest });
-                  lvnlookup[ins.dest] = lvntable.length - 1;
-                  new_instructions.push({ ...ins, args: args.map((arg) => lvntable[arg].variable) });
-                }
-              }
-              break;
-          }
-        } else {
-          if ("args" in instruction) {
-            // effect operation
-            const ins = instruction as IBrilEffectOperation;
-            new_instructions.push({
-              ...instruction,
-              args: (ins.args || []).map((arg) => lvnlookup[arg]).map((index) => lvntable[index].variable),
-            });
-          } else {
-            // label
-            new_instructions.push({ ...instruction });
+      const lvntable = new LVNTable();
+      const _last_writes = last_writes(block.instructions);
+
+      // add as input values all variabes that are read before written in this block
+      // these will be variables that have come from function input or previous blocks
+      read_first(block.instructions).forEach((varname) => {
+        lvntable.addValue(new LVNValue("input"), varname);
+      });
+
+      block.instructions.forEach((instr, instrIndex) => {
+        let value;
+        if ("dest" in instr && "args" in instr && instr.op != "call") {
+          // if non-call non-const value instruction with args
+          value = lvntable.instruction2value(instr);
+          const num = lvntable.value2num(value);
+          if (num != -1) {
+            // if canonical value already exists
+            // link instr.dest to num
+            lvntable.addVar(instr.dest, num);
+
+            if (lvntable.isConst(num)) {
+              // replace this instruction with the canonical const
+              // eg original instruction was y=x but x is a const so replace with y=5
+              new_instructions.push({ ...instr, op: "const", value: lvntable.num2const(num), args: undefined } as IBrilConst);
+            } else {
+              // replace this instruction with the canonical variable ie dest = canonvar
+              new_instructions.push({ ...instr, op: "id", args: [lvntable.num2canonvar(num)] });
+            }
+            return; // to next instruction in block
           }
         }
-      }
+
+        if ("dest" in instr) {
+          // instruction produces a new value
+          const newnum = lvntable.addValue(new LVNValue("blank_" + instr.dest), instr.dest);
+
+          if ("value" in instr) lvntable.rows[newnum].constval = (instr as IBrilConst).value as number;
+
+          // rename the dest if it will be written to again
+          const varName = _last_writes[instrIndex] ? instr.dest : `lvn.${instr.dest}.${newnum}`;
+          lvntable.rows[lvntable.rows.length - 1].canonvar = varName;
+
+          if (value) {
+            const constValue = fold(lvntable, value);
+            if (typeof constValue !== "undefined") {
+              lvntable.rows[newnum].constval = constValue;
+              new_instructions.push({ ...instr, op: "const", value: constValue } as IBrilConst);
+              return; // to next instruction
+            }
+            // not a foldable const instruction
+            lvntable.rows[newnum].value = value;
+          }
+
+          if ("args" in instr)
+            new_instructions.push({ ...instr, dest: varName, args: lvntable.vars2canonvars(instr.args) } as IBrilValueInstruction);
+          else new_instructions.push({ ...instr, dest: varName } as IBrilValueInstruction);
+        } else {
+          // not a value instruction but still need to convert args
+          if ("args" in instr && instr.args)
+            new_instructions.push({ ...instr, args: lvntable.vars2canonvars(instr.args) } as IBrilValueInstruction);
+          else new_instructions.push({ ...instr } as IBrilValueInstruction);
+        }
+      });
       console.info(`  ${fn}: block ${blockIndex}: Instruction count ${block.instructions.length} => ${new_instructions.length}`, lvntable);
       // todo updateCfgBlock with new_instructions, lvntable, lookup
-      store.dispatch(setCfgBlockInstructions({ fn, blockIndex, instructions: new_instructions, lvntable, lvnlookup }));
+      store.dispatch(setCfgBlockInstructions({ fn, blockIndex, instructions: new_instructions, lvntable }));
     });
     const flattenedInstructions = flattenCfgInstructions(fn);
     console.info(
