@@ -154,7 +154,38 @@ const last_writes = (instructions: IBrilInstructionOrLabel[]) => {
   return out;
 };
 
+const foldable_ops: Record<string, (a: number, b: number) => number> = {
+  add: (a: number, b: number) => a + b,
+  mul: (a: number, b: number) => a * b,
+  sub: (a: number, b: number) => a - b,
+  div: (a: number, b: number) => a / b,
+  gt: (a: number, b: number) => (a > b ? 1 : 0),
+  lt: (a: number, b: number) => (a < b ? 1 : 0),
+  ge: (a: number, b: number) => (a >= b ? 1 : 0),
+  le: (a: number, b: number) => (a <= b ? 1 : 0),
+  ne: (a: number, b: number) => (a != b ? 1 : 0),
+  eq: (a: number, b: number) => (a == b ? 1 : 0),
+  or: (a: number, b: number) => a | b,
+  and: (a: number, b: number) => a & b,
+  not: (a: number) => (!a ? 1 : 0),
+};
+
 const fold = (lvntable: LVNTable, value: LVNValue) => {
+  if (value.op in foldable_ops) {
+    const const_args = value.args.map((arg) => lvntable.rows[lvntable.var2num[arg]].constval);
+    let const_count = 0;
+    const_args.forEach((arg) => {
+      if (typeof arg !== "undefined") const_count++;
+    });
+
+    if (const_count == 2 && value.op in foldable_ops) return foldable_ops[value.op](const_args[0]!, const_args[1]!);
+    if (const_count == 1 && value.args.length == 1 && value.op == "not") return foldable_ops["not"](const_args[0]!, 0);
+    if (const_count == 1 && ["eq", "ne", "le", "ge"].includes(value.op) && value.args[0] == value.args[1]) return value.op !== "ne" ? 1 : 0;
+    if (const_count == 1 && ["and", "or"].includes(value.op)) {
+      const const_val = lvntable.rows[typeof const_args[0] !== undefined ? const_args[0]! : const_args[1]!].constval;
+      if ((value.op == "and" && !const_val) || (value.op == "or" && const_val)) return const_val;
+    }
+  }
   return undefined;
 };
 
