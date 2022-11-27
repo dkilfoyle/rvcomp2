@@ -9,6 +9,7 @@ import { useSelector } from "react-redux";
 import { Box, Button, ButtonGroup, VStack } from "@chakra-ui/react";
 import { dce, lvn } from "../../languages/bril/BrilOptimiser";
 import { setupLanguage } from "./monaco/setup";
+import { runDataFlow } from "../../languages/bril/df";
 // import code from "../../examples/semanticerrors.sc?raw";
 
 let decorations: monaco.editor.IEditorDecorationsCollection;
@@ -93,12 +94,17 @@ export const BrilEditor: VFC = () => {
     lvn(cfg);
   }, [cfg]);
 
+  const doDF = useCallback(() => {
+    runDataFlow(bril, "defined");
+  }, [bril]);
+
   return (
     <VStack height="100%" align="left" spacing="0px">
       <Box p="6px">
         <ButtonGroup size="xs">
           <Button onClick={doDCE}>DCE</Button>
           <Button onClick={doLVN}>LVN</Button>
+          <Button onClick={doDF}>DF</Button>
         </ButtonGroup>
       </Box>
       <div className={styles.Editor} ref={monacoEl}></div>

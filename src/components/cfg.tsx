@@ -38,6 +38,8 @@ export const CfgView: React.FC = () => {
       });
     });
 
+    console.log(cfg, nodes, edges);
+
     return { nodes, edges };
   }, [cfg, functionName]);
 
@@ -62,6 +64,7 @@ export const CfgView: React.FC = () => {
     if (visJsRef.current) network = new Network(visJsRef.current, cfgData, options);
     network.on("selectNode", (params) => {
       dispatch(setCfgNodeName(params.nodes[0]));
+      console.log(cfg[functionName].find((n) => n.name == params.nodes[0]));
       // console.log("selectNode", params);
     });
     network?.fit();

@@ -28,6 +28,7 @@ import {
   VariableDeclarationCstChildren,
   VariableDeclarationListCstChildren,
   VariableDeclarationStatementCstChildren,
+  WhileStatementCstChildren,
 } from "./simpleC";
 import {
   IAstAssignStatement,
@@ -184,8 +185,12 @@ class CstVisitor extends CstBaseVisitor {
     };
   }
 
-  whileStatement(ctx: any) {
-    return { _name: "unimplemented_while" };
+  whileStatement(ctx: WhileStatementCstChildren) {
+    return {
+      _name: "whileStatement",
+      test: this.visit(ctx.comparisonExpression),
+      loop: this.visit(ctx.statement),
+    };
   }
 
   doStatement(ctx: any) {

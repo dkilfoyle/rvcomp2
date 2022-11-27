@@ -11,7 +11,7 @@ interface SettingsState {
 }
 
 const initialState: SettingsState = {
-  filename: "lvn.sc",
+  filename: "df.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

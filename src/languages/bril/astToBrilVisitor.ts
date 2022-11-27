@@ -14,6 +14,7 @@ import {
   IAstReturnStatement,
   IAstStatement,
   IAstVariableDeclaration,
+  IAstWhileStatement,
   IPos,
 } from "../simpleC/ast";
 import { BrilBuilder } from "./BrilBuilder";
@@ -62,6 +63,9 @@ class AstToBrilVisitor {
         break;
       case "forStatement":
         this.forStatement(node as IAstForStatement);
+        break;
+      case "whileStatement":
+        this.whileStatement(node as IAstWhileStatement);
         break;
       // case "expressionStatement":
       case "functionCallExpression":
@@ -137,6 +141,24 @@ class AstToBrilVisitor {
     this.builder.buildEffect("jmp", [], undefined, [fortestLab]);
 
     this.builder.buildLabel(endforLab);
+  }
+
+  whileStatement(node: IAstWhileStatement) {
+    let sfx = this.builder.freshSuffix();
+    let whiletestLab = "whiletest" + sfx;
+    let whilebodyLab = "whilebody" + sfx;
+    let whileendLab = "whileend" + sfx;
+
+    this.builder.buildLabel(whiletestLab);
+    const test = this.comparisonExpression(node.test);
+
+    this.builder.buildEffect("br", [test.dest], undefined, [whilebodyLab, whileendLab]);
+
+    this.builder.buildLabel(whilebodyLab);
+    this.statement(node.loop);
+    this.builder.buildEffect("jmp", [], undefined, [whiletestLab]);
+
+    this.builder.buildLabel(whileendLab);
   }
 
   blockStatement(node: IAstBlock) {

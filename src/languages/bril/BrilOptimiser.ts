@@ -1,8 +1,7 @@
-import { timeStamp } from "console";
 import { setBrilOptimFunctionInstructions, setCfgBlockInstructions } from "../../store/parseSlice";
 import store from "../../store/store";
 import { IBrilConst, IBrilEffectOperation, IBrilInstructionOrLabel, IBrilValueInstruction, IBrilValueOperation } from "./BrilInterface";
-import { ICFG, IControlFlowGraphNode } from "./cfgBuilder";
+import { ICFG } from "./cfgBuilder";
 
 let dceRemovedInsCount = 0;
 let dceIterations = 0;
@@ -10,7 +9,7 @@ let dceIterations = 0;
 const flattenCfgInstructions = (fn: string) => {
   const blocks = store.getState().parse.cfg[fn];
   const instructions: IBrilInstructionOrLabel[] = [];
-  blocks.forEach((block) => {
+  Object.values(blocks).forEach((block) => {
     instructions.push(...block.instructions);
   });
   return instructions;
@@ -172,7 +171,7 @@ const foldable_ops: Record<string, (a: number, b: number) => number> = {
 
 const fold = (lvntable: LVNTable, value: LVNValue) => {
   if (value.op in foldable_ops) {
-    const const_args = value.args.map((arg) => lvntable.rows[lvntable.var2num[arg]].constval);
+    const const_args = value.args.map((arg) => lvntable.rows[arg].constval);
     let const_count = 0;
     const_args.forEach((arg) => {
       if (typeof arg !== "undefined") const_count++;

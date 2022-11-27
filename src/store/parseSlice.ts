@@ -1,12 +1,12 @@
 import { CstNode } from "chevrotain";
 import { IBrilInstructionOrLabel, IBrilProgram } from "../languages/bril/BrilInterface";
-import { ICFG } from "../languages/bril/cfgBuilder";
 import { IAstProgram } from "../languages/simpleC/ast";
 
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
 import { LVNTable } from "../languages/bril/BrilOptimiser";
+import { ICFG } from "../languages/bril/cfgBuilder";
 
 interface ParseState {
   cst: CstNode;

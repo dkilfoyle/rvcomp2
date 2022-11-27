@@ -45,6 +45,12 @@ export interface IAstForStatement extends IAstStatement {
   loop: IAstStatement;
 }
 
+export interface IAstWhileStatement extends IAstStatement {
+  _name: "whileStatement";
+  test: IAstComparisonExpression;
+  loop: IAstStatement;
+}
+
 export interface IAstDeclaration extends IAstNode {
   id: string;
   type: IDeclarationType;
