@@ -4,6 +4,7 @@ import helloint from "./helloint.sc?raw";
 import lvn from "./lvn.sc?raw";
 import dce from "./dce.sc?raw";
 import df from "./df.sc?raw";
+import dom from "./dom.sc?raw";
 // import sum from "./sum.sc?raw";
 // import fib from "./fib.sc?raw";
 // import mul from "./mul.sc?raw";
@@ -16,6 +17,7 @@ export const examples: Record<string, string> = {
   lvn,
   dce,
   df,
+  dom,
   // sum,
   // fib,
   // mul,

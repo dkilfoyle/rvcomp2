@@ -305,7 +305,7 @@ export const productions: Record<string, Rule> = parserInstance.getGAstProductio
 import { generateCstDts } from "chevrotain";
 
 const dtsString = generateCstDts(productions, { includeVisitorInterface: true });
-console.log({ dst: dtsString });
+// console.log({ dst: dtsString });
 
 export const parse = (text: string) => {
   const lexResult = SimpleCLexer.tokenize(text);

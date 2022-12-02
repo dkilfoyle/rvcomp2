@@ -79,20 +79,25 @@ export class CfgBuilder {
 
 export const cfgBuilder = new CfgBuilder();
 
-export const addCfgEntry = (blocks: ICFGBlock[]) => {
+export const addCfgEntry = (blockMap: ICFGBlockMap) => {
   // ensure that the first block has no predecessors
   // this could happen if jmp or br back to first block
+
+  const blocks = Object.values(blockMap);
   const firstLabel = blocks[0].name;
   const hasInEdge = flattenCfgBlocks(blocks).find((instr) => {
     return "labels" in instr && (instr as IBrilEffectOperation).labels?.includes(firstLabel);
   });
-  if (!hasInEdge) return;
+  if (!hasInEdge) return blockMap;
   // inedge exists, insert a new entry block
   const newLabel = fresh(
     "entry",
     blocks.map((block) => block.name)
   );
-  blocks.unshift({ name: newLabel, instructions: [], out: [blocks[0].name], keyEnd: -1, keyStart: -1, level: 0 });
+  return {
+    [newLabel]: { name: newLabel, instructions: [], out: [blocks[0].name], keyEnd: -1, keyStart: -1, level: 0 } as ICFGBlock,
+    ...blockMap,
+  };
 };
 
 export const addCfgTerminators = (blockMap: ICFGBlockMap) => {
@@ -137,10 +142,11 @@ export const getCfgEdges = (blockMap: ICFGBlockMap) => {
   const successorsMap: Record<string, string[]> = {};
   Object.entries(blockMap).forEach(([name, block]) => {
     const succs = getInstructionSuccessors(block.instructions.at(-1));
+    if (!successorsMap[name]) successorsMap[name] = [];
+
     succs?.forEach((succ) => {
-      if (!successorsMap[name]) successorsMap[name] = [];
-      successorsMap[name].push(succ);
       if (!predecessorsMap[succ]) predecessorsMap[succ] = [];
+      successorsMap[name].push(succ);
       predecessorsMap[succ].push(name);
     });
   });

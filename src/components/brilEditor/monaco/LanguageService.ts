@@ -1,4 +1,3 @@
-import { ISimpleCLangError } from "./DiagnosticsAdapter";
 import { parse } from "../../../languages/simpleC/parser";
 import { cstVisitor } from "../../../languages/simpleC/cstToAstVisitor";
 import * as monaco from "monaco-editor";
@@ -7,6 +6,7 @@ import { tokenMatcher } from "chevrotain";
 import { tokens } from "../../../languages/simpleC/tokens";
 import { parserInstance } from "../../../languages/simpleC/parser";
 import { convertDocCommentToSuggestionString, IAstFunctionDeclaration } from "../../../languages/simpleC/ast";
+import { ISimpleCLangError } from "../../simpleCEditor/monaco/DiagnosticsAdapter";
 
 export default class SimpleCLanguageService {
   validate(code: string): { errors: ISimpleCLangError[]; cst: any; ast: any } {

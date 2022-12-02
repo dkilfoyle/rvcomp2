@@ -41,6 +41,9 @@ const fileTreeData = [
           {
             title: "df.tc",
           },
+          {
+            title: "dom.tc",
+          },
         ],
       },
     ],
@@ -73,7 +76,7 @@ export const Sidebar = () => {
             fieldNames={{ key: "title" }}
             showLine
             onSelect={(keys, info) => {
-              if (!info.node.children) dispatch(setFilename(keys[0].toString()));
+              if (!info.node.children && keys.length) dispatch(setFilename(keys[0].toString()));
             }}></Tree>
         </AccordionPanel>
       </AccordionItem>
