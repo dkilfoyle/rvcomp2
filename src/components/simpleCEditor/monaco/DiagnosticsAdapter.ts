@@ -8,6 +8,7 @@ import { IAstProgram, IAstResult } from "../../../languages/simpleC/ast";
 import { cfgBuilder } from "../../../languages/bril/cfgBuilder";
 import { setCst, setAst, setBril, setCfg } from "../../../store/parseSlice";
 import store from "../../../store/store";
+import { compileSimpleC } from "../../../languages/bril/BrilCompiler";
 
 export interface ISimpleCLangError {
   startLineNumber: number;
@@ -48,15 +49,10 @@ export default class DiagnosticsAdapter {
     // get the worker proxy
     const worker = await this.worker(resource);
     // call the validate methode proxy from the langaueg service and get errors
-    const { errors, cst: wcst, ast: wast } = await worker.doValidation();
-    if (wcst) store.dispatch(setCst(wcst));
-    if (wast) {
-      // console.log("validate");
-      store.dispatch(setAst(wast));
-      const bril = astToBrilVisitor.visit(wast);
-      store.dispatch(setBril(bril));
-      const cfg = cfgBuilder.buildProgram(bril);
-      store.dispatch(setCfg(cfg));
+    const { errors, cst, ast } = await worker.doValidation();
+    if (cst) store.dispatch(setCst(cst));
+    if (ast) {
+      compileSimpleC(ast, "bril");
     }
 
     // get the current model(editor or file) which is only one

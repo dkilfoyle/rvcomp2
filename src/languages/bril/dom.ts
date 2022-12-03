@@ -36,7 +36,8 @@ export const postOrder = (successorsMap: stringMap, rootName: string) => {
   return out;
 };
 
-export const getDom = (successorsMap: stringMap, entryName: string) => {
+export const getDominatorMap = (successorsMap: stringMap, entryName: string) => {
+  // returns { blockName: [blocks that are in EVERY path from entry to blockName]}
   const predecessorsMap = invertMap(successorsMap);
   const nodes = postOrder(successorsMap, entryName).reverse();
   const dom: stringMap = {};

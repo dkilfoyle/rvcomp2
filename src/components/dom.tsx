@@ -6,13 +6,11 @@ import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { setCfgNodeName } from "../store/settingsSlice";
 import { useAppDispatch } from "../store/hooks";
-import { getDominatorMap } from "../languages/bril/dom";
-import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
 
-export const CfgView: React.FC = () => {
+export const DomView: React.FC = () => {
   // const _cfg = cfg.use();
   // const _selectedFunctionName = selectedFunctionName.use();
-  const bril = useSelector((state: RootState) => state.parse.bril);
+  const cfg = useSelector((state: RootState) => state.parse.cfg);
   const functionName = useSelector((state: RootState) => state.settings.cfg.functionName);
   const nodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
   const dispatch = useAppDispatch();
@@ -20,42 +18,31 @@ export const CfgView: React.FC = () => {
   const visJsRef = useRef<HTMLDivElement>(null);
   let network: Network;
 
-  const cfg = useMemo(() => {
-    const cfg = cfgBuilder.buildProgram(bril);
+  const cfgData = useMemo(() => {
     const fn = cfg[functionName];
-    if (!fn) return undefined;
+    if (!fn)
+      return {
+        nodes: [{ id: 1, label: "No Main Fn" }],
+        edges: [],
+      };
 
-    let blockMap = getCfgBlockMap(cfg[functionName]);
-    blockMap = addCfgEntry(blockMap);
-    addCfgTerminators(blockMap);
-    const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
-    const dom = getDominatorMap(successorsMap, fn[0].name);
-    return { blockMap, successorsMap, dom };
-  }, [bril, functionName]);
-
-  const cfgVisData = useMemo(() => {
-    const nodes: { id: string; label: string; color?: string }[] = [];
+    const nodes: { id: string; label: string }[] = [];
     const edges: any[] = [];
 
-    if (cfg) {
-      Object.values(cfg.blockMap).forEach((node) => {
-        nodes.push({
-          id: node.name,
-          label: node.name,
-          color: cfg.dom[nodeName]?.includes(node.name) ? "red" : "blue",
-        });
-        node.out.forEach((out) => {
-          edges.push({ from: node.name, to: out, smooth: { type: "cubicBezier" } });
-        });
+    fn.forEach((node) => {
+      nodes.push({
+        id: node.name,
+        label: node.name,
       });
-    } else {
-      nodes.push({ id: "cfgerror", label: "Invalid CFG" });
-    }
+      node.out.forEach((out) => {
+        edges.push({ from: node.name, to: out, smooth: { type: "cubicBezier" } });
+      });
+    });
 
     // console.log(cfg, nodes, edges);
 
     return { nodes, edges };
-  }, [cfg, nodeName]);
+  }, [cfg, functionName]);
 
   useEffect(() => {
     const options: Options = {
@@ -75,15 +62,14 @@ export const CfgView: React.FC = () => {
         arrows: "to",
       },
     };
-    if (visJsRef.current) network = new Network(visJsRef.current, cfgVisData, options);
+    if (visJsRef.current) network = new Network(visJsRef.current, cfgData, options);
     network.on("selectNode", (params) => {
       dispatch(setCfgNodeName(params.nodes[0]));
-      console.log(cfg?.blockMap[params.nodes[0]]);
+      console.log(cfg[functionName].find((n) => n.name == params.nodes[0]));
       // console.log("selectNode", params);
-      // todo: show the dominators of this node in a different color or the dominance frontier
     });
     network?.fit();
-  }, [visJsRef, cfgVisData]);
+  }, [visJsRef, cfgData]);
 
   return <div ref={visJsRef} style={{ height: "100%", width: "100%", padding: "10px", paddingBottom: "40px" }} />;
 };

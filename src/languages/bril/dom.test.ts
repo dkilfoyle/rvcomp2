@@ -3,7 +3,7 @@ import { cstVisitor } from "../simpleC/cstToAstVisitor";
 import { parse } from "../simpleC/parser";
 import { astToBrilVisitor } from "./astToBrilVisitor";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "./cfgBuilder";
-import { getDom, invertMap, postOrder, stringMap } from "./dom";
+import { getDominatorMap, invertMap, postOrder, stringMap } from "./dom";
 import domCode from "../../examples/dom.sc?raw";
 
 test("invertMap inverts string array maps", () => {
@@ -47,7 +47,7 @@ test("dom works", () => {
         return obj;
       }, {});
 
-  const dom = getDom(successorsMap, "entry1");
+  const dom = getDominatorMap(successorsMap, "entry1");
   const answer = {
     entry1: ["entry1"],
     "whilebody.0": ["entry1", "whilebody.0", "whiletest.0"],
