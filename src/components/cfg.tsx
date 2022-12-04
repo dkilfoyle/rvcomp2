@@ -34,7 +34,7 @@ export const CfgView: React.FC = () => {
   }, [bril, functionName]);
 
   const cfgVisData = useMemo(() => {
-    const nodes: { id: string; label: string; color?: string }[] = [];
+    const nodes: { id: string; label: string; color?: string; borderWidth?: any }[] = [];
     const edges: any[] = [];
 
     if (cfg) {
@@ -42,7 +42,8 @@ export const CfgView: React.FC = () => {
         nodes.push({
           id: node.name,
           label: node.name,
-          color: cfg.dom[nodeName]?.includes(node.name) ? "red" : "blue",
+          color: cfg.dom[nodeName]?.includes(node.name) ? "#FB7E81" : "#97C2FC",
+          borderWidth: node.name == nodeName ? 3 : 1,
         });
         node.out.forEach((out) => {
           edges.push({ from: node.name, to: out, smooth: { type: "cubicBezier" } });

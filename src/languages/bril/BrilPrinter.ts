@@ -2,13 +2,14 @@ import { IBrilArgument, IBrilFunction, IBrilInstruction, IBrilLabel, IBrilProgra
 
 class BrilPrinter {
   public hr: string = "";
-  public irkeys: (number | undefined)[] = [];
+  public irkeys: (number | undefined)[] = []; // maps bril hr code line number to ins.key
   line(l: string, key: number | undefined) {
     this.hr = this.hr + l + "\n";
     this.irkeys.push(key);
   }
   print(bril: IBrilProgram) {
     this.hr = "";
+    this.irkeys = [];
     bril.functions.forEach((fn) => this.printFunction(fn));
     return this.hr;
   }

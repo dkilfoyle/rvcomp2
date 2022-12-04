@@ -26,6 +26,7 @@ export const BrilEditor: VFC = () => {
 
   const cfg = useSelector((state: RootState) => state.parse.cfg);
   const bril = useSelector((state: RootState) => state.parse.bril);
+  const ast = useSelector((state: RootState) => state.parse.ast);
   const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
   const cfgNodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
   const cfgFunctionName = useSelector((state: RootState) => state.settings.cfg.functionName);
@@ -51,8 +52,8 @@ export const BrilEditor: VFC = () => {
 
   useEffect(() => {
     if (selectedCfgNode && editor) {
-      const startLine = (brilPrinter.irkeys[selectedCfgNode.keyStart] || -1) + 1;
-      const endLine = (brilPrinter.irkeys[selectedCfgNode.keyEnd] || -1) + 1;
+      const startLine = brilPrinter.irkeys.findIndex((x) => x == selectedCfgNode.keyStart) + 1;
+      const endLine = brilPrinter.irkeys.findIndex((x) => x == selectedCfgNode.keyEnd) + 1;
 
       const newDecoration = {
         range: new monaco.Range(startLine, 1, endLine, 1),
