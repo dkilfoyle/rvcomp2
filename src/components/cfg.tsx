@@ -6,7 +6,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { setCfgNodeName } from "../store/settingsSlice";
 import { useAppDispatch } from "../store/hooks";
-import { getDominatorMap } from "../languages/bril/dom";
+import { getDominanceFrontierMap, getDominatorMap } from "../languages/bril/dom";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
 
 export const CfgView: React.FC = () => {
@@ -30,11 +30,12 @@ export const CfgView: React.FC = () => {
     addCfgTerminators(blockMap);
     const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
     const dom = getDominatorMap(successorsMap, fn[0].name);
-    return { blockMap, successorsMap, dom };
+    const frontier = getDominanceFrontierMap(dom, successorsMap);
+    return { blockMap, successorsMap, dom, frontier };
   }, [bril, functionName]);
 
   const cfgVisData = useMemo(() => {
-    const nodes: { id: string; label: string; color?: string; borderWidth?: any }[] = [];
+    const nodes: { id: string; label: string; color?: string; borderWidth?: any; shapeProperties?: any }[] = [];
     const edges: any[] = [];
 
     if (cfg) {
@@ -44,6 +45,7 @@ export const CfgView: React.FC = () => {
           label: node.name,
           color: cfg.dom[nodeName]?.includes(node.name) ? "#FB7E81" : "#97C2FC",
           borderWidth: node.name == nodeName ? 3 : 1,
+          shapeProperties: cfg.frontier[nodeName]?.includes(node.name) ? { borderDashes: [5, 5] } : {},
         });
         node.out.forEach((out) => {
           edges.push({ from: node.name, to: out, smooth: { type: "cubicBezier" } });

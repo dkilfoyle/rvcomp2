@@ -59,3 +59,21 @@ export const getDominatorMap = (successorsMap: stringMap, entryName: string) => 
   }
   return dom;
 };
+
+export const getDominanceFrontierMap = (dominatorMap: stringMap, successorsMap: stringMap) => {
+  // DF(N) = set of blocks that are not dominated by N and which are first reached on paths from N
+  // {succcesor([dominated by N]) && !dominated by N}
+  // for each block, find the list of blocks that are dominated by this block but
+  const dom_inv = invertMap(dominatorMap);
+  const frontiers: stringMap = {};
+  Object.keys(dominatorMap).forEach((blockName) => {
+    // find the list of blocks in the dominance frontier of blockName
+    let dominated_succs: string[] = [];
+    dom_inv[blockName].forEach((dominatedBlock) => {
+      dominated_succs = _.union(dominated_succs, successorsMap[dominatedBlock]);
+    });
+    // in the frontier if not strictly dominated by the current block
+    frontiers[blockName] = dominated_succs.filter((b) => b == blockName || !dom_inv[blockName].includes(b));
+  });
+  return frontiers;
+};
