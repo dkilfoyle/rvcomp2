@@ -56,7 +56,7 @@ export const Sidebar = () => {
   const dispatch = useAppDispatch();
 
   return (
-    <Accordion defaultIndex={[0]} allowMultiple size="sm">
+    <Accordion defaultIndex={[0]} allowMultiple size="sm" backgroundColor="whitesmoke">
       <AccordionItem>
         <h2>
           <AccordionButton>

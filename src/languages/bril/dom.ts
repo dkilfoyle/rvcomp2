@@ -77,3 +77,42 @@ export const getDominanceFrontierMap = (dominatorMap: stringMap, successorsMap: 
   });
   return frontiers;
 };
+
+export const getDominanceTree = (dominatorMap: stringMap) => {
+  // get the blocks strictly dominated by a block
+  // dom_inv = what blocks does this block dominate
+  const dom_inv = invertMap(dominatorMap);
+  const dom_inv_strict: stringMap = {};
+  const dom_inv_strict2: stringMap = {};
+  Object.entries(dom_inv).forEach(([key, values]) => {
+    dom_inv_strict[key] = values.filter((v) => v != key);
+  });
+
+  Object.entries(dom_inv_strict).forEach(([a, bs]) => {
+    dom_inv_strict2[a] = _.union(
+      ...Object.entries(dom_inv_strict)
+        .filter(([b, cs]) => bs.includes(b))
+        .map(([b, cs]) => cs)
+    );
+  });
+
+  const res: stringMap = {};
+  Object.entries(dom_inv_strict).forEach(([a, bs]) => {
+    res[a] = bs.filter((b) => !dom_inv_strict2[a].includes(b));
+  });
+
+  return res;
+};
+
+// def dom_tree(dom):
+//     # Get the blocks strictly dominated by a block strictly dominated by
+//     # a given block.
+//     dom_inv = map_inv(dom)
+//     dom_inv_strict = {a: {b for b in bs if b != a}
+//                       for a, bs in dom_inv.items()}
+//     dom_inv_strict_2x = {a: set().union(*(dom_inv_strict[b] for b in bs))
+//                          for a, bs in dom_inv_strict.items()}
+//     return {
+//         a: {b for b in bs if b not in dom_inv_strict_2x[a]}
+//         for a, bs in dom_inv_strict.items()
+//     }
