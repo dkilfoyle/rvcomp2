@@ -5,6 +5,8 @@ import lvn from "./lvn.sc?raw";
 import dce from "./dce.sc?raw";
 import df from "./df.sc?raw";
 import dom from "./dom.sc?raw";
+import ssaif from "./ssaif.sc?raw";
+
 // import sum from "./sum.sc?raw";
 // import fib from "./fib.sc?raw";
 // import mul from "./mul.sc?raw";
@@ -18,6 +20,7 @@ export const examples: Record<string, string> = {
   dce,
   df,
   dom,
+  ssaif,
   // sum,
   // fib,
   // mul,

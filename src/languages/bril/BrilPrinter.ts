@@ -10,7 +10,7 @@ class BrilPrinter {
   print(bril: IBrilProgram) {
     this.hr = "";
     this.irkeys = [];
-    bril.functions.forEach((fn) => this.printFunction(fn));
+    Object.values(bril.functions).forEach((fn) => this.printFunction(fn));
     return this.hr;
   }
   formatArgument(arg: IBrilArgument) {

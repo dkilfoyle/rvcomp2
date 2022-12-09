@@ -2,6 +2,7 @@ import {
   IAstAssignStatement,
   IAstBinaryExpression,
   IAstBlock,
+  IAstBoolLiteralExpression,
   IAstComparisonExpression,
   IAstExpression,
   IAstForStatement,
@@ -179,6 +180,9 @@ class AstToBrilVisitor {
     switch (node._name) {
       case "integerLiteralExpression":
         n = node as IAstIntegerLiteralExpression;
+        return this.builder.buildConst(n.value, n.type);
+      case "boolLiteralExpression":
+        n = node as IAstBoolLiteralExpression;
         return this.builder.buildConst(n.value, n.type);
       case "identifierExpression": // ie an identifier
         n = node as IAstIdentifierExpression;

@@ -34,8 +34,7 @@ test("dom works", () => {
   const ast = cstVisitor.go(cst);
   const bril = astToBrilVisitor.visit(ast.ast);
   const cfg = cfgBuilder.buildProgram(bril);
-  let blockMap = getCfgBlockMap(cfg["main"]);
-  blockMap = addCfgEntry(blockMap);
+  let blockMap = addCfgEntry(getCfgBlockMap(cfg["main"]));
   addCfgTerminators(blockMap);
   const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
 

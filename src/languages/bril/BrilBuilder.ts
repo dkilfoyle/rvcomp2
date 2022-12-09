@@ -15,7 +15,7 @@ import {
 } from "./BrilInterface";
 
 export class BrilBuilder {
-  public program: IBrilProgram = { functions: [], key: 0 };
+  public program: IBrilProgram = { functions: {}, key: 0 };
   public curFunction?: IBrilFunction;
   public nextFresh: number = 0;
   public keyIndex: number = 1;
@@ -23,7 +23,7 @@ export class BrilBuilder {
   constructor() {}
 
   reset() {
-    this.program = { functions: [], key: 0 };
+    this.program = { functions: {}, key: 0 };
     this.curFunction = undefined;
     this.nextFresh = 0;
     this.keyIndex = 1;
@@ -59,7 +59,7 @@ export class BrilBuilder {
       func = { name: name, instrs: [], args: args, type: type };
     }
     func.key = this.keyIndex++;
-    this.program.functions.push(func);
+    this.program.functions[name] = func;
     this.curFunction = func;
     this.nextFresh = 0;
     return func;

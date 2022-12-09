@@ -49,14 +49,14 @@ export const CfgView: React.FC = () => {
           shapeProperties: cfg.frontier[nodeName]?.includes(node.name) ? { borderDashes: [5, 5] } : {},
         });
         node.out.forEach((out) => {
-          edges.push({ from: node.name, to: out, smooth: { type: "cubicBezier" } });
+          edges.push({ from: node.name, to: out, physics: false, smooth: { type: "cubicBezier" } });
         });
       });
     } else {
       nodes.push({ id: "cfgerror", label: "Invalid CFG" });
     }
 
-    // console.log(cfg, nodes, edges);
+    console.log(cfg, nodes, edges);
 
     return { nodes, edges };
   }, [cfg, nodeName]);
@@ -68,10 +68,15 @@ export const CfgView: React.FC = () => {
       layout: {
         hierarchical: {
           enabled: true,
-          direction: "UD",
+          levelSeparation: 50,
+          sortMethod: "directed",
         },
       },
-      physics: false,
+      physics: {
+        hierarchicalRepulsion: {
+          nodeDistance: 50,
+        },
+      },
       nodes: {
         shape: "box",
       },

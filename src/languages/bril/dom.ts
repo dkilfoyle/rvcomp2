@@ -61,6 +61,7 @@ export const getDominatorMap = (successorsMap: stringMap, entryName: string) => 
 };
 
 export const getDominanceFrontierMap = (dominatorMap: stringMap, successorsMap: stringMap) => {
+  // the list of nodes 1 step outside the furthest node dominated by x
   // DF(N) = set of blocks that are not dominated by N and which are first reached on paths from N
   // {succcesor([dominated by N]) && !dominated by N}
   // for each block, find the list of blocks that are dominated by this block but

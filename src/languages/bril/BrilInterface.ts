@@ -62,5 +62,5 @@ export interface IBrilNode {
 }
 
 export interface IBrilProgram extends IBrilNode {
-  functions: IBrilFunction[];
+  functions: Record<string, IBrilFunction>;
 }

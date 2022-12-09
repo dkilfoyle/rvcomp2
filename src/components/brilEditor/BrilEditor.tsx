@@ -10,6 +10,7 @@ import { Box, Button, ButtonGroup, VStack } from "@chakra-ui/react";
 import { dce, lvn } from "../../languages/bril/BrilOptimiser";
 import { setupLanguage } from "./monaco/setup";
 import { runDataFlow } from "../../languages/bril/df";
+import { toSSA } from "../../languages/bril/ssa";
 // import code from "../../examples/semanticerrors.sc?raw";
 
 let decorations: monaco.editor.IEditorDecorationsCollection;
@@ -99,6 +100,10 @@ export const BrilEditor: VFC = () => {
     runDataFlow(bril, "defined");
   }, [bril]);
 
+  const doSSA = useCallback(() => {
+    toSSA(bril.functions.main);
+  }, [bril]);
+
   return (
     <VStack height="100%" align="left" spacing="0px">
       <Box p="6px">
@@ -106,6 +111,7 @@ export const BrilEditor: VFC = () => {
           <Button onClick={doDCE}>DCE</Button>
           <Button onClick={doLVN}>LVN</Button>
           <Button onClick={doDF}>DF</Button>
+          <Button onClick={doSSA}>SSA</Button>
         </ButtonGroup>
       </Box>
       <div className={styles.Editor} ref={monacoEl}></div>

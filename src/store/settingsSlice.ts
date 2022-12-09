@@ -11,7 +11,7 @@ interface SettingsState {
 }
 
 const initialState: SettingsState = {
-  filename: "df.sc",
+  filename: "ssaif.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

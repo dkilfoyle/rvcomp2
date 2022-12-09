@@ -8,6 +8,11 @@ import { VscSymbolClass } from "react-icons/vsc";
 import { RootState } from "../store/store";
 import { useSelector } from "react-redux";
 
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import "overlayscrollbars/overlayscrollbars.css";
+
+const fullHeight = { maxHeight: "100%" };
+
 export const AstView: React.FC = () => {
   // const ast = astEntity.use();
   const ast = useSelector((state: RootState) => state.parse.ast);
@@ -107,9 +112,9 @@ export const AstView: React.FC = () => {
   }, [ast]);
 
   return (
-    <div>
+    <OverlayScrollbarsComponent defer style={fullHeight}>
       <Tree treeData={[astTreeData]} defaultExpandParent defaultExpandedKeys={[1]}></Tree>
       {/* <JSONTree data={ast} theme={theme} invertTheme></JSONTree> */}
-    </div>
+    </OverlayScrollbarsComponent>
   );
 };

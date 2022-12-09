@@ -23,6 +23,7 @@ const fullWindow = { height: "100vh", width: "100vw", backgroundColor: "aliceblu
 const groups = {
   card: {
     floatable: false,
+    maximizable: true,
   },
 };
 

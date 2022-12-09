@@ -1,3 +1,4 @@
+import _ from "lodash";
 import { IBrilEffectOperation, IBrilFunction, IBrilInstruction, IBrilInstructionOrLabel, IBrilLabel, IBrilProgram } from "./BrilInterface";
 
 const TERMINATORS = ["br", "jmp", "ret"];
@@ -33,7 +34,7 @@ export class CfgBuilder {
 
   buildProgram(prog: IBrilProgram) {
     this.program = {};
-    prog.functions.forEach((fn) => {
+    Object.values(prog.functions).forEach((fn) => {
       this.program[fn.name] = this.buildFunction(fn);
     });
     return this.program;
@@ -52,9 +53,16 @@ export class CfgBuilder {
         ins = <IBrilInstruction>ins;
         this.cur_block.instructions.push({ ...ins });
         if (TERMINATORS.includes(ins.op)) {
-          if (ins.op == "br" && ins.labels) this.cur_block.out = [ins.labels[0], ins.labels[1]];
-          if (ins.op == "jmp" && ins.labels) this.cur_block.out = [ins.labels[0]];
-          level = level + 1;
+          if (ins.op == "br" && ins.labels) {
+            this.cur_block.out = [ins.labels[0], ins.labels[1]];
+            // if branching to a block that doesnt exist yet increase the level
+            if (!_.map(this.blocks, "name").includes(ins.labels[0]) || !_.map(this.blocks, "name").includes(ins.labels[1])) level++;
+          }
+          if (ins.op == "jmp" && ins.labels) {
+            this.cur_block.out = [ins.labels[0]];
+            // if branching to a block that doesnt exist yet increase the level for that next block
+            if (!_.map(this.blocks, "name").includes(ins.labels[0])) level++;
+          }
           this.endBlock();
         }
       } else {
@@ -88,12 +96,15 @@ export const addCfgEntry = (blockMap: ICFGBlockMap) => {
   const hasInEdge = flattenCfgBlocks(blocks).find((instr) => {
     return "labels" in instr && (instr as IBrilEffectOperation).labels?.includes(firstLabel);
   });
+
   if (!hasInEdge) return blockMap;
+
   // inedge exists, insert a new entry block
   const newLabel = fresh(
     "entry",
     blocks.map((block) => block.name)
   );
+
   return {
     [newLabel]: { name: newLabel, instructions: [], out: [blocks[0].name], keyEnd: -1, keyStart: -1, level: 0 } as ICFGBlock,
     ...blockMap,

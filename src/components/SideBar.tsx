@@ -44,6 +44,9 @@ const fileTreeData = [
           {
             title: "dom.tc",
           },
+          {
+            title: "ssaif.tc",
+          },
         ],
       },
     ],
@@ -56,46 +59,49 @@ export const Sidebar = () => {
   const dispatch = useAppDispatch();
 
   return (
-    <Accordion defaultIndex={[0]} allowMultiple size="sm" backgroundColor="whitesmoke">
-      <AccordionItem>
-        <h2>
-          <AccordionButton>
-            <Box flex="1" textAlign="left">
-              Source Files
-            </Box>
-            <AccordionIcon />
-          </AccordionButton>
-        </h2>
-        <AccordionPanel pb={4}>
-          <Tree
-            treeData={fileTreeData as any}
-            autoExpandParent
-            defaultExpandedKeys={["Files", "Tests"]}
-            defaultSelectedKeys={[filename]}
-            expandAction="click"
-            fieldNames={{ key: "title" }}
-            showLine
-            onSelect={(keys, info) => {
-              if (!info.node.children && keys.length) dispatch(setFilename(keys[0].toString()));
-            }}></Tree>
-        </AccordionPanel>
-      </AccordionItem>
+    <div style={{ backgroundColor: "whitesmoke" }}>
+      <Box p={4}>RVComp2</Box>
+      <Accordion defaultIndex={[0]} allowMultiple size="sm">
+        <AccordionItem>
+          <h2>
+            <AccordionButton>
+              <Box flex="1" textAlign="left">
+                Source Files
+              </Box>
+              <AccordionIcon />
+            </AccordionButton>
+          </h2>
+          <AccordionPanel pb={4}>
+            <Tree
+              treeData={fileTreeData as any}
+              autoExpandParent
+              defaultExpandedKeys={["Files", "Tests"]}
+              defaultSelectedKeys={[filename]}
+              expandAction="click"
+              fieldNames={{ key: "title" }}
+              showLine
+              onSelect={(keys, info) => {
+                if (!info.node.children && keys.length) dispatch(setFilename(keys[0].toString()));
+              }}></Tree>
+          </AccordionPanel>
+        </AccordionItem>
 
-      <AccordionItem>
-        <h2>
-          <AccordionButton>
-            <Box flex="1" textAlign="left">
-              Settings
-            </Box>
-            <AccordionIcon />
-          </AccordionButton>
-        </h2>
-        <AccordionPanel pb={4}>
-          <VStack alignItems="start">
-            <h2>Highlight</h2>
-          </VStack>
-        </AccordionPanel>
-      </AccordionItem>
-    </Accordion>
+        <AccordionItem>
+          <h2>
+            <AccordionButton>
+              <Box flex="1" textAlign="left">
+                Settings
+              </Box>
+              <AccordionIcon />
+            </AccordionButton>
+          </h2>
+          <AccordionPanel pb={4}>
+            <VStack alignItems="start">
+              <h2>Highlight</h2>
+            </VStack>
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
+    </div>
   );
 };
