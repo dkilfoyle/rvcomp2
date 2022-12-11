@@ -35,8 +35,8 @@ class BrilPrinter {
         const insAsValue = ins as IBrilValueInstruction;
         if (insAsValue.dest) {
           let tyann = `: ${insAsValue.type}`;
-          this.line(`  ${insAsValue.dest}${tyann} = ${rhs}`, ins.key);
-        } else return this.line(`  ${rhs}`, ins.key);
+          this.line(`  ${insAsValue.dest}${tyann} = ${rhs};`, ins.key);
+        } else this.line(`  ${rhs};`, ins.key);
       }
     } else {
       // label

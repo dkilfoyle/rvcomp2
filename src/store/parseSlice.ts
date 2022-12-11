@@ -7,6 +7,7 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
 import { LVNTable } from "../languages/bril/BrilOptimiser";
 import { ICFG } from "../languages/bril/cfgBuilder";
+import { f } from "vitest/dist/index-9f5bc072";
 
 interface ParseState {
   cst: CstNode;
@@ -19,8 +20,8 @@ interface ParseState {
 const initialState: ParseState = {
   cst: { name: "root", children: {} },
   ast: { _name: "root", functionDeclarations: [] },
-  bril: { functions: [] },
-  brilOptim: { functions: [] },
+  bril: { functions: {} },
+  brilOptim: { functions: {} },
   cfg: {},
 };
 
@@ -57,7 +58,7 @@ export const parseSlice = createSlice({
       state.brilOptim = action.payload;
     },
     setBrilOptimFunctionInstructions: (state: ParseState, action: PayloadAction<IBrilFunctionUpdate>) => {
-      const fn = state.brilOptim.functions.find((f) => f.name == action.payload.fn);
+      const fn = state.brilOptim.functions[action.payload.fn];
       if (!fn) throw new Error(`Function ${action.payload.fn} not found in bril`);
       fn.instrs = [...action.payload.instructions];
     },
@@ -78,7 +79,7 @@ export const parseSlice = createSlice({
   },
 });
 
-export const { setCst, setAst, setBril, setCfg, setCfgBlockInstructions, setBrilOptimFunctionInstructions } = parseSlice.actions;
+export const { setCst, setAst, setBril, setBrilOptim, setCfg, setCfgBlockInstructions, setBrilOptimFunctionInstructions } = parseSlice.actions;
 
 // Other code such as selectors can use the imported `RootState` type
 export const selectCst = (state: RootState) => state.parse.cst;

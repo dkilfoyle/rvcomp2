@@ -10,7 +10,9 @@ import { Box, Button, ButtonGroup, VStack } from "@chakra-ui/react";
 import { dce, lvn } from "../../languages/bril/BrilOptimiser";
 import { setupLanguage } from "./monaco/setup";
 import { runDataFlow } from "../../languages/bril/df";
-import { toSSA } from "../../languages/bril/ssa";
+import { toSSAProgram } from "../../languages/bril/ssa";
+import { setBrilOptim } from "../../store/parseSlice";
+import { useAppDispatch } from "../../store/hooks";
 // import code from "../../examples/semanticerrors.sc?raw";
 
 let decorations: monaco.editor.IEditorDecorationsCollection;
@@ -31,12 +33,14 @@ export const BrilEditor: VFC = () => {
   const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
   const cfgNodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
   const cfgFunctionName = useSelector((state: RootState) => state.settings.cfg.functionName);
+  const dispatch = useAppDispatch();
 
   const brilTxt = useMemo(() => {
     return brilPrinter.print(bril);
   }, [bril]);
 
   const brilTxtOptim = useMemo(() => {
+    console.log("memo", brilOptim);
     return brilPrinter.print(brilOptim);
   }, [brilOptim]);
 
@@ -101,7 +105,9 @@ export const BrilEditor: VFC = () => {
   }, [bril]);
 
   const doSSA = useCallback(() => {
-    toSSA(bril.functions.main);
+    const ssa = toSSAProgram(bril);
+    console.log(ssa);
+    dispatch(setBrilOptim(ssa));
   }, [bril]);
 
   return (

@@ -23,7 +23,7 @@ const postOrderVisitor = (successorsMap: stringMap, rootName: string, explored: 
   // don't traverse if already explored
   if (explored.includes(rootName)) return;
   // mark this branch as explored
-  explored = _.union(explored, [rootName]);
+  explored.splice(0, explored.length, ..._.union(explored, [rootName]));
   // visit each child
   successorsMap[rootName].forEach((successor) => postOrderVisitor(successorsMap, successor, explored, out));
   out.push(rootName);
@@ -40,10 +40,11 @@ export const getDominatorMap = (successorsMap: stringMap, entryName: string) => 
   // returns { blockName: [blocks that are in EVERY path from entry to blockName]}
   const predecessorsMap = invertMap(successorsMap);
   const nodes = postOrder(successorsMap, entryName).reverse();
+  console.log("nodes", nodes);
   const dom: stringMap = {};
   // init every node to reverse postorder
   Object.keys(successorsMap).forEach((v) => {
-    dom[v] = nodes;
+    dom[v] = [...nodes];
   });
   while (true) {
     let changed = false;

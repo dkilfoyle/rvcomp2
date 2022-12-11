@@ -186,3 +186,12 @@ export const fresh = (seed: string, names: string[]) => {
     i = i + 1;
   }
 };
+
+export const blockMap2Instructions = (blockMap: ICFGBlockMap) => {
+  const instrs: IBrilInstructionOrLabel[] = [];
+  Object.values(blockMap).forEach((block) => {
+    instrs.push({ label: block.name } as IBrilLabel);
+    instrs.push(...block.instructions);
+  });
+  return instrs;
+};

@@ -1,6 +1,18 @@
 import _ from "lodash";
-import { IBrilFunction, IBrilValueOperation } from "./BrilInterface";
-import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges, ICFGBlock, ICFGBlockMap } from "./cfgBuilder";
+import { setBrilOptimFunctionInstructions, setCfg } from "../../store/parseSlice";
+import store from "../../store/store";
+import { IBrilFunction, IBrilProgram, IBrilValueOperation } from "./BrilInterface";
+import {
+  addCfgEntry,
+  addCfgTerminators,
+  blockMap2Instructions,
+  cfgBuilder,
+  flattenCfgBlocks,
+  getCfgBlockMap,
+  getCfgEdges,
+  ICFGBlock,
+  ICFGBlockMap,
+} from "./cfgBuilder";
 import { getDominanceFrontierMap, getDominanceTree, getDominatorMap, stringMap } from "./dom";
 import { getBrilFunctionArgs, getBrilFunctionVarTypes, IDictString, IDictStrings } from "./utils";
 
@@ -52,16 +64,26 @@ export const renameVars = (blockMap: ICFGBlockMap, phis: IDictStrings, succs: ID
   // { phiblock: { x: [ [x.1, branchLeft], [x.2, branchRight] ] }}
   // ... = phi x.1, x.2, branchLeft, branchRight
   const phiArgs: IPhiArgs = {};
-  Object.keys(blockMap).forEach((b) => phis[b].forEach((p) => (phiArgs[b] = { [p]: [] })));
+  Object.keys(blockMap).forEach((b) => {
+    if (!phiArgs[b]) phiArgs[b] = {};
+    phis[b].forEach((p) => (phiArgs[b][p] = []));
+  });
+  console.log("phiArgs", phiArgs);
 
   // { block: { x : "x.3" }}
   // x.3: int = phi ....
   const phiDests: IPhiDests = {};
-  Object.keys(blockMap).forEach((b) => phis[b].forEach((p) => (phiDests[b] = { [p]: undefined })));
+  Object.keys(blockMap).forEach((b) => {
+    if (!phiDests[b]) phiDests[b] = {};
+    phis[b].forEach((p) => (phiDests[b][p] = undefined));
+  });
 
   const counters: Record<string, number> = {};
 
   const _pushFresh = (varName: string) => {
+    // first encounter of varName so init dicts
+    if (!counters[varName]) counters[varName] = 0;
+    if (!stack[varName]) stack[varName] = [];
     const fresh = `${varName}.${counters[varName]}`;
     counters[varName]++;
     stack[varName].unshift(fresh);
@@ -74,10 +96,15 @@ export const renameVars = (blockMap: ICFGBlockMap, phis: IDictStrings, succs: ID
     phis[b].forEach((p) => (phiDests[b][p] = _pushFresh(p)));
     // rename instruction args
     blockMap[b].instructions.forEach((instr) => {
+      // rename instruction arguments
       if ("args" in instr) {
         // read off bottom (most recent end) of the stack for arg [v.3, v.2, v.1]
         const newArgs = instr.args?.map((arg) => stack[arg][0]);
         instr.args = newArgs;
+      }
+      // rename instruction dests
+      if ("dest" in instr) {
+        instr.dest = _pushFresh(instr.dest);
       }
     });
 
@@ -116,13 +143,13 @@ export const insertPhis = (blockMap: ICFGBlockMap, phiDests: IPhiDests, phiArgs:
           labels: phiArgs[b][p].map((a) => a[0]),
           args: phiArgs[b][p].map((a) => a[1]),
         } as IBrilValueOperation;
-        console.log(`Created phi in block ${b}`, phi);
+        console.info(`SSA: Created phi in block ${b}`, phi);
         blockMap[b].instructions.unshift(phi);
       });
   });
 };
 
-export const toSSA = (func: IBrilFunction) => {
+export const toSSAFunction = (func: IBrilFunction) => {
   let blockMap = addCfgEntry(getCfgBlockMap(cfgBuilder.buildFunction(func)));
   addCfgTerminators(blockMap);
   const edges = getCfgEdges(blockMap);
@@ -134,15 +161,34 @@ export const toSSA = (func: IBrilFunction) => {
   const defs = getVariableDefinitionToBlocksMap(blockMap);
   const types = getBrilFunctionVarTypes(func);
   const argNames = getBrilFunctionArgs(func);
-
   const phis = getBlockToPhiVariablesMap(blockMap, df, defs);
+
+  // console.log("blockNames", Object.keys(blockMap));
+  // console.log("succs", successors);
+  // console.log("dom", dom);
+  // console.log("df", df);
+  // console.log("defs", defs);
+  // console.log("phis", phis);
+
   const phiMaps = renameVars(blockMap, phis, successors, domTree, argNames);
   insertPhis(blockMap, phiMaps.phiDests, phiMaps.phiArgs, types);
 
-  console.log("SSA blockmap: ", blockMap);
   return blockMap;
 };
 
+export const toSSAProgram = (prog: IBrilProgram) => {
+  console.info("Performing SSA...");
+  const outBril: IBrilProgram = { functions: {} };
+  Object.values(prog.functions).forEach((func) => {
+    const blockMap = toSSAFunction(func);
+    const instrs = blockMap2Instructions(blockMap);
+    outBril.functions[func.name] = {
+      ...func,
+      instrs,
+    };
+  });
+  return outBril;
+};
 // def func_to_ssa(func):
 //     blocks = block_map(form_blocks(func['instrs']))
 //     add_entry(blocks)

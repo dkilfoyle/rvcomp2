@@ -39,7 +39,7 @@ export const BrilView: React.FC = () => {
     const root = {
       title: `functions[${bril.functions.length}]`,
       key: `${bril.key}`,
-      children: bril.functions.map((fn) => {
+      children: Object.values(bril.functions).map((fn) => {
         return {
           title: fn.name,
           key: `${fn.key}`,

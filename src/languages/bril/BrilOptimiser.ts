@@ -262,11 +262,7 @@ export const lvn = (cfg: ICFG) => {
       store.dispatch(setCfgBlockInstructions({ fn, blockIndex, instructions: new_instructions, lvntable }));
     });
     const flattenedInstructions = flattenCfgInstructions(fn);
-    console.info(
-      `  ${fn}: Instruction count ${store.getState().parse.bril.functions.find((f) => f.name == fn)?.instrs.length} => ${
-        flattenedInstructions.length
-      }`
-    );
+    console.info(`  ${fn}: Instruction count ${store.getState().parse.bril.functions[fn]?.instrs.length} => ${flattenedInstructions.length}`);
     store.dispatch(setBrilOptimFunctionInstructions({ fn, instructions: flattenedInstructions }));
   });
 };
