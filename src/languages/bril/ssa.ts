@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { setBrilOptimFunctionInstructions, setCfg } from "../../store/parseSlice";
 import store from "../../store/store";
-import { IBrilFunction, IBrilProgram, IBrilValueOperation } from "./BrilInterface";
+import { IBrilFunction, IBrilInstruction, IBrilInstructionOrLabel, IBrilProgram, IBrilValueOperation } from "./BrilInterface";
 import {
   addCfgEntry,
   addCfgTerminators,
@@ -68,7 +68,6 @@ export const renameVars = (blockMap: ICFGBlockMap, phis: IDictStrings, succs: ID
     if (!phiArgs[b]) phiArgs[b] = {};
     phis[b].forEach((p) => (phiArgs[b][p] = []));
   });
-  console.log("phiArgs", phiArgs);
 
   // { block: { x : "x.3" }}
   // x.3: int = phi ....
@@ -143,15 +142,37 @@ export const insertPhis = (blockMap: ICFGBlockMap, phiDests: IPhiDests, phiArgs:
           labels: phiArgs[b][p].map((a) => a[0]),
           args: phiArgs[b][p].map((a) => a[1]),
         } as IBrilValueOperation;
-        console.info(`SSA: Created phi in block ${b}`, phi);
+        // console.info(`SSA: Created phi in block ${b}`, phi);
         blockMap[b].instructions.unshift(phi);
       });
   });
 };
 
-export const toSSAFunction = (func: IBrilFunction) => {
-  let blockMap = addCfgEntry(getCfgBlockMap(cfgBuilder.buildFunction(func)));
-  addCfgTerminators(blockMap);
+export const removePhis = (blockMap: ICFGBlockMap) => {
+  Object.values(blockMap).forEach((block) => {
+    block.instructions.forEach((instr) => {
+      if ("op" in instr && instr.op == "phi") {
+        // x = phi x.1 x.2 left right
+        // args=[x.1, x.2]
+        // labels=[left,right] where left,right are immed predecessors of current block
+        instr.labels?.forEach((label, i) => {
+          const varName = instr.args[i];
+          // insert x = x.1 or x.2 just before terminator of left or right
+          // blockMap[left].instructions[-2] = {op:"id", dest: "x", args: ["x.1"]}
+          blockMap[label].instructions.splice(-1, 0, {
+            op: "id",
+            dest: instr.dest,
+            args: [varName],
+            type: instr.type,
+          } as IBrilValueOperation);
+        });
+      }
+    });
+    block.instructions = block.instructions.filter((instr) => "op" in instr && instr.op != "phi");
+  });
+};
+
+export const runSSA = (blockMap: ICFGBlockMap, func: IBrilFunction) => {
   const edges = getCfgEdges(blockMap);
   const successors = edges.successorsMap;
   const dom = getDominatorMap(successors, Object.keys(blockMap)[0]);
@@ -172,38 +193,4 @@ export const toSSAFunction = (func: IBrilFunction) => {
 
   const phiMaps = renameVars(blockMap, phis, successors, domTree, argNames);
   insertPhis(blockMap, phiMaps.phiDests, phiMaps.phiArgs, types);
-
-  return blockMap;
 };
-
-export const toSSAProgram = (prog: IBrilProgram) => {
-  console.info("Performing SSA...");
-  const outBril: IBrilProgram = { functions: {} };
-  Object.values(prog.functions).forEach((func) => {
-    const blockMap = toSSAFunction(func);
-    const instrs = blockMap2Instructions(blockMap);
-    outBril.functions[func.name] = {
-      ...func,
-      instrs,
-    };
-  });
-  return outBril;
-};
-// def func_to_ssa(func):
-//     blocks = block_map(form_blocks(func['instrs']))
-//     add_entry(blocks)
-//     add_terminators(blocks)
-//     succ = {name: successors(block[-1]) for name, block in blocks.items()}
-//     dom = get_dom(succ, list(blocks.keys())[0])
-
-//     df = dom_fronts(dom, succ)
-//     defs = def_blocks(blocks)
-//     types = get_types(func)
-//     arg_names = {a['name'] for a in func['args']} if 'args' in func else set()
-
-//     phis = get_phis(blocks, df, defs)
-//     phi_args, phi_dests = ssa_rename(blocks, phis, succ, dom_tree(dom),
-//                                      arg_names)
-//     insert_phis(blocks, phi_args, phi_dests, types)
-
-//     func['instrs'] = reassemble(blocks)

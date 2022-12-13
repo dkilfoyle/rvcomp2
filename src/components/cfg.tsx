@@ -56,8 +56,6 @@ export const CfgView: React.FC = () => {
       nodes.push({ id: "cfgerror", label: "Invalid CFG" });
     }
 
-    console.log(cfg, nodes, edges);
-
     return { nodes, edges };
   }, [cfg, nodeName]);
 

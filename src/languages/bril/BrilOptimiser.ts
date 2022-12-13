@@ -1,7 +1,14 @@
 import { setBrilOptimFunctionInstructions, setCfgBlockInstructions } from "../../store/parseSlice";
 import store from "../../store/store";
-import { IBrilConst, IBrilEffectOperation, IBrilInstructionOrLabel, IBrilValueInstruction, IBrilValueOperation } from "./BrilInterface";
-import { ICFG } from "./cfgBuilder";
+import {
+  IBrilConst,
+  IBrilEffectOperation,
+  IBrilFunction,
+  IBrilInstructionOrLabel,
+  IBrilValueInstruction,
+  IBrilValueOperation,
+} from "./BrilInterface";
+import { ICFG, ICFGBlock, ICFGBlockMap } from "./cfgBuilder";
 
 let dceRemovedInsCount = 0;
 let dceIterations = 0;
@@ -15,8 +22,12 @@ const flattenCfgInstructions = (fn: string) => {
   return instructions;
 };
 
-const dce_pass = (fn: string) => {
-  const blocks = store.getState().parse.cfg[fn];
+export interface IDCEStats {
+  removedInstructions: IBrilInstructionOrLabel[];
+  iterations: number;
+}
+
+const dce_pass = (blocks: ICFGBlock[], func: IBrilFunction, stats: IDCEStats) => {
   // find all variables used as an argument in any instruction in all the blocks
   const used = new Set<string>();
   for (let block of blocks) {
@@ -31,34 +42,48 @@ const dce_pass = (fn: string) => {
     const new_block = block.instructions.filter((ins) => {
       const keep = !("dest" in ins) || used.has(ins.dest);
       if (!keep) {
-        dceRemovedInsCount++;
-        console.info(`  ${fn}: deleted `, ins);
+        stats.removedInstructions.push({ ...ins });
       }
       return keep;
     });
     if (new_block.length != block.instructions.length) {
       changed = true;
-      store.dispatch(setCfgBlockInstructions({ fn, blockIndex, instructions: new_block }));
+      block.instructions = new_block;
+      // store.dispatch(setCfgBlockInstructions({ fn, blockIndex, instructions: new_block }));
     }
   });
 
   return changed;
 };
 
-export const dce = (cfg: ICFG) => {
-  console.info("Optimization: Performing DCE...");
-  Object.keys(cfg).forEach((fn) => {
-    dceIterations = 0;
-    dceRemovedInsCount = 0;
-    while (dce_pass(fn)) {
-      dceIterations++;
-    }
-    if (dceRemovedInsCount > 0) {
-      console.info(`  Function ${fn}: Removed ${dceRemovedInsCount} instructions in ${dceIterations} iterations`);
-      store.dispatch(setBrilOptimFunctionInstructions({ fn, instructions: flattenCfgInstructions(fn) }));
-    } else console.info(`  Function ${fn}: No dead code detected`);
-  });
+export const runDCE = (blockMap: ICFGBlockMap, func: IBrilFunction) => {
+  dceIterations = 0;
+  const stats: IDCEStats = {
+    removedInstructions: [],
+    iterations: 0,
+  };
+  const blocks = Object.values(blockMap);
+  while (dce_pass(blocks, func, stats)) {
+    dceIterations++;
+  }
+  stats.iterations = dceIterations;
+  return stats;
 };
+
+// export const dce = (cfg: ICFG) => {
+//   console.info("Optimization: Performing DCE...");
+//   Object.keys(cfg).forEach((fn) => {
+//     dceIterations = 0;
+//     dceRemovedInsCount = 0;
+//     while (dce_pass(fn)) {
+//       dceIterations++;
+//     }
+//     if (dceRemovedInsCount > 0) {
+//       console.info(`  Function ${fn}: Removed ${dceRemovedInsCount} instructions in ${dceIterations} iterations`);
+//       store.dispatch(setBrilOptimFunctionInstructions({ fn, instructions: flattenCfgInstructions(fn) }));
+//     } else console.info(`  Function ${fn}: No dead code detected`);
+//   });
+// };
 
 class LVNValue {
   op: string;

@@ -6,13 +6,13 @@ import "./index.css";
 import { brilPrinter } from "../../languages/bril/BrilPrinter";
 import { RootState } from "../../store/store";
 import { useSelector } from "react-redux";
-import { Box, Button, ButtonGroup, VStack } from "@chakra-ui/react";
-import { dce, lvn } from "../../languages/bril/BrilOptimiser";
+import { VStack } from "@chakra-ui/react";
 import { setupLanguage } from "./monaco/setup";
-import { runDataFlow } from "../../languages/bril/df";
-import { toSSAProgram } from "../../languages/bril/ssa";
-import { setBrilOptim } from "../../store/parseSlice";
-import { useAppDispatch } from "../../store/hooks";
+// import { setBrilOptim } from "../../store/parseSlice";
+// import { useAppDispatch } from "../../store/hooks";
+
+import { selectDoDCE, selectDoLVN, selectDoSSA, selectKeepPhis } from "../../store/settingsSlice";
+import { optimiseBril } from "../../languages/bril/BrilCompiler";
 // import code from "../../examples/semanticerrors.sc?raw";
 
 let decorations: monaco.editor.IEditorDecorationsCollection;
@@ -29,20 +29,26 @@ export const BrilEditor: VFC = () => {
 
   const cfg = useSelector((state: RootState) => state.parse.cfg);
   const bril = useSelector((state: RootState) => state.parse.bril);
-  const ast = useSelector((state: RootState) => state.parse.ast);
-  const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
+  // const ast = useSelector((state: RootState) => state.parse.ast);
+  // const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
   const cfgNodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
   const cfgFunctionName = useSelector((state: RootState) => state.settings.cfg.functionName);
-  const dispatch = useAppDispatch();
+  // const keepPhis = useSelector(selectKeepPhis);
+  // const dispatch = useAppDispatch();
+
+  const keepPhis = useSelector(selectKeepPhis);
+  const doSSA = useSelector(selectDoSSA);
+  const doLVN = useSelector(selectDoLVN);
+  const doDCE = useSelector(selectDoDCE);
 
   const brilTxt = useMemo(() => {
     return brilPrinter.print(bril);
   }, [bril]);
 
   const brilTxtOptim = useMemo(() => {
-    console.log("memo", brilOptim);
+    const brilOptim = optimiseBril(bril, doSSA, keepPhis, doLVN, doDCE);
     return brilPrinter.print(brilOptim);
-  }, [brilOptim]);
+  }, [bril, keepPhis, doSSA, doLVN, doDCE]);
 
   const selectedCfgNode = useMemo(() => {
     const fn = cfg[cfgFunctionName];
@@ -92,34 +98,8 @@ export const BrilEditor: VFC = () => {
     return () => editor?.dispose();
   }, [monacoEl.current]);
 
-  const doDCE = useCallback(() => {
-    dce(cfg);
-  }, [cfg]);
-
-  const doLVN = useCallback(() => {
-    lvn(cfg);
-  }, [cfg]);
-
-  const doDF = useCallback(() => {
-    runDataFlow(bril, "defined");
-  }, [bril]);
-
-  const doSSA = useCallback(() => {
-    const ssa = toSSAProgram(bril);
-    console.log(ssa);
-    dispatch(setBrilOptim(ssa));
-  }, [bril]);
-
   return (
     <VStack height="100%" align="left" spacing="0px">
-      <Box p="6px">
-        <ButtonGroup size="xs">
-          <Button onClick={doDCE}>DCE</Button>
-          <Button onClick={doLVN}>LVN</Button>
-          <Button onClick={doDF}>DF</Button>
-          <Button onClick={doSSA}>SSA</Button>
-        </ButtonGroup>
-      </Box>
       <div className={styles.Editor} ref={monacoEl}></div>
     </VStack>
   );

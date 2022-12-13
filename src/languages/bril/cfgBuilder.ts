@@ -195,3 +195,9 @@ export const blockMap2Instructions = (blockMap: ICFGBlockMap) => {
   });
   return instrs;
 };
+
+export const getFunctionBlockMap = (func: IBrilFunction) => {
+  let blockMap = addCfgEntry(getCfgBlockMap(cfgBuilder.buildFunction(func)));
+  addCfgTerminators(blockMap);
+  return blockMap;
+};

@@ -5,7 +5,8 @@ import "rc-tree/assets/index.css";
 import type { RootState } from "../store/store";
 import { useAppDispatch } from "../store/hooks";
 import { useSelector, useDispatch } from "react-redux";
-import { setFilename } from "../store/settingsSlice";
+import { setDoSSA, setDoLVN, setDoDCE, setKeepPhis, setFilename } from "../store/settingsSlice";
+import { selectKeepPhis, selectDoSSA, selectDoLVN, selectDoDCE } from "../store/settingsSlice";
 
 const fileTreeData = [
   {
@@ -56,6 +57,10 @@ const fileTreeData = [
 export const Sidebar = () => {
   // const filename = Settings.filename.use();
   const filename = useSelector((state: RootState) => state.settings.filename);
+  const keepPhis = useSelector(selectKeepPhis);
+  const doSSA = useSelector(selectDoSSA);
+  const doLVN = useSelector(selectDoLVN);
+  const doDCE = useSelector(selectDoDCE);
   const dispatch = useAppDispatch();
 
   return (
@@ -90,14 +95,25 @@ export const Sidebar = () => {
           <h2>
             <AccordionButton>
               <Box flex="1" textAlign="left">
-                Settings
+                Optimisations
               </Box>
               <AccordionIcon />
             </AccordionButton>
           </h2>
           <AccordionPanel pb={4}>
             <VStack alignItems="start">
-              <h2>Highlight</h2>
+              <Checkbox isChecked={doSSA} onChange={(e) => dispatch(setDoSSA(e.target.checked))}>
+                SSA
+              </Checkbox>
+              <Checkbox isChecked={keepPhis} onChange={(e) => dispatch(setKeepPhis(e.target.checked))}>
+                KeepPhis
+              </Checkbox>
+              <Checkbox isChecked={doLVN} onChange={(e) => dispatch(setDoLVN(e.target.checked))}>
+                LVN
+              </Checkbox>
+              <Checkbox isChecked={doDCE} onChange={(e) => dispatch(setDoDCE(e.target.checked))}>
+                DCE
+              </Checkbox>
             </VStack>
           </AccordionPanel>
         </AccordionItem>
