@@ -1,6 +1,6 @@
 # RVComp2
 
-A WIP learning experiment building a very simple C-like RiscV compiler based around Adrian Sampson's open-learning compiler course and a react-based IDE.
+A WIP learning experiment in building a very simple C-like RiscV compiler in Typescript based around Adrian Sampson's open-learning compiler course with a react-based IDE.
 
 ## Implemented
 
@@ -23,7 +23,7 @@ A WIP learning experiment building a very simple C-like RiscV compiler based aro
 
 1. Improve UI
    1. CFG node selection shows DFA for that node
-   2. Bril IR diffeditor - plain vs SSA and SSA vs optimisations
+   2. --Bril IR diffeditor - plain vs SSA and SSA vs optimisations--
 2. Optimisations
    1. Use DFA
       1. Use DFA to do global DCE - research how

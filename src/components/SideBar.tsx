@@ -5,8 +5,18 @@ import "rc-tree/assets/index.css";
 import type { RootState } from "../store/store";
 import { useAppDispatch } from "../store/hooks";
 import { useSelector, useDispatch } from "react-redux";
-import { setDoSSA, setDoLVN, setDoDCE, setKeepPhis, setFilename } from "../store/settingsSlice";
-import { selectKeepPhis, selectDoSSA, selectDoLVN, selectDoDCE } from "../store/settingsSlice";
+import {
+  setIsSSA,
+  setDoLVN,
+  setDoDCE,
+  setKeepPhis,
+  setFilename,
+  selectBrilIsSSA,
+  selectBrilKeepPhis,
+  setBrilKeepPhis,
+  setBrilIsSSA,
+} from "../store/settingsSlice";
+import { selectKeepPhis, selectIsSSA, selectDoLVN, selectDoDCE } from "../store/settingsSlice";
 
 const fileTreeData = [
   {
@@ -58,7 +68,9 @@ export const Sidebar = () => {
   // const filename = Settings.filename.use();
   const filename = useSelector((state: RootState) => state.settings.filename);
   const keepPhis = useSelector(selectKeepPhis);
-  const doSSA = useSelector(selectDoSSA);
+  const isSSA = useSelector(selectIsSSA);
+  const brilKeepPhis = useSelector(selectBrilKeepPhis);
+  const brilIsSSA = useSelector(selectBrilIsSSA);
   const doLVN = useSelector(selectDoLVN);
   const doDCE = useSelector(selectDoDCE);
   const dispatch = useAppDispatch();
@@ -66,7 +78,7 @@ export const Sidebar = () => {
   return (
     <div style={{ backgroundColor: "whitesmoke" }}>
       <Box p={4}>RVComp2</Box>
-      <Accordion defaultIndex={[0]} allowMultiple size="sm">
+      <Accordion defaultIndex={[0, 2]} allowMultiple size="sm">
         <AccordionItem>
           <h2>
             <AccordionButton>
@@ -95,6 +107,32 @@ export const Sidebar = () => {
           <h2>
             <AccordionButton>
               <Box flex="1" textAlign="left">
+                Bril
+              </Box>
+              <AccordionIcon />
+            </AccordionButton>
+          </h2>
+          <AccordionPanel pb={4}>
+            <VStack alignItems="start">
+              <Checkbox
+                isChecked={brilIsSSA}
+                onChange={(e) => {
+                  dispatch(setBrilIsSSA(e.target.checked));
+                  if (e.target.checked) dispatch(setIsSSA(true));
+                }}>
+                SSA
+              </Checkbox>
+              <Checkbox isChecked={brilKeepPhis} onChange={(e) => dispatch(setBrilKeepPhis(e.target.checked))}>
+                KeepPhis
+              </Checkbox>
+            </VStack>
+          </AccordionPanel>
+        </AccordionItem>
+
+        <AccordionItem>
+          <h2>
+            <AccordionButton>
+              <Box flex="1" textAlign="left">
                 Optimisations
               </Box>
               <AccordionIcon />
@@ -102,7 +140,7 @@ export const Sidebar = () => {
           </h2>
           <AccordionPanel pb={4}>
             <VStack alignItems="start">
-              <Checkbox isChecked={doSSA} onChange={(e) => dispatch(setDoSSA(e.target.checked))}>
+              <Checkbox isChecked={isSSA} onChange={(e) => dispatch(setIsSSA(e.target.checked))}>
                 SSA
               </Checkbox>
               <Checkbox isChecked={keepPhis} onChange={(e) => dispatch(setKeepPhis(e.target.checked))}>

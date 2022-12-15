@@ -23,7 +23,7 @@ export const compileSimpleC = (ast: IAstProgram, compiler: IValidSimpleCCompiler
   }
 };
 
-export const optimiseBril = (bril: IBrilProgram, doSSA: boolean, keepPhis: boolean, doLVN: boolean, doDCE: boolean) => {
+export const optimiseBril = (bril: IBrilProgram, doSSA: boolean, keepPhis: boolean, doLVN: boolean = false, doDCE: boolean = false) => {
   const getYN = (t: boolean) => (t ? "Y" : "N");
   const outBril: IBrilProgram = { functions: {} };
   console.info(`Optimising: ${doSSA ? "SSA" : ""} ${doLVN ? "LVN" : ""} ${doDCE ? "DCE" : ""} `);

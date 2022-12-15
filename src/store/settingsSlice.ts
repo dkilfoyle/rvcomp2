@@ -10,9 +10,13 @@ interface SettingsState {
   };
   optim: {
     keepPhis: boolean;
-    doSSA: boolean;
+    isSSA: boolean;
     doLVN: boolean;
     doDCE: boolean;
+  };
+  bril: {
+    keepPhis: boolean;
+    isSSA: boolean;
   };
 }
 
@@ -24,9 +28,13 @@ const initialState: SettingsState = {
   },
   optim: {
     keepPhis: true,
-    doSSA: true,
+    isSSA: true,
     doLVN: false,
     doDCE: false,
+  },
+  bril: {
+    keepPhis: true,
+    isSSA: true,
   },
 };
 
@@ -48,8 +56,14 @@ export const settingsSlice = createSlice({
     setKeepPhis: (state: SettingsState, action: PayloadAction<boolean>) => {
       state.optim.keepPhis = action.payload;
     },
-    setDoSSA: (state: SettingsState, action: PayloadAction<boolean>) => {
-      state.optim.doSSA = action.payload;
+    setIsSSA: (state: SettingsState, action: PayloadAction<boolean>) => {
+      state.optim.isSSA = action.payload;
+    },
+    setBrilKeepPhis: (state: SettingsState, action: PayloadAction<boolean>) => {
+      state.bril.keepPhis = action.payload;
+    },
+    setBrilIsSSA: (state: SettingsState, action: PayloadAction<boolean>) => {
+      state.bril.isSSA = action.payload;
     },
     setDoLVN: (state: SettingsState, action: PayloadAction<boolean>) => {
       state.optim.doLVN = action.payload;
@@ -60,14 +74,17 @@ export const settingsSlice = createSlice({
   },
 });
 
-export const { setFilename, setCfgNodeName, setCfgFunctionName, setKeepPhis, setDoSSA, setDoDCE, setDoLVN } = settingsSlice.actions;
+export const { setFilename, setCfgNodeName, setCfgFunctionName, setKeepPhis, setIsSSA, setDoDCE, setDoLVN, setBrilKeepPhis, setBrilIsSSA } =
+  settingsSlice.actions;
 
 // Other code such as selectors can use the imported `RootState` type
 export const selectFilename = (state: RootState) => state.settings.filename;
 export const selectCfgNodeName = (state: RootState) => state.settings.cfg.nodeName;
 export const selectCfgFunction = (state: RootState) => state.settings.cfg.functionName;
 export const selectKeepPhis = (state: RootState) => state.settings.optim.keepPhis;
-export const selectDoSSA = (state: RootState) => state.settings.optim.doSSA;
+export const selectIsSSA = (state: RootState) => state.settings.optim.isSSA;
+export const selectBrilKeepPhis = (state: RootState) => state.settings.bril.keepPhis;
+export const selectBrilIsSSA = (state: RootState) => state.settings.bril.isSSA;
 export const selectDoLVN = (state: RootState) => state.settings.optim.doLVN;
 export const selectDoDCE = (state: RootState) => state.settings.optim.doDCE;
 

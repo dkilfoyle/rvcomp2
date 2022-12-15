@@ -11,7 +11,15 @@ import { setupLanguage } from "./monaco/setup";
 // import { setBrilOptim } from "../../store/parseSlice";
 // import { useAppDispatch } from "../../store/hooks";
 
-import { selectDoDCE, selectDoLVN, selectDoSSA, selectKeepPhis } from "../../store/settingsSlice";
+import {
+  selectBrilIsSSA,
+  selectBrilKeepPhis,
+  selectDoDCE,
+  selectDoLVN,
+  selectIsSSA,
+  selectKeepPhis,
+  setBrilIsSSA,
+} from "../../store/settingsSlice";
 import { optimiseBril } from "../../languages/bril/BrilCompiler";
 // import code from "../../examples/semanticerrors.sc?raw";
 
@@ -29,26 +37,27 @@ export const BrilEditor: VFC = () => {
 
   const cfg = useSelector((state: RootState) => state.parse.cfg);
   const bril = useSelector((state: RootState) => state.parse.bril);
-  // const ast = useSelector((state: RootState) => state.parse.ast);
-  // const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
   const cfgNodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
   const cfgFunctionName = useSelector((state: RootState) => state.settings.cfg.functionName);
-  // const keepPhis = useSelector(selectKeepPhis);
-  // const dispatch = useAppDispatch();
 
   const keepPhis = useSelector(selectKeepPhis);
-  const doSSA = useSelector(selectDoSSA);
+  const isSSA = useSelector(selectIsSSA);
+  const brilKeepPhis = useSelector(selectBrilKeepPhis);
+  const brilIsSSA = useSelector(selectBrilIsSSA);
   const doLVN = useSelector(selectDoLVN);
   const doDCE = useSelector(selectDoDCE);
 
   const brilTxt = useMemo(() => {
-    return brilPrinter.print(bril);
-  }, [bril]);
+    if (brilIsSSA) {
+      const brilOptim = optimiseBril(bril, brilIsSSA, keepPhis);
+      return brilPrinter.print(brilOptim);
+    } else return brilPrinter.print(bril);
+  }, [bril, brilIsSSA, brilKeepPhis]);
 
   const brilTxtOptim = useMemo(() => {
-    const brilOptim = optimiseBril(bril, doSSA, keepPhis, doLVN, doDCE);
+    const brilOptim = optimiseBril(bril, isSSA, keepPhis, doLVN, doDCE);
     return brilPrinter.print(brilOptim);
-  }, [bril, keepPhis, doSSA, doLVN, doDCE]);
+  }, [bril, keepPhis, isSSA, doLVN, doDCE]);
 
   const selectedCfgNode = useMemo(() => {
     const fn = cfg[cfgFunctionName];
