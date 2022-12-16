@@ -21,6 +21,8 @@ import {
   setBrilIsSSA,
 } from "../../store/settingsSlice";
 import { optimiseBril } from "../../languages/bril/BrilCompiler";
+import { setBrilOptim, setCfg } from "../../store/parseSlice";
+import { useAppDispatch } from "../../store/hooks";
 // import code from "../../examples/semanticerrors.sc?raw";
 
 let decorations: monaco.editor.IEditorDecorationsCollection;
@@ -29,17 +31,12 @@ export const BrilEditor: VFC = () => {
   const [editor, setEditor] = useState<monaco.editor.IStandaloneDiffEditor | null>(null);
   const monacoEl = useRef(null);
 
-  // const _brilTxt = brilTxt.use();
-  // const _brilIR = brilIR.use();
-  // const _cfg = cfg.use();
-  // const _selectedCfgNodeName = selectedCfgNodeName.use();
-  // const _selectedFunctionName = selectedFunctionName.use();
-
+  const dispatch = useAppDispatch();
   const cfg = useSelector((state: RootState) => state.parse.cfg);
   const bril = useSelector((state: RootState) => state.parse.bril);
+  const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
   const cfgNodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
   const cfgFunctionName = useSelector((state: RootState) => state.settings.cfg.functionName);
-
   const keepPhis = useSelector(selectKeepPhis);
   const isSSA = useSelector(selectIsSSA);
   const brilKeepPhis = useSelector(selectBrilKeepPhis);
@@ -49,15 +46,20 @@ export const BrilEditor: VFC = () => {
 
   const brilTxt = useMemo(() => {
     if (brilIsSSA) {
-      const brilOptim = optimiseBril(bril, brilIsSSA, keepPhis);
-      return brilPrinter.print(brilOptim);
+      const { optimBril, optimCfg } = optimiseBril(bril, brilIsSSA, keepPhis);
+      return brilPrinter.print(optimBril);
     } else return brilPrinter.print(bril);
   }, [bril, brilIsSSA, brilKeepPhis]);
 
-  const brilTxtOptim = useMemo(() => {
-    const brilOptim = optimiseBril(bril, isSSA, keepPhis, doLVN, doDCE);
-    return brilPrinter.print(brilOptim);
+  useEffect(() => {
+    const { optimBril, optimCfg } = optimiseBril(bril, isSSA, keepPhis, doLVN, doDCE, true);
+    dispatch(setBrilOptim(optimBril));
+    dispatch(setCfg(optimCfg));
   }, [bril, keepPhis, isSSA, doLVN, doDCE]);
+
+  const brilTxtOptim = useMemo(() => {
+    return brilPrinter.print(brilOptim);
+  }, [brilOptim]);
 
   const selectedCfgNode = useMemo(() => {
     const fn = cfg[cfgFunctionName];
@@ -72,9 +74,9 @@ export const BrilEditor: VFC = () => {
 
   useEffect(() => {
     if (selectedCfgNode && editor) {
-      const startLine = brilPrinter.irkeys.findIndex((x) => x == selectedCfgNode.keyStart) + 1;
-      const endLine = brilPrinter.irkeys.findIndex((x) => x == selectedCfgNode.keyEnd) + 1;
-
+      const startLine = brilPrinter.irkeys[cfgFunctionName][selectedCfgNode.keyStart] + 1;
+      const endLine = brilPrinter.irkeys[cfgFunctionName][selectedCfgNode.keyEnd] + 1;
+      console.log(selectedCfgNode);
       const newDecoration = {
         range: new monaco.Range(startLine, 1, endLine, 1),
         options: {
@@ -89,7 +91,7 @@ export const BrilEditor: VFC = () => {
         decorations.set([newDecoration]);
       }
     }
-  }, [selectedCfgNode]);
+  }, [selectedCfgNode, cfgFunctionName]);
 
   useEffect(() => {
     if (editor) {

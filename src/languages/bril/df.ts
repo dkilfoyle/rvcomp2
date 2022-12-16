@@ -10,8 +10,8 @@ interface IDFAnalysis<T> {
 }
 
 const union = (sets: string[][]) => _.union(...sets);
-const intersection = (sets: string[]) => _.intersection(...sets);
-const addUnique = (names: string[], name: string) => _.union(name, names);
+// const intersection = (sets: string[]) => _.intersection(...sets);
+// const addUnique = (names: string[], name: string) => _.union(name, names);
 
 // vars that have a generated value in this block
 const generatedVars = (block: ICFGBlock) => block.instructions.filter((ins) => "dest" in ins).map((ins) => (ins as IBrilValueInstruction).dest);
@@ -19,16 +19,16 @@ const generatedVars = (block: ICFGBlock) => block.instructions.filter((ins) => "
 // vars that are read/used before they are written to in this block
 // the values must have been set in an earlier block
 const usedVars = (block: ICFGBlock) => {
-  const defined: string[] = [];
-  const used: string[] = [];
+  let defined: string[] = [];
+  let used: string[] = [];
   block.instructions.forEach((instr) => {
     if ("args" in instr) {
       instr.args?.forEach((arg) => {
-        if (!defined.includes(arg)) addUnique(used, arg);
+        if (!defined.includes(arg)) used = _.union(used, [arg]);
       });
     }
     if ("dest" in instr) {
-      addUnique(used, instr.dest);
+      defined = _.union(defined, [instr.dest]);
     }
   });
   return used;
@@ -98,4 +98,10 @@ export const runDataFlow = (bril: IBrilProgram, analysis: string) => {
     const { _in, _out } = dfWorklist(dfBlockMap, ANALYSES[analysis]);
     console.log(`${fnName}: `, _in, _out);
   });
+};
+
+export const getDataFlow = (blockMap: ICFGBlockMap) => {
+  const { _in: definedIn, _out: definedOut } = dfWorklist(blockMap, ANALYSES["defined"]);
+  const { _in: liveIn, _out: liveOut } = dfWorklist(blockMap, ANALYSES["live"]);
+  return { definedIn, definedOut, liveIn, liveOut };
 };

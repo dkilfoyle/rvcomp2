@@ -8,11 +8,12 @@ import { setCfgNodeName } from "../store/settingsSlice";
 import { useAppDispatch } from "../store/hooks";
 import { getDominanceFrontierMap, getDominanceTree, getDominatorMap } from "../languages/bril/dom";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
+import { getDataFlow } from "../languages/bril/df";
 
 export const CfgView: React.FC = () => {
   // const _cfg = cfg.use();
   // const _selectedFunctionName = selectedFunctionName.use();
-  const bril = useSelector((state: RootState) => state.parse.bril);
+  const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
   const functionName = useSelector((state: RootState) => state.settings.cfg.functionName);
   const nodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
   const dispatch = useAppDispatch();
@@ -21,19 +22,20 @@ export const CfgView: React.FC = () => {
   let network: Network;
 
   const cfg = useMemo(() => {
-    const cfg = cfgBuilder.buildProgram(bril);
+    const cfg = cfgBuilder.buildProgram(brilOptim);
     const fn = cfg[functionName];
     if (!fn) return undefined;
 
     let blockMap = getCfgBlockMap(cfg[functionName]);
     blockMap = addCfgEntry(blockMap);
     addCfgTerminators(blockMap);
+    const dataFlow = getDataFlow(blockMap);
     const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
     const dom = getDominatorMap(successorsMap, fn[0].name);
     const frontier = getDominanceFrontierMap(dom, successorsMap);
     const domtree = getDominanceTree(dom);
-    return { blockMap, successorsMap, dom, frontier, domtree };
-  }, [bril, functionName]);
+    return { blockMap, successorsMap, dom, frontier, domtree, dataFlow };
+  }, [brilOptim, functionName]);
 
   const cfgVisData = useMemo(() => {
     const nodes: { id: string; label: string; color?: string; borderWidth?: any; shapeProperties?: any }[] = [];
@@ -63,6 +65,7 @@ export const CfgView: React.FC = () => {
     const options: Options = {
       // height: "400px",
       // width: "400px",
+      interaction: { hover: true },
       layout: {
         hierarchical: {
           enabled: true,
@@ -85,9 +88,13 @@ export const CfgView: React.FC = () => {
     if (visJsRef.current) network = new Network(visJsRef.current, cfgVisData, options);
     network.on("selectNode", (params) => {
       dispatch(setCfgNodeName(params.nodes[0]));
-      console.log(cfg?.blockMap[params.nodes[0]]);
-      // console.log("selectNode", params);
-      // todo: show the dominators of this node in a different color or the dominance frontier
+      // console.log(cfg?.blockMap[params.nodes[0]]);
+    });
+    network.on("hoverNode", (params) => {
+      console.log("definedIn", cfg?.dataFlow.definedIn[params.node]);
+      console.log("definedOut", cfg?.dataFlow.definedOut[params.node]);
+      console.log("liveIn", cfg?.dataFlow.liveIn[params.node]);
+      console.log("liveOut", cfg?.dataFlow.liveOut[params.node]);
     });
     network?.fit();
   }, [visJsRef, cfgVisData]);

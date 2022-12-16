@@ -131,10 +131,12 @@ export const renameVars = (blockMap: ICFGBlockMap, phis: IDictStrings, succs: ID
 };
 
 export const insertPhis = (blockMap: ICFGBlockMap, phiDests: IPhiDests, phiArgs: IPhiArgs, types: IDictString) => {
+  let phiCount = 0;
   Object.keys(blockMap).forEach((b) => {
     Object.keys(phiArgs[b])
       .sort()
       .forEach((p) => {
+        phiCount++;
         const phi = {
           op: "phi",
           dest: phiDests[b][p],
@@ -146,6 +148,7 @@ export const insertPhis = (blockMap: ICFGBlockMap, phiDests: IPhiDests, phiArgs:
         blockMap[b].instructions.unshift(phi);
       });
   });
+  return phiCount;
 };
 
 export const removePhis = (blockMap: ICFGBlockMap) => {
@@ -192,5 +195,6 @@ export const runSSA = (blockMap: ICFGBlockMap, func: IBrilFunction) => {
   // console.log("phis", phis);
 
   const phiMaps = renameVars(blockMap, phis, successors, domTree, argNames);
-  insertPhis(blockMap, phiMaps.phiDests, phiMaps.phiArgs, types);
+  const phiCount = insertPhis(blockMap, phiMaps.phiDests, phiMaps.phiArgs, types);
+  return { phiCount };
 };

@@ -23,7 +23,7 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
 
 1. Improve UI
    1. CFG node selection shows DFA for that node
-   2. --Bril IR diffeditor - plain vs SSA and SSA vs optimisations--
+   2. ~~Bril IR diffeditor - plain vs SSA and SSA vs optimisations~~
 2. Optimisations
    1. Use DFA
       1. Use DFA to do global DCE - research how

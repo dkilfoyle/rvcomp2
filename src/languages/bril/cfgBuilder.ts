@@ -1,4 +1,5 @@
 import _ from "lodash";
+import { l } from "vitest/dist/index-9f5bc072";
 import { IBrilEffectOperation, IBrilFunction, IBrilInstruction, IBrilInstructionOrLabel, IBrilLabel, IBrilProgram } from "./BrilInterface";
 
 const TERMINATORS = ["br", "jmp", "ret"];
@@ -9,7 +10,8 @@ export interface ICFGBlock {
   keyEnd: number;
   name: string;
   out: string[];
-  level: number;
+  live: string[];
+  defined: string[];
 }
 
 export type ICFG = Record<string, ICFGBlock[]>;
@@ -22,8 +24,16 @@ export class CfgBuilder {
   public curFn: string = "";
   public curNameIndex: number = 0;
 
-  startBlock({ name, level }: { name?: string; level?: number }): ICFGBlock {
-    this.cur_block = { instructions: [], name: name || `${this.curFn}_${this.curNameIndex++}`, out: [], level: 0, keyStart: -1, keyEnd: -1 };
+  startBlock({ name }: { name?: string }): ICFGBlock {
+    this.cur_block = {
+      instructions: [],
+      name: name || `${this.curFn}_${this.curNameIndex++}`,
+      out: [],
+      keyStart: -1,
+      keyEnd: -1,
+      live: [],
+      defined: [],
+    };
     return this.cur_block;
   }
 
@@ -42,10 +52,9 @@ export class CfgBuilder {
 
   buildFunction(fn: IBrilFunction) {
     this.blocks = [];
-    let level = 0;
     this.curFn = fn.name;
     this.curNameIndex = 0;
-    this.startBlock({ name: fn.name, level });
+    this.startBlock({ name: fn.name });
 
     fn.instrs.forEach((ins) => {
       if ("op" in ins) {
@@ -55,13 +64,9 @@ export class CfgBuilder {
         if (TERMINATORS.includes(ins.op)) {
           if (ins.op == "br" && ins.labels) {
             this.cur_block.out = [ins.labels[0], ins.labels[1]];
-            // if branching to a block that doesnt exist yet increase the level
-            if (!_.map(this.blocks, "name").includes(ins.labels[0]) || !_.map(this.blocks, "name").includes(ins.labels[1])) level++;
           }
           if (ins.op == "jmp" && ins.labels) {
             this.cur_block.out = [ins.labels[0]];
-            // if branching to a block that doesnt exist yet increase the level for that next block
-            if (!_.map(this.blocks, "name").includes(ins.labels[0])) level++;
           }
           this.endBlock();
         }
@@ -69,7 +74,7 @@ export class CfgBuilder {
         ins = <IBrilLabel>ins;
         if (this.cur_block.out.length == 0) this.cur_block.out = [ins.label];
         if (this.cur_block.instructions.length) this.endBlock();
-        this.startBlock({ name: ins.label, level });
+        this.startBlock({ name: ins.label });
         this.cur_block.keyStart = ins.key || -1;
         this.cur_block.instructions = [ins];
       }
@@ -106,7 +111,7 @@ export const addCfgEntry = (blockMap: ICFGBlockMap) => {
   );
 
   return {
-    [newLabel]: { name: newLabel, instructions: [], out: [blocks[0].name], keyEnd: -1, keyStart: -1, level: 0 } as ICFGBlock,
+    [newLabel]: { name: newLabel, instructions: [], out: [blocks[0].name], keyEnd: -1, keyStart: -1, live: [], defined: [] } as ICFGBlock,
     ...blockMap,
   };
 };
@@ -189,9 +194,12 @@ export const fresh = (seed: string, names: string[]) => {
 
 export const blockMap2Instructions = (blockMap: ICFGBlockMap) => {
   const instrs: IBrilInstructionOrLabel[] = [];
-  Object.values(blockMap).forEach((block) => {
-    instrs.push({ label: block.name } as IBrilLabel);
-    instrs.push(...block.instructions);
+  let instrKey = 0;
+  Object.keys(blockMap).forEach((blockName) => {
+    blockMap[blockName].keyStart = instrKey;
+    instrs.push({ label: blockName, key: instrKey++ } as IBrilLabel);
+    instrs.push(...blockMap[blockName].instructions.map((i) => ({ ...i, key: instrKey++ })));
+    blockMap[blockName].keyEnd = instrKey - 1;
   });
   return instrs;
 };
