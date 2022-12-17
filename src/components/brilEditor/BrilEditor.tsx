@@ -76,7 +76,6 @@ export const BrilEditor: VFC = () => {
     if (selectedCfgNode && editor) {
       const startLine = brilPrinter.irkeys[cfgFunctionName][selectedCfgNode.keyStart] + 1;
       const endLine = brilPrinter.irkeys[cfgFunctionName][selectedCfgNode.keyEnd] + 1;
-      console.log(selectedCfgNode);
       const newDecoration = {
         range: new monaco.Range(startLine, 1, endLine, 1),
         options: {

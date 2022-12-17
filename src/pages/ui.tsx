@@ -18,7 +18,7 @@ import "rc-dock/dist/rc-dock.css";
 // const fullHeight = { maxHeight: "100%" };
 // const fullHeight2 = { height: "100%", display: "flex", flexDirection: "column" };
 // const fullHeightNoMargin = { height: "100%", margin: "0px", padding: "0px" };
-const fullWindow = { height: "100vh", width: "100vw", backgroundColor: "aliceblue" };
+const fullWindow = { height: "100vh", width: "100vw", backgroundColor: "#E2E8F0" };
 
 const groups = {
   card: {

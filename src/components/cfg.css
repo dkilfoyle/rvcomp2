@@ -1,0 +1,27 @@
+.listbox {
+  overflow-y: hidden;
+  align-items: stretch !important;
+  border: solid 1px lightgrey;
+  border-radius: 3px;
+  padding: 5px;
+  margin-bottom: 5px;
+  background-color: #f7fafc;
+}
+
+.listbox ul {
+  overflow-y: auto;
+  padding-top: 0px;
+}
+
+.DOMATORSlist {
+  color: red;
+}
+
+.DOMTREElist {
+  color: #3ca565;
+}
+
+.listTitle {
+  font-weight: bold;
+  text-align: center;
+}

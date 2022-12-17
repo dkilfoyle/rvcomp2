@@ -103,5 +103,10 @@ export const runDataFlow = (bril: IBrilProgram, analysis: string) => {
 export const getDataFlow = (blockMap: ICFGBlockMap) => {
   const { _in: definedIn, _out: definedOut } = dfWorklist(blockMap, ANALYSES["defined"]);
   const { _in: liveIn, _out: liveOut } = dfWorklist(blockMap, ANALYSES["live"]);
-  return { definedIn, definedOut, liveIn, liveOut };
+  return {
+    definedIn: definedIn as Record<string, string[]>,
+    definedOut: definedOut as Record<string, string[]>,
+    liveIn: liveIn as Record<string, string[]>,
+    liveOut: liveOut as Record<string, string[]>,
+  };
 };
