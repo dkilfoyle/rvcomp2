@@ -98,8 +98,13 @@ class AstToBrilVisitor {
   }
 
   assignStatement(node: IAstAssignStatement) {
-    const rhs = this.expression(node.rhs);
-    return this.builder.buildValue("id", node.lhs.type as IBrilType, [rhs.dest], undefined, undefined, node.lhs.id);
+    if (node.rhs._name == "integerLiteralExpression") {
+      const n = node.rhs as IAstIntegerLiteralExpression;
+      return this.builder.buildConst(n.value, n.type, node.lhs.id);
+    } else {
+      const rhs = this.expression(node.rhs);
+      return this.builder.buildValue("id", node.lhs.type as IBrilType, [rhs.dest], undefined, undefined, node.lhs.id);
+    }
   }
 
   ifStatement(node: IAstIfStatement) {

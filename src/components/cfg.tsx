@@ -4,11 +4,12 @@ import { DataSet, Options } from "vis-network";
 import { Network } from "vis-network";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
-import { setCfgNodeName } from "../store/settingsSlice";
+import { setCfgFunctionName, setCfgNodeName } from "../store/settingsSlice";
 import { useAppDispatch } from "../store/hooks";
 import { getDominanceFrontierMap, getDominanceTree, getDominatorMap } from "../languages/bril/dom";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
 import { getDataFlow } from "../languages/bril/df";
+import { Box, Flex, Grid, Select } from "@chakra-ui/react";
 
 export const CfgView: React.FC = () => {
   // const _cfg = cfg.use();
@@ -99,5 +100,20 @@ export const CfgView: React.FC = () => {
     network?.fit();
   }, [visJsRef, cfgVisData]);
 
-  return <div ref={visJsRef} style={{ height: "100%", width: "100%", padding: "10px", paddingBottom: "40px" }} />;
+  const brilFunctionNames = useMemo(() => {
+    return Object.keys(brilOptim.functions);
+  }, [brilOptim]);
+
+  return (
+    <Flex direction="column" h="100%" w="100%">
+      <Box p={2}>
+        <Select size="sm" value={functionName} onChange={(e) => dispatch(setCfgFunctionName(e.target.value))}>
+          {brilFunctionNames.map((n) => (
+            <option value={n}>{n}</option>
+          ))}
+        </Select>
+      </Box>
+      <Box flex="1" ref={visJsRef} />
+    </Flex>
+  );
 };

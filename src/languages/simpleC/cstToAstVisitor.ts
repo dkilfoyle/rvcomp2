@@ -114,7 +114,11 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   program(ctx: ProgramCstChildren): IAstProgram {
-    const functionDeclarations = ctx.functionDeclaration?.map((node) => this.visit(node)) || [];
+    const functionDeclarations =
+      ctx.functionDeclaration?.map((node) => ({
+        ...this.visit(node),
+        pos: node.location ? convertCstNodeLocationToIPos(node.location) : {},
+      })) || [];
     const main = functionDeclarations.find((decl) => decl.id === "main");
     if (!main) this.pushError("Missing main function", _.last(functionDeclarations).pos);
     const pos = main ? main.pos : {};
