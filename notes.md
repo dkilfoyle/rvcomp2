@@ -17,3 +17,12 @@ x.1:int = const 10;
 call print_int x.1
 x.2:int = add a b
 
+## Dataflow Analysis
+
+### Live variables
+
+Variables that at a block location are already defined and might be used along some path in the future
+
+### Constant propogation
+
+List of variables with a live constant value ie still contains the original constant value and has not been overwritten. ? not needed in SSA form because constant defined variables are never overwritten

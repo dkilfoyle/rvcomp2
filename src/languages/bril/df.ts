@@ -5,8 +5,8 @@ import { addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGB
 interface IDFAnalysis<T> {
   forward: boolean;
   init: T;
-  merge: (sets: T[]) => T;
-  transfer: (block: ICFGBlock, inout: T) => T;
+  merge: (sets: T[]) => T; // merge together the outputs of the incoming edges
+  transfer: (block: ICFGBlock, inout: T) => T; // process the merged inputs to produce an output
 }
 
 const union = (sets: string[][]) => _.union(...sets);
@@ -34,6 +34,32 @@ const usedVars = (block: ICFGBlock) => {
   return used;
 };
 
+const cprop_transfer = (block: ICFGBlock, in_: Record<string, string>) => {
+  const _out: Record<string, string> = { ...in_ };
+  block.instructions.forEach((instr) => {
+    if ("dest" in instr) {
+      if (instr.op == "const") _out[instr.dest] = instr.value.toString();
+      else _out[instr.dest] = "?";
+    }
+  });
+  return _out;
+};
+
+const cprop_merge = (inputs: Record<string, string>[]) => {
+  const merged: Record<string, string> = {};
+  inputs.forEach((input) => {
+    Object.entries(input).forEach(([varName, varValue]) => {
+      if (varValue == "?") merged[varName] = "?";
+      else {
+        if (Object.keys(merged).includes(varName)) {
+          if (merged[varName] != varValue) merged[varName] = "?"; // already exists and overwriting with new value
+        } else merged[varName] = varValue;
+      }
+    });
+  });
+  return merged;
+};
+
 const ANALYSES: Record<string, IDFAnalysis<any>> = {
   defined: { forward: true, init: [], merge: union, transfer: (block, in_) => _.union(in_, generatedVars(block)) } as IDFAnalysis<string[]>,
   live: {
@@ -42,6 +68,12 @@ const ANALYSES: Record<string, IDFAnalysis<any>> = {
     merge: union,
     transfer: (block, out_) => _.union(usedVars(block), _.difference(out_, generatedVars(block))),
   } as IDFAnalysis<string[]>,
+  cprop: {
+    forward: true,
+    init: {},
+    merge: cprop_merge,
+    transfer: cprop_transfer,
+  } as IDFAnalysis<Record<string, string>>,
 };
 
 export const dfWorklist = (blockMap: ICFGBlockMap, analysis: IDFAnalysis<any>) => {
@@ -103,10 +135,13 @@ export const runDataFlow = (bril: IBrilProgram, analysis: string) => {
 export const getDataFlow = (blockMap: ICFGBlockMap) => {
   const { _in: definedIn, _out: definedOut } = dfWorklist(blockMap, ANALYSES["defined"]);
   const { _in: liveIn, _out: liveOut } = dfWorklist(blockMap, ANALYSES["live"]);
+  const { _in: cpropIn, _out: cpropOut } = dfWorklist(blockMap, ANALYSES["cprop"]);
   return {
     definedIn: definedIn as Record<string, string[]>,
     definedOut: definedOut as Record<string, string[]>,
     liveIn: liveIn as Record<string, string[]>,
     liveOut: liveOut as Record<string, string[]>,
+    cpropIn: cpropIn as Record<string, Record<string, string>>,
+    cpropOut: cpropOut as Record<string, Record<string, string>>,
   };
 };

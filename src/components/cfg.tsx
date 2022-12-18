@@ -1,43 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DataSet, Options } from "vis-network";
-// import { brilIR, cfg, selectedFunctionName, setSelectedCfgNodeName } from "../store/ParseState";
-import { Network } from "vis-network";
+import { useEffect, useMemo, useRef } from "react";
+import { Options, Network } from "vis-network";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
-import { setCfgFunctionName, setCfgNodeName } from "../store/settingsSlice";
+import { selectResizeCount, setCfgFunctionName, setCfgNodeName } from "../store/settingsSlice";
 import { useAppDispatch } from "../store/hooks";
 import { getDominanceFrontierMap, getDominanceTree, getDominatorMap } from "../languages/bril/dom";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
 import { getDataFlow } from "../languages/bril/df";
-import {
-  Accordion,
-  AccordionButton,
-  AccordionIcon,
-  AccordionItem,
-  AccordionPanel,
-  Box,
-  Button,
-  Flex,
-  Grid,
-  List,
-  ListItem,
-  Select,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-  VStack,
-} from "@chakra-ui/react";
+import { Box, Grid, Select, Tooltip, VStack } from "@chakra-ui/react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import "./cfg.css";
 
-export const CfgView: React.FC = () => {
-  // const _cfg = cfg.use();
-  // const _selectedFunctionName = selectedFunctionName.use();
+export const CfgView = () => {
   const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
   const functionName = useSelector((state: RootState) => state.settings.cfg.functionName);
   const nodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
@@ -88,6 +63,7 @@ export const CfgView: React.FC = () => {
 
   useEffect(() => {
     const options: Options = {
+      autoResize: true,
       height: "100%",
       width: "100%",
       interaction: { hover: true },
@@ -125,20 +101,26 @@ export const CfgView: React.FC = () => {
     return Object.keys(brilOptim.functions);
   }, [brilOptim]);
 
-  const [showTable, setShowTable] = useState(0);
-  const toggleShowTable = useCallback(() => {
-    if (showTable == 0) setShowTable(200);
-    else setShowTable(0);
-  }, []);
+  useEffect(() => {
+    if (network) network.setSize("1fr", "4fr");
+  });
 
   const renderList = (title: string, list: string[]) => {
+    const tooltips: Record<string, string> = {
+      DOMATORS: "",
+      DOMTREE: "",
+      DEFINED: "",
+      ALIVE: "Defined and might be used along some path in future",
+    };
     return (
       <VStack className="listbox">
-        <div className="listTitle">{title}</div>
+        <Tooltip label={tooltips[title]} placement="top-end">
+          <div className="listTitle">{title}</div>
+        </Tooltip>
         <OverlayScrollbarsComponent defer style={{ marginTop: "0px" }}>
           <ul className={title + "list"}>
             {list.map((dom, i) => (
-              <li key={dom}>{dom}</li>
+              <li key={i}>{dom}</li>
             ))}
           </ul>
         </OverlayScrollbarsComponent>
@@ -147,20 +129,38 @@ export const CfgView: React.FC = () => {
   };
 
   return (
-    <Grid templateRows="auto 1.5fr 200px" templateColumns="1fr" h="100%" w="100%">
+    <Grid templateRows="min-content 4fr 1fr" templateColumns="1fr" h="100%" w="100%">
       <Box p={2}>
         <Select size="sm" value={functionName} onChange={(e) => dispatch(setCfgFunctionName(e.target.value))}>
-          {brilFunctionNames.map((n) => (
-            <option value={n}>{n}</option>
+          {brilFunctionNames.map((n, i) => (
+            <option key={i} value={n}>
+              {n}
+            </option>
           ))}
         </Select>
       </Box>
-      <Box ref={visJsRef} />
-      <Grid templateColumns="repeat(4, 1fr)" gap={2} mx={2}>
+      <Box ref={visJsRef}></Box>
+      <Grid templateColumns="repeat(5, 1fr)" gap={2} mx={2} minHeight="0px">
         {renderList("DOMATORS", (cfg && cfg.dom[nodeName]) || [])}
         {renderList("DOMTREE", (cfg && cfg.domtree[nodeName]) || [])}
         {renderList("DEFINED", (cfg && cfg.dataFlow.definedIn[nodeName]) || [])}
         {renderList("ALIVE", (cfg && cfg.dataFlow.liveOut[nodeName]) || [])}
+        <VStack className="listbox">
+          <Tooltip label="Constant Propgation" placement="top-end">
+            <div className="listTitle">CPROP</div>
+          </Tooltip>
+          <OverlayScrollbarsComponent defer style={{ marginTop: "0px" }}>
+            <ul className="CPROPlist">
+              {Object.entries((cfg && cfg.dataFlow.cpropOut[nodeName]) || {})
+                .filter(([varName, varValue]) => varValue != "?")
+                .map(([varName, varValue], i) => (
+                  <li key={i}>
+                    {varName}={varValue}
+                  </li>
+                ))}
+            </ul>
+          </OverlayScrollbarsComponent>
+        </VStack>
       </Grid>
     </Grid>
   );

@@ -4,6 +4,7 @@ import type { RootState } from "./store";
 
 interface SettingsState {
   filename: string;
+  resizeCount: number;
   cfg: {
     nodeName: string;
     functionName: string;
@@ -22,6 +23,7 @@ interface SettingsState {
 
 const initialState: SettingsState = {
   filename: "ssaif.sc",
+  resizeCount: 0,
   cfg: {
     nodeName: "",
     functionName: "main",
@@ -71,11 +73,24 @@ export const settingsSlice = createSlice({
     setDoDCE: (state: SettingsState, action: PayloadAction<boolean>) => {
       state.optim.doDCE = action.payload;
     },
+    incResizeCount: (state: SettingsState) => {
+      state.resizeCount = state.resizeCount + 1;
+    },
   },
 });
 
-export const { setFilename, setCfgNodeName, setCfgFunctionName, setKeepPhis, setIsSSA, setDoDCE, setDoLVN, setBrilKeepPhis, setBrilIsSSA } =
-  settingsSlice.actions;
+export const {
+  setFilename,
+  incResizeCount,
+  setCfgNodeName,
+  setCfgFunctionName,
+  setKeepPhis,
+  setIsSSA,
+  setDoDCE,
+  setDoLVN,
+  setBrilKeepPhis,
+  setBrilIsSSA,
+} = settingsSlice.actions;
 
 // Other code such as selectors can use the imported `RootState` type
 export const selectFilename = (state: RootState) => state.settings.filename;
@@ -87,5 +102,6 @@ export const selectBrilKeepPhis = (state: RootState) => state.settings.bril.keep
 export const selectBrilIsSSA = (state: RootState) => state.settings.bril.isSSA;
 export const selectDoLVN = (state: RootState) => state.settings.optim.doLVN;
 export const selectDoDCE = (state: RootState) => state.settings.optim.doDCE;
+export const selectResizeCount = (state: RootState) => state.settings.resizeCount;
 
 export default settingsSlice.reducer;
