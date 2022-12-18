@@ -98,13 +98,14 @@ class AstToBrilVisitor {
   }
 
   assignStatement(node: IAstAssignStatement) {
-    if (node.rhs._name == "integerLiteralExpression") {
-      const n = node.rhs as IAstIntegerLiteralExpression;
-      return this.builder.buildConst(n.value, n.type, node.lhs.id);
-    } else {
-      const rhs = this.expression(node.rhs);
-      return this.builder.buildValue("id", node.lhs.type as IBrilType, [rhs.dest], undefined, undefined, node.lhs.id);
-    }
+    // if (node.rhs._name == "integerLiteralExpression") {
+    //   const n = node.rhs as IAstIntegerLiteralExpression;
+    //   return this.builder.buildConst(n.value, n.type, node.lhs.id);
+    // } else {
+    //   const rhs = this.expression(node.rhs);
+    //   return this.builder.buildValue("id", node.lhs.type as IBrilType, [rhs.dest], undefined, undefined, node.lhs.id);
+    // }
+    this.expression(node.rhs, node.lhs.id);
   }
 
   ifStatement(node: IAstIfStatement) {
@@ -180,15 +181,17 @@ class AstToBrilVisitor {
   // Expressions
   // ==========================================================================================================
 
-  expression(node: IAstExpression): IBrilValueInstruction {
+  expression(node: IAstExpression, dest: string | undefined = undefined): IBrilValueInstruction {
+    // dest is defined if coming directly from assign statement
+    // eg x = 2 + 3
     let n, lhs, rhs;
     switch (node._name) {
       case "integerLiteralExpression":
         n = node as IAstIntegerLiteralExpression;
-        return this.builder.buildConst(n.value, n.type);
+        return this.builder.buildConst(n.value, n.type, dest);
       case "boolLiteralExpression":
         n = node as IAstBoolLiteralExpression;
-        return this.builder.buildConst(n.value, n.type);
+        return this.builder.buildConst(n.value, n.type, dest);
       case "identifierExpression": // ie an identifier
         n = node as IAstIdentifierExpression;
         return { op: "id", dest: n.id, args: [], type: "int" }; // this.builder.buildValue("id", n.type as IBrilType, [n.id]);
@@ -196,14 +199,15 @@ class AstToBrilVisitor {
         n = node as IAstBinaryExpression;
         lhs = this.expression(n.lhs);
         rhs = this.expression(n.rhs);
-        return this.builder.buildValue(n.op, n.type as IBrilType, [lhs.dest, rhs.dest], undefined, undefined);
+        return this.builder.buildValue(n.op, n.type as IBrilType, [lhs.dest, rhs.dest], undefined, undefined, dest);
       case "functionCallExpression":
         n = node as IAstFunctionCallExpression;
         const params = n.params ? n.params.map((p) => this.expression(p)) : [];
         return this.builder.buildCall(
           n.id,
           params.map((p) => p.dest),
-          n.type as IBrilType
+          n.type as IBrilType,
+          dest
         );
       case "invalidExpression":
         return this.builder.buildConst(0, "int");
