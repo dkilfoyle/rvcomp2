@@ -11,18 +11,10 @@ import { setupLanguage } from "./monaco/setup";
 // import { setBrilOptim } from "../../store/parseSlice";
 // import { useAppDispatch } from "../../store/hooks";
 
-import {
-  selectBrilIsSSA,
-  selectBrilKeepPhis,
-  selectDoDCE,
-  selectDoLVN,
-  selectIsSSA,
-  selectKeepPhis,
-  setBrilIsSSA,
-} from "../../store/settingsSlice";
 import { optimiseBril } from "../../languages/bril/BrilCompiler";
 import { setBrilOptim, setCfg } from "../../store/parseSlice";
 import { useAppDispatch } from "../../store/hooks";
+import { useSettingsStore, SettingsState } from "../../store/zustore";
 // import code from "../../examples/semanticerrors.sc?raw";
 
 let decorations: monaco.editor.IEditorDecorationsCollection;
@@ -35,14 +27,23 @@ export const BrilEditor: VFC = () => {
   const cfg = useSelector((state: RootState) => state.parse.cfg);
   const bril = useSelector((state: RootState) => state.parse.bril);
   const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
-  const cfgNodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
-  const cfgFunctionName = useSelector((state: RootState) => state.settings.cfg.functionName);
-  const keepPhis = useSelector(selectKeepPhis);
-  const isSSA = useSelector(selectIsSSA);
-  const brilKeepPhis = useSelector(selectBrilKeepPhis);
-  const brilIsSSA = useSelector(selectBrilIsSSA);
-  const doLVN = useSelector(selectDoLVN);
-  const doDCE = useSelector(selectDoDCE);
+
+  // const cfgNodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
+  // const cfgFunctionName = useSelector((state: RootState) => state.settings.cfg.functionName);
+  // const keepPhis = useSelector(selectKeepPhis);
+  // const isSSA = useSelector(selectIsSSA);
+  // const brilKeepPhis = useSelector(selectBrilKeepPhis);
+  // const brilIsSSA = useSelector(selectBrilIsSSA);
+  // const doLVN = useSelector(selectDoLVN);
+  // const doDCE = useSelector(selectDoDCE);
+  const cfgNodeName = useSettingsStore((state: SettingsState) => state.cfg.nodeName);
+  const cfgFunctionName = useSettingsStore((state: SettingsState) => state.cfg.functionName);
+  const keepPhis = useSettingsStore((state: SettingsState) => state.optim.keepPhis);
+  const isSSA = useSettingsStore((state: SettingsState) => state.optim.isSSA);
+  const brilKeepPhis = useSettingsStore((state: SettingsState) => state.bril.keepPhis);
+  const brilIsSSA = useSettingsStore((state: SettingsState) => state.bril.isSSA);
+  const doLVN = useSettingsStore((state: SettingsState) => state.optim.doLVN);
+  const doDCE = useSettingsStore((state: SettingsState) => state.optim.doDCE);
 
   const brilTxt = useMemo(() => {
     if (brilIsSSA) {

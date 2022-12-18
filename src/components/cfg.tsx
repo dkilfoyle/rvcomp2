@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef } from "react";
 import { Options, Network } from "vis-network";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
-import { selectResizeCount, setCfgFunctionName, setCfgNodeName } from "../store/settingsSlice";
 import { useAppDispatch } from "../store/hooks";
 import { getDominanceFrontierMap, getDominanceTree, getDominatorMap } from "../languages/bril/dom";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
@@ -11,12 +10,17 @@ import { Box, Grid, Select, Tooltip, VStack } from "@chakra-ui/react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import "./cfg.css";
+import { SettingsState, useSettingsStore } from "../store/zustore";
 
 export const CfgView = () => {
   const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
-  const functionName = useSelector((state: RootState) => state.settings.cfg.functionName);
-  const nodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
+  // const functionName = useSelector((state: RootState) => state.settings.cfg.functionName);
+  // const nodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
   const dispatch = useAppDispatch();
+
+  const functionName = useSettingsStore((state: SettingsState) => state.cfg.functionName);
+  const nodeName = useSettingsStore((state: SettingsState) => state.cfg.nodeName);
+  const setSettings = useSettingsStore((state: SettingsState) => state.set);
 
   const visJsRef = useRef<HTMLDivElement>(null);
   let network: Network;
@@ -92,7 +96,10 @@ export const CfgView = () => {
     //   // console.log(cfg?.blockMap[params.nodes[0]]);
     // });
     network.on("hoverNode", (params) => {
-      dispatch(setCfgNodeName(params.node));
+      setSettings((state: SettingsState) => {
+        state.cfg.nodeName = params.node;
+      });
+      // dispatch(setCfgNodeName(params.node));
     });
     network?.fit();
   }, [visJsRef, cfgVisData]);
@@ -131,7 +138,14 @@ export const CfgView = () => {
   return (
     <Grid templateRows="min-content 4fr 1fr" templateColumns="1fr" h="100%" w="100%">
       <Box p={2}>
-        <Select size="sm" value={functionName} onChange={(e) => dispatch(setCfgFunctionName(e.target.value))}>
+        <Select
+          size="sm"
+          value={functionName}
+          onChange={(e) => {
+            setSettings((state: SettingsState) => {
+              state.cfg.functionName = e.target.value;
+            });
+          }}>
           {brilFunctionNames.map((n, i) => (
             <option key={i} value={n}>
               {n}

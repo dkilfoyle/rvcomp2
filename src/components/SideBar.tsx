@@ -1,22 +1,7 @@
 import { Accordion, AccordionButton, AccordionIcon, AccordionItem, AccordionPanel, Box, Checkbox, VStack } from "@chakra-ui/react";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
-// import * as Settings from "../store/Settings";
-import type { RootState } from "../store/store";
-import { useAppDispatch } from "../store/hooks";
-import { useSelector, useDispatch } from "react-redux";
-import {
-  setIsSSA,
-  setDoLVN,
-  setDoDCE,
-  setKeepPhis,
-  setFilename,
-  selectBrilIsSSA,
-  selectBrilKeepPhis,
-  setBrilKeepPhis,
-  setBrilIsSSA,
-} from "../store/settingsSlice";
-import { selectKeepPhis, selectIsSSA, selectDoLVN, selectDoDCE } from "../store/settingsSlice";
+import { useSettingsStore, SettingsState } from "../store/zustore";
 
 const fileTreeData = [
   {
@@ -65,15 +50,14 @@ const fileTreeData = [
 ];
 
 export const Sidebar = () => {
-  // const filename = Settings.filename.use();
-  const filename = useSelector((state: RootState) => state.settings.filename);
-  const keepPhis = useSelector(selectKeepPhis);
-  const isSSA = useSelector(selectIsSSA);
-  const brilKeepPhis = useSelector(selectBrilKeepPhis);
-  const brilIsSSA = useSelector(selectBrilIsSSA);
-  const doLVN = useSelector(selectDoLVN);
-  const doDCE = useSelector(selectDoDCE);
-  const dispatch = useAppDispatch();
+  const filename = useSettingsStore((state: SettingsState) => state.filename);
+  const keepPhis = useSettingsStore((state: SettingsState) => state.optim.keepPhis);
+  const isSSA = useSettingsStore((state: SettingsState) => state.optim.isSSA);
+  const brilKeepPhis = useSettingsStore((state: SettingsState) => state.bril.keepPhis);
+  const brilIsSSA = useSettingsStore((state: SettingsState) => state.bril.isSSA);
+  const doLVN = useSettingsStore((state: SettingsState) => state.optim.doLVN);
+  const doDCE = useSettingsStore((state: SettingsState) => state.optim.doDCE);
+  const setSettings = useSettingsStore((state: SettingsState) => state.set);
 
   return (
     <div style={{ backgroundColor: "whitesmoke" }}>
@@ -98,7 +82,10 @@ export const Sidebar = () => {
               fieldNames={{ key: "title" }}
               showLine
               onSelect={(keys, info) => {
-                if (!info.node.children && keys.length) dispatch(setFilename(keys[0].toString()));
+                if (!info.node.children && keys.length)
+                  setSettings((state: SettingsState) => {
+                    state.filename = keys[0].toString();
+                  });
               }}></Tree>
           </AccordionPanel>
         </AccordionItem>
@@ -117,12 +104,25 @@ export const Sidebar = () => {
               <Checkbox
                 isChecked={brilIsSSA}
                 onChange={(e) => {
-                  dispatch(setBrilIsSSA(e.target.checked));
-                  if (e.target.checked) dispatch(setIsSSA(true));
+                  setSettings((state: SettingsState) => {
+                    state.bril.isSSA = e.target.checked;
+                  });
+                  if (e.target.checked)
+                    setSettings((state: SettingsState) => {
+                      state.optim.isSSA = true;
+                    });
+                  // dispatch(setBrilIsSSA(e.target.checked));
+                  // if (e.target.checked) dispatch(setIsSSA(true));
                 }}>
                 SSA
               </Checkbox>
-              <Checkbox isChecked={brilKeepPhis} onChange={(e) => dispatch(setBrilKeepPhis(e.target.checked))}>
+              <Checkbox
+                isChecked={brilKeepPhis}
+                onChange={(e) =>
+                  setSettings((state: SettingsState) => {
+                    state.bril.keepPhis = e.target.checked;
+                  })
+                }>
                 KeepPhis
               </Checkbox>
             </VStack>
@@ -140,16 +140,40 @@ export const Sidebar = () => {
           </h2>
           <AccordionPanel pb={4}>
             <VStack alignItems="start">
-              <Checkbox isChecked={isSSA} onChange={(e) => dispatch(setIsSSA(e.target.checked))}>
+              <Checkbox
+                isChecked={isSSA}
+                onChange={(e) =>
+                  setSettings((state: SettingsState) => {
+                    state.optim.isSSA = e.target.checked;
+                  })
+                }>
                 SSA
               </Checkbox>
-              <Checkbox isChecked={keepPhis} onChange={(e) => dispatch(setKeepPhis(e.target.checked))}>
+              <Checkbox
+                isChecked={keepPhis}
+                onChange={(e) =>
+                  setSettings((state: SettingsState) => {
+                    state.optim.keepPhis = e.target.checked;
+                  })
+                }>
                 KeepPhis
               </Checkbox>
-              <Checkbox isChecked={doLVN} onChange={(e) => dispatch(setDoLVN(e.target.checked))}>
+              <Checkbox
+                isChecked={doLVN}
+                onChange={(e) =>
+                  setSettings((state: SettingsState) => {
+                    state.optim.doLVN = e.target.checked;
+                  })
+                }>
                 LVN
               </Checkbox>
-              <Checkbox isChecked={doDCE} onChange={(e) => dispatch(setDoDCE(e.target.checked))}>
+              <Checkbox
+                isChecked={doDCE}
+                onChange={(e) =>
+                  setSettings((state: SettingsState) => {
+                    state.optim.doDCE = e.target.checked;
+                  })
+                }>
                 DCE
               </Checkbox>
             </VStack>

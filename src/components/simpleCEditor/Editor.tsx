@@ -3,20 +3,21 @@ import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import styles from "./Editor.module.css";
 import { setupLanguage } from "./monaco/setup";
 import { examples } from "../../examples/examples";
-// import * as Settings from "../../store/Settings";
+import { SettingsState, useSettingsStore } from "../../store/zustore";
+
+// old redux-toolkit
 import type { RootState } from "../../store/store";
 import { useSelector } from "react-redux";
-import { setCfgFunctionName } from "../../store/settingsSlice";
 import { useAppDispatch } from "../../store/hooks";
-
-// import code from "../../examples/semanticerrors.sc?raw";
 
 export const Editor: VFC = () => {
   const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoEl = useRef(null);
 
-  // const filename = Settings.filename.use();
-  const filename = useSelector((state: RootState) => state.settings.filename);
+  const filename = useSettingsStore((state: SettingsState) => state.filename);
+  const setSettings = useSettingsStore((state: SettingsState) => state.set);
+
+  // old redux-toolkit
   const cst = useSelector((state: RootState) => state.parse.cst);
   const ast = useSelector((state: RootState) => state.parse.ast);
   const dispatch = useAppDispatch();
@@ -46,7 +47,11 @@ export const Editor: VFC = () => {
         const foundDeclaration = ast.functionDeclarations.find(
           (decl) => curLine >= (decl.pos?.startLineNumber || 10000) && curLine <= (decl.pos?.endLineNumber || 0)
         );
-        if (foundDeclaration) dispatch(setCfgFunctionName(foundDeclaration?.id));
+        if (foundDeclaration)
+          setSettings((state: SettingsState) => {
+            state.cfg.functionName = foundDeclaration.id;
+          });
+        // dispatch(setCfgFunctionName(foundDeclaration?.id));
       });
   }, [ast]);
 

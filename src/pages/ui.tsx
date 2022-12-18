@@ -1,5 +1,5 @@
 import { Editor } from "../components/simpleCEditor/Editor";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React from "react";
 import "./ui.css";
 import { Sidebar } from "../components/SideBar";
 import { ChakraProvider } from "@chakra-ui/react";
@@ -12,10 +12,8 @@ import { BrilEditor } from "../components/brilEditor/BrilEditor";
 import { CfgView } from "../components/cfg";
 import { Consoler } from "../components/console";
 
-import DockLayout, { DividerBox, DropDirection, LayoutBase, LayoutData } from "rc-dock";
+import DockLayout, { DividerBox, LayoutData } from "rc-dock";
 import "rc-dock/dist/rc-dock.css";
-import { useAppDispatch } from "../store/hooks";
-import { incResizeCount } from "../store/settingsSlice";
 
 // const fullHeight = { maxHeight: "100%" };
 // const fullHeight2 = { height: "100%", display: "flex", flexDirection: "column" };
@@ -102,10 +100,6 @@ const layout: LayoutData = {
 };
 
 export const UI: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const onLayoutChange2 = useCallback((newLayout: LayoutBase, currentTabId: string | undefined, direction: DropDirection | undefined) => {
-    dispatch(incResizeCount());
-  }, []);
   return (
     <ChakraProvider>
       <div style={fullWindow}>
@@ -113,7 +107,7 @@ export const UI: React.FC = () => {
           <DividerBox mode="vertical" style={{ width: "10%", minWidth: 100, border: "1px solid #ccc" }}>
             <Sidebar></Sidebar>
           </DividerBox>
-          <DockLayout dropMode="edge" onLayoutChange={onLayoutChange2} defaultLayout={layout} groups={groups} style={{ width: "60%" }} />
+          <DockLayout dropMode="edge" defaultLayout={layout} groups={groups} style={{ width: "60%" }} />
         </DividerBox>
       </div>
     </ChakraProvider>

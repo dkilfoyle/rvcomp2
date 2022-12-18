@@ -1,8 +1,8 @@
 import { IAstProgram } from "../simpleC/ast";
 import { astToBrilVisitor } from "./astToBrilVisitor";
 import { IBrilProgram } from "./BrilInterface";
-import { runDCE } from "./BrilOptimiser";
 import { blockMap2Instructions, cfgBuilder, getFunctionBlockMap, ICFG } from "./cfgBuilder";
+import { runDCE } from "./dce";
 import { removePhis, runSSA } from "./ssa";
 
 export const optimiseBril = (
