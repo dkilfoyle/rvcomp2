@@ -2,20 +2,12 @@ import { VFC, useRef, useState, useEffect, useMemo, useCallback } from "react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import styles from "./Editor.module.css";
 import "./index.css";
-// import { brilIR, brilTxt, selectedCfgNodeName, selectedFunctionName, cfg } from "../../store/ParseState";
 import { brilPrinter } from "../../languages/bril/BrilPrinter";
-import { RootState } from "../../store/store";
-import { useSelector } from "react-redux";
 import { VStack } from "@chakra-ui/react";
 import { setupLanguage } from "./monaco/setup";
-// import { setBrilOptim } from "../../store/parseSlice";
-// import { useAppDispatch } from "../../store/hooks";
 
 import { optimiseBril } from "../../languages/bril/BrilCompiler";
-import { setBrilOptim, setCfg } from "../../store/parseSlice";
-import { useAppDispatch } from "../../store/hooks";
-import { useSettingsStore, SettingsState } from "../../store/zustore";
-// import code from "../../examples/semanticerrors.sc?raw";
+import { useSettingsStore, SettingsState, ParseState, useParseStore } from "../../store/zustore";
 
 let decorations: monaco.editor.IEditorDecorationsCollection;
 
@@ -23,19 +15,11 @@ export const BrilEditor: VFC = () => {
   const [editor, setEditor] = useState<monaco.editor.IStandaloneDiffEditor | null>(null);
   const monacoEl = useRef(null);
 
-  const dispatch = useAppDispatch();
-  const cfg = useSelector((state: RootState) => state.parse.cfg);
-  const bril = useSelector((state: RootState) => state.parse.bril);
-  const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
+  const cfg = useParseStore((state: ParseState) => state.cfg);
+  const bril = useParseStore((state: ParseState) => state.bril);
+  const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
+  const setParse = useParseStore((state: ParseState) => state.set);
 
-  // const cfgNodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
-  // const cfgFunctionName = useSelector((state: RootState) => state.settings.cfg.functionName);
-  // const keepPhis = useSelector(selectKeepPhis);
-  // const isSSA = useSelector(selectIsSSA);
-  // const brilKeepPhis = useSelector(selectBrilKeepPhis);
-  // const brilIsSSA = useSelector(selectBrilIsSSA);
-  // const doLVN = useSelector(selectDoLVN);
-  // const doDCE = useSelector(selectDoDCE);
   const cfgNodeName = useSettingsStore((state: SettingsState) => state.cfg.nodeName);
   const cfgFunctionName = useSettingsStore((state: SettingsState) => state.cfg.functionName);
   const keepPhis = useSettingsStore((state: SettingsState) => state.optim.keepPhis);
@@ -54,8 +38,12 @@ export const BrilEditor: VFC = () => {
 
   useEffect(() => {
     const { optimBril, optimCfg } = optimiseBril(bril, isSSA, keepPhis, doLVN, doDCE, true);
-    dispatch(setBrilOptim(optimBril));
-    dispatch(setCfg(optimCfg));
+    setParse((state: ParseState) => {
+      state.brilOptim = optimBril;
+    });
+    setParse((state: ParseState) => {
+      state.cfg = optimCfg;
+    });
   }, [bril, keepPhis, isSSA, doLVN, doDCE]);
 
   const brilTxtOptim = useMemo(() => {

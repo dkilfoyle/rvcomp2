@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Options, Network } from "vis-network";
-import { useSelector } from "react-redux";
-import { RootState } from "../store/store";
-import { useAppDispatch } from "../store/hooks";
 import { getDominanceFrontierMap, getDominanceTree, getDominatorMap } from "../languages/bril/dom";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
 import { getDataFlow } from "../languages/bril/df";
@@ -10,14 +7,10 @@ import { Box, Grid, Select, Tooltip, VStack } from "@chakra-ui/react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import "./cfg.css";
-import { SettingsState, useSettingsStore } from "../store/zustore";
+import { ParseState, SettingsState, useParseStore, useSettingsStore } from "../store/zustore";
 
 export const CfgView = () => {
-  const brilOptim = useSelector((state: RootState) => state.parse.brilOptim);
-  // const functionName = useSelector((state: RootState) => state.settings.cfg.functionName);
-  // const nodeName = useSelector((state: RootState) => state.settings.cfg.nodeName);
-  const dispatch = useAppDispatch();
-
+  const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
   const functionName = useSettingsStore((state: SettingsState) => state.cfg.functionName);
   const nodeName = useSettingsStore((state: SettingsState) => state.cfg.nodeName);
   const setSettings = useSettingsStore((state: SettingsState) => state.set);

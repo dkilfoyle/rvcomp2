@@ -3,12 +3,7 @@ import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import styles from "./Editor.module.css";
 import { setupLanguage } from "./monaco/setup";
 import { examples } from "../../examples/examples";
-import { SettingsState, useSettingsStore } from "../../store/zustore";
-
-// old redux-toolkit
-import type { RootState } from "../../store/store";
-import { useSelector } from "react-redux";
-import { useAppDispatch } from "../../store/hooks";
+import { ParseState, SettingsState, useParseStore, useSettingsStore } from "../../store/zustore";
 
 export const Editor: VFC = () => {
   const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -17,10 +12,8 @@ export const Editor: VFC = () => {
   const filename = useSettingsStore((state: SettingsState) => state.filename);
   const setSettings = useSettingsStore((state: SettingsState) => state.set);
 
-  // old redux-toolkit
-  const cst = useSelector((state: RootState) => state.parse.cst);
-  const ast = useSelector((state: RootState) => state.parse.ast);
-  const dispatch = useAppDispatch();
+  // const cst = useParseStore((state: ParseState) => state.cst);
+  const ast = useParseStore((state: ParseState) => state.ast);
 
   useEffect(() => {
     if (editor) {

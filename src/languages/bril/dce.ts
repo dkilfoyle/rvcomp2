@@ -1,4 +1,3 @@
-import store from "../../store/store";
 import { IBrilFunction, IBrilInstructionOrLabel } from "./BrilInterface";
 import { ICFGBlock, ICFGBlockMap } from "./cfgBuilder";
 

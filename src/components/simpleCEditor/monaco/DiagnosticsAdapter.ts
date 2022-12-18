@@ -5,8 +5,7 @@ import { languageID } from "./config";
 import { CstNode } from "chevrotain";
 import { astToBrilVisitor } from "../../../languages/bril/astToBrilVisitor";
 import { IAstProgram, IAstResult } from "../../../languages/simpleC/ast";
-import { setCst, setAst, setBril } from "../../../store/parseSlice";
-import store from "../../../store/store";
+import { ParseState, useParseStore } from "../../../store/zustore";
 
 export interface ISimpleCLangError {
   startLineNumber: number;
@@ -48,11 +47,21 @@ export default class DiagnosticsAdapter {
     const worker = await this.worker(resource);
     // call the validate methode proxy from the langaueg service and get errors
     const { errors, cst, ast } = await worker.doValidation();
-    if (cst) store.dispatch(setCst(cst));
+
+    const setParse = useParseStore.getState().set;
+
+    if (cst)
+      setParse((state: ParseState) => {
+        state.cst = cst;
+      });
     if (ast) {
-      store.dispatch(setAst(ast));
+      setParse((state: ParseState) => {
+        state.ast = ast;
+      });
       const bril = astToBrilVisitor.visit(ast);
-      store.dispatch(setBril(bril));
+      setParse((state: ParseState) => {
+        state.bril = bril;
+      });
     }
 
     // get the current model(editor or file) which is only one
