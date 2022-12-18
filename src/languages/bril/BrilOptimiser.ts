@@ -1,17 +1,10 @@
+// LVN
+// Find multiple instances of equivalent expressions and replace them with the first (canonical) occurrence
+
 import { setBrilOptimFunctionInstructions, setCfgBlockInstructions } from "../../store/parseSlice";
 import store from "../../store/store";
-import {
-  IBrilConst,
-  IBrilEffectOperation,
-  IBrilFunction,
-  IBrilInstructionOrLabel,
-  IBrilValueInstruction,
-  IBrilValueOperation,
-} from "./BrilInterface";
-import { ICFG, ICFGBlock, ICFGBlockMap } from "./cfgBuilder";
-
-let dceRemovedInsCount = 0;
-let dceIterations = 0;
+import { IBrilConst, IBrilInstructionOrLabel, IBrilValueInstruction } from "./BrilInterface";
+import { ICFG } from "./cfgBuilder";
 
 const flattenCfgInstructions = (fn: string) => {
   const blocks = store.getState().parse.cfg[fn];
@@ -21,69 +14,6 @@ const flattenCfgInstructions = (fn: string) => {
   });
   return instructions;
 };
-
-export interface IDCEStats {
-  removedInstructions: IBrilInstructionOrLabel[];
-  iterations: number;
-}
-
-const dce_pass = (blocks: ICFGBlock[], func: IBrilFunction, stats: IDCEStats) => {
-  // find all variables used as an argument in any instruction in all the blocks
-  const used = new Set<string>();
-  for (let block of blocks) {
-    for (let ins of block.instructions) if ("args" in ins) ins.args?.forEach((arg) => used.add(arg));
-  }
-
-  // delete the instructions that write to unused variables - variables that will not be an argument
-  let changed = false;
-  blocks.forEach((block, blockIndex) => {
-    // include all effect instructions and all value instructions that write to a used variable
-    // this will delete value instructions that write to an unused variable
-    const new_block = block.instructions.filter((ins) => {
-      const keep = !("dest" in ins) || used.has(ins.dest);
-      if (!keep) {
-        stats.removedInstructions.push({ ...ins });
-      }
-      return keep;
-    });
-    if (new_block.length != block.instructions.length) {
-      changed = true;
-      block.instructions = new_block;
-      // store.dispatch(setCfgBlockInstructions({ fn, blockIndex, instructions: new_block }));
-    }
-  });
-
-  return changed;
-};
-
-export const runDCE = (blockMap: ICFGBlockMap, func: IBrilFunction) => {
-  dceIterations = 0;
-  const stats: IDCEStats = {
-    removedInstructions: [],
-    iterations: 0,
-  };
-  const blocks = Object.values(blockMap);
-  while (dce_pass(blocks, func, stats)) {
-    dceIterations++;
-  }
-  stats.iterations = dceIterations;
-  return stats;
-};
-
-// export const dce = (cfg: ICFG) => {
-//   console.info("Optimization: Performing DCE...");
-//   Object.keys(cfg).forEach((fn) => {
-//     dceIterations = 0;
-//     dceRemovedInsCount = 0;
-//     while (dce_pass(fn)) {
-//       dceIterations++;
-//     }
-//     if (dceRemovedInsCount > 0) {
-//       console.info(`  Function ${fn}: Removed ${dceRemovedInsCount} instructions in ${dceIterations} iterations`);
-//       store.dispatch(setBrilOptimFunctionInstructions({ fn, instructions: flattenCfgInstructions(fn) }));
-//     } else console.info(`  Function ${fn}: No dead code detected`);
-//   });
-// };
 
 class LVNValue {
   op: string;
