@@ -6,7 +6,7 @@ import { getDataFlow } from "../languages/bril/df";
 import { Box, Grid, Select, Tooltip, VStack } from "@chakra-ui/react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
-import "./cfg.css";
+import "./cfgView.css";
 import { ParseState, SettingsState, useParseStore, useSettingsStore } from "../store/zustore";
 
 export const CfgView = () => {

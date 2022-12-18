@@ -1,19 +1,17 @@
 // LVN
 // Find multiple instances of equivalent expressions and replace them with the first (canonical) occurrence
 
-import { setBrilOptimFunctionInstructions, setCfgBlockInstructions } from "../../store/parseSlice";
-import store from "../../store/store";
 import { IBrilConst, IBrilInstructionOrLabel, IBrilValueInstruction } from "./BrilInterface";
-import { ICFG } from "./cfgBuilder";
+import { ICFG, ICFGBlockMap } from "./cfgBuilder";
 
-const flattenCfgInstructions = (fn: string) => {
-  const blocks = store.getState().parse.cfg[fn];
-  const instructions: IBrilInstructionOrLabel[] = [];
-  Object.values(blocks).forEach((block) => {
-    instructions.push(...block.instructions);
-  });
-  return instructions;
-};
+// const flattenCfgInstructions = (fn: string) => {
+//   const blocks = store.getState().parse.cfg[fn];
+//   const instructions: IBrilInstructionOrLabel[] = [];
+//   Object.values(blocks).forEach((block) => {
+//     instructions.push(...block.instructions);
+//   });
+//   return instructions;
+// };
 
 class LVNValue {
   op: string;
@@ -35,11 +33,14 @@ export class LVNTable {
     this.rows = [];
     this.var2num = {};
   }
+  toTable() {
+    return this.rows.map((row) => ({ value: row.value.toString(), canonvar: row.canonvar, constval: row.constval?.toString() }));
+  }
   addVar(varname: string, num: number) {
     this.var2num[varname] = num;
   }
   addValue(value: LVNValue, canonvar: string) {
-    if (this.hasValue(value)) throw new Error("LVNTable already has" + value.toString());
+    if (this.hasValue(value)) debugger; //throw new Error("LVNTable already has " + value.toString());
     this.rows.push({ value, canonvar });
     this.addVar(canonvar, this.rows.length - 1);
     return this.rows.length - 1;
@@ -143,81 +144,93 @@ const fold = (lvntable: LVNTable, value: LVNValue) => {
   return undefined;
 };
 
-export const lvn = (cfg: ICFG) => {
-  console.info("Optimization: Performing LVN...");
-  Object.keys(cfg).forEach((fn) => {
-    const blocks = store.getState().parse.cfg[fn];
-    blocks.forEach((block, blockIndex) => {
-      const new_instructions: IBrilInstructionOrLabel[] = [];
-      const lvntable = new LVNTable();
-      const _last_writes = last_writes(block.instructions);
+interface ILVNStats {
+  blocks: Record<
+    string,
+    {
+      initialInstructionLength: number;
+      finalInstructionLength: number;
+      lvntable: { value: string; canonvar: string; constval: string | undefined }[];
+    }
+  >;
+}
 
-      // add as input values all variabes that are read before written in this block
-      // these will be variables that have come from function input or previous blocks
-      read_first(block.instructions).forEach((varname) => {
-        lvntable.addValue(new LVNValue("input"), varname);
-      });
+export const lvn = (blockMap: ICFGBlockMap) => {
+  const lvnstats: ILVNStats = { blocks: {} };
 
-      block.instructions.forEach((instr, instrIndex) => {
-        let value;
-        if ("dest" in instr && "args" in instr && instr.op != "call") {
-          // if non-call non-const value instruction with args
-          value = lvntable.instruction2value(instr);
-          const num = lvntable.value2num(value);
-          if (num != -1) {
-            // if canonical value already exists
-            // link instr.dest to num
-            lvntable.addVar(instr.dest, num);
+  Object.keys(blockMap).forEach((b) => {
+    const block = blockMap[b];
+    const new_instructions: IBrilInstructionOrLabel[] = [];
+    const lvntable = new LVNTable();
+    const _last_writes = last_writes(block.instructions);
 
-            if (lvntable.isConst(num)) {
-              // replace this instruction with the canonical const
-              // eg original instruction was y=x but x is a const so replace with y=5
-              new_instructions.push({ ...instr, op: "const", value: lvntable.num2const(num), args: undefined } as IBrilConst);
-            } else {
-              // replace this instruction with the canonical variable ie dest = canonvar
-              new_instructions.push({ ...instr, op: "id", args: [lvntable.num2canonvar(num)] });
-            }
-            return; // to next instruction in block
-          }
-        }
-
-        if ("dest" in instr) {
-          // instruction produces a new value
-          const newnum = lvntable.addValue(new LVNValue("blank_" + instr.dest), instr.dest);
-
-          if ("value" in instr) lvntable.rows[newnum].constval = (instr as IBrilConst).value as number;
-
-          // rename the dest if it will be written to again
-          const varName = _last_writes[instrIndex] ? instr.dest : `lvn.${instr.dest}.${newnum}`;
-          lvntable.rows[lvntable.rows.length - 1].canonvar = varName;
-
-          if (value) {
-            const constValue = fold(lvntable, value);
-            if (typeof constValue !== "undefined") {
-              lvntable.rows[newnum].constval = constValue;
-              new_instructions.push({ ...instr, op: "const", value: constValue } as IBrilConst);
-              return; // to next instruction
-            }
-            // not a foldable const instruction
-            lvntable.rows[newnum].value = value;
-          }
-
-          if ("args" in instr)
-            new_instructions.push({ ...instr, dest: varName, args: lvntable.vars2canonvars(instr.args) } as IBrilValueInstruction);
-          else new_instructions.push({ ...instr, dest: varName } as IBrilValueInstruction);
-        } else {
-          // not a value instruction but still need to convert args
-          if ("args" in instr && instr.args)
-            new_instructions.push({ ...instr, args: lvntable.vars2canonvars(instr.args) } as IBrilValueInstruction);
-          else new_instructions.push({ ...instr } as IBrilValueInstruction);
-        }
-      });
-      console.info(`  ${fn}: block ${blockIndex}: Instruction count ${block.instructions.length} => ${new_instructions.length}`, lvntable);
-      // todo updateCfgBlock with new_instructions, lvntable, lookup
-      store.dispatch(setCfgBlockInstructions({ fn, blockIndex, instructions: new_instructions, lvntable }));
+    // add as input values all variabes that are read before written in this block
+    // these will be variables that have come from function input or previous blocks
+    read_first(block.instructions).forEach((varname) => {
+      lvntable.addValue(new LVNValue("input" + varname), varname);
     });
-    const flattenedInstructions = flattenCfgInstructions(fn);
-    console.info(`  ${fn}: Instruction count ${store.getState().parse.bril.functions[fn]?.instrs.length} => ${flattenedInstructions.length}`);
-    store.dispatch(setBrilOptimFunctionInstructions({ fn, instructions: flattenedInstructions }));
+
+    block.instructions.forEach((instr, instrIndex) => {
+      let value;
+      if ("dest" in instr && "args" in instr && instr.op != "call") {
+        // if non-call non-const value instruction with args
+        value = lvntable.instruction2value(instr);
+        const num = lvntable.value2num(value);
+        if (num != -1) {
+          // if canonical value already exists
+          // link instr.dest to num
+          lvntable.addVar(instr.dest, num);
+
+          if (lvntable.isConst(num)) {
+            // replace this instruction with the canonical const
+            // eg original instruction was y=x but x is a const so replace with y=5
+            new_instructions.push({ ...instr, op: "const", value: lvntable.num2const(num), args: [] } as IBrilConst);
+          } else {
+            // replace this instruction with the canonical variable ie dest = canonvar
+            new_instructions.push({ ...instr, op: "id", args: [lvntable.num2canonvar(num)] });
+          }
+          return; // to next instruction in block
+        }
+      }
+
+      if ("dest" in instr) {
+        // instruction produces a new value
+        const newnum = lvntable.addValue(new LVNValue("blank_" + instr.dest), instr.dest);
+
+        if ("value" in instr) lvntable.rows[newnum].constval = (instr as IBrilConst).value as number;
+
+        // rename the dest if it will be written to again
+        const varName = _last_writes[instrIndex] ? instr.dest : `lvn.${instr.dest}.${newnum}`;
+        lvntable.rows[lvntable.rows.length - 1].canonvar = varName;
+
+        if (value) {
+          const constValue = fold(lvntable, value);
+          if (typeof constValue !== "undefined") {
+            lvntable.rows[newnum].constval = constValue;
+            new_instructions.push({ dest: instr.dest, pos: instr.pos, type: instr.type, op: "const", value: constValue } as IBrilConst);
+            return; // to next instruction
+          }
+          // not a foldable const instruction
+          lvntable.rows[newnum].value = value;
+        }
+
+        if ("args" in instr)
+          new_instructions.push({ ...instr, dest: varName, args: lvntable.vars2canonvars(instr.args) } as IBrilValueInstruction);
+        else new_instructions.push({ ...instr, dest: varName } as IBrilValueInstruction);
+      } else {
+        // not a value instruction but still need to convert args
+        if ("args" in instr && instr.args)
+          new_instructions.push({ ...instr, args: lvntable.vars2canonvars(instr.args) } as IBrilValueInstruction);
+        else new_instructions.push({ ...instr } as IBrilValueInstruction);
+      }
+    });
+    lvnstats.blocks[block.name] = {
+      initialInstructionLength: block.instructions.length,
+      finalInstructionLength: new_instructions.length,
+      lvntable: lvntable.toTable(),
+    };
+    blockMap[b].instructions = new_instructions;
+    // blockMap[b].lvntable = lvntable.toTable();
   });
+  return lvnstats;
 };

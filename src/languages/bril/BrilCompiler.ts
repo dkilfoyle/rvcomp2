@@ -1,6 +1,7 @@
 import { IAstProgram } from "../simpleC/ast";
 import { astToBrilVisitor } from "./astToBrilVisitor";
 import { IBrilProgram } from "./BrilInterface";
+import { lvn } from "./lvn";
 import { blockMap2Instructions, cfgBuilder, getFunctionBlockMap, ICFG } from "./cfgBuilder";
 import { runDCE } from "./dce";
 import { removePhis, runSSA } from "./ssa";
@@ -28,7 +29,11 @@ export const optimiseBril = (
         // if (log) console.info(`${func.name}: Phis: `, statsSSA);
       }
     }
-    // if (doLVN) runLVN(blockMap);
+    if (doLVN) {
+      const lvnStats = lvn(blockMap);
+      if (log) console.info(`${func.name}: LVN: `, lvnStats);
+    }
+
     if (doDCE) {
       const statsDCE = runDCE(blockMap, func);
       if (log) console.info(`${func.name}: DCE: removed ${statsDCE.removedInstructions.length}`);

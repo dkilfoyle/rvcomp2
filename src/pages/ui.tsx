@@ -5,11 +5,11 @@ import { Sidebar } from "../components/SideBar";
 import { ChakraProvider } from "@chakra-ui/react";
 import "rc-tree/assets/index.css";
 
-import { CstView } from "../components/cst";
-import { AstView } from "../components/ast";
-import { BrilView } from "../components/bril";
+import { CstView } from "../components/cstView";
+import { AstView } from "../components/astView";
+import { BrilView } from "../components/brilView";
 import { BrilEditor } from "../components/brilEditor/BrilEditor";
-import { CfgView } from "../components/cfg";
+import { CfgView } from "../components/cfgView";
 import { Consoler } from "../components/console";
 
 import DockLayout, { DividerBox, LayoutData } from "rc-dock";

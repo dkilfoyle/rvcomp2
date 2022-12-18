@@ -5,17 +5,15 @@ import "rc-tree/assets/index.css";
 
 import { Icon } from "@chakra-ui/react";
 import { VscSymbolClass } from "react-icons/vsc";
-import { RootState } from "../store/store";
-import { useSelector } from "react-redux";
 
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import "overlayscrollbars/overlayscrollbars.css";
+import { useParseStore, ParseState } from "../store/zustore";
 
 const fullHeight = { maxHeight: "100%" };
 
 export const AstView: React.FC = () => {
-  // const ast = astEntity.use();
-  const ast = useSelector((state: RootState) => state.parse.ast);
+  const ast = useParseStore((state: ParseState) => state.ast);
 
   const astTreeData = useMemo(() => {
     let i = 0;

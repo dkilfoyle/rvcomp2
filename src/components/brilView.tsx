@@ -2,8 +2,7 @@ import React, { useMemo } from "react";
 // import { brilIR } from "../store/ParseState";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
-import { cfgBuilder } from "../languages/bril/cfgBuilder";
-import { RootState } from "../store/store";
+import { ParseState, useParseStore } from "../store/zustore";
 import { useSelector } from "react-redux";
 
 const keyValue = (key: string, value: any) => (
@@ -13,8 +12,7 @@ const keyValue = (key: string, value: any) => (
 );
 
 export const BrilView: React.FC = () => {
-  // const bril = brilIR.use();
-  const bril = useSelector((state: RootState) => state.parse.bril);
+  const bril = useParseStore((state: ParseState) => state.bril);
 
   const brilTreeData = useMemo(() => {
     const dumpInstruction = (ins: any) => {
