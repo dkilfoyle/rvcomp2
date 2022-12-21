@@ -25,7 +25,7 @@ export interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
-  filename: "ssaif.sc",
+  filename: "lvn.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

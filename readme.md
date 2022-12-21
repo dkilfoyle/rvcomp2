@@ -21,13 +21,16 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
 
 ## Planned
 
-1. Improve UI
+1. Expand SimpleC
+   1. ~~if (cond) instead of if (cond == true) where cond is boolean identifier~~
+   2. if (cond) instead of if (cond == true) where cond is boolean function call
+2. Improve UI
    1. CFG node selection shows DFA for that node
    2. ~~Bril IR diffeditor - plain vs SSA and SSA vs optimisations~~
-2. Refactor
+3. Refactor
    1. ~~Switch from redux-toolkit to zustand~~
    2. Use Map instead of Record<string,>
-3. Optimisations
+4. Optimisations
    1. Use DFA
       1. Use DFA to do global DCE - research how
       2. Copy propogation
@@ -38,9 +41,9 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
       3. CFG cleaning
       4. Tail merging
       5. Remove top label and any unnecessary terminator instructions
-4. Many more examples
-5. IR to RiscV
-6. LLVM IR?
+5. Many more examples
+6. IR to RiscV
+7. LLVM IR?
 
 ### Tools
 

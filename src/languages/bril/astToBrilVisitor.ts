@@ -194,7 +194,8 @@ class AstToBrilVisitor {
         return this.builder.buildConst(n.value, n.type, dest);
       case "identifierExpression": // ie an identifier
         n = node as IAstIdentifierExpression;
-        return { op: "id", dest: n.id, args: [], type: "int" }; // this.builder.buildValue("id", n.type as IBrilType, [n.id]);
+        if (n.type == "string" || n.type == "void") throw new Error("String and void identifier type not implemented");
+        else return this.builder.buildValue("id", n.type, [n.id], [], [], dest); // this.builder.buildValue("id", n.type as IBrilType, [n.id]);
       case "binaryExpression":
         n = node as IAstBinaryExpression;
         lhs = this.expression(n.lhs);
@@ -218,8 +219,12 @@ class AstToBrilVisitor {
 
   comparisonExpression(node: IAstComparisonExpression): IBrilValueInstruction {
     const lhs = this.expression(node.lhs);
-    const rhs = this.expression(node.rhs);
-    return this.builder.buildValue(node.op, "bool", [lhs.dest, rhs.dest]);
+    if (node.rhs) {
+      const rhs = this.expression(node.rhs);
+      return this.builder.buildValue(node.op, "bool", [lhs.dest, rhs.dest]);
+    } else {
+      return lhs;
+    }
   }
 }
 

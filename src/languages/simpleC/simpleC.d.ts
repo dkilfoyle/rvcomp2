@@ -142,7 +142,7 @@ export interface ReturnStatementCstNode extends CstNode {
 
 export type ReturnStatementCstChildren = {
   Return: IToken[];
-  additionExpression: AdditionExpressionCstNode[];
+  additionExpression?: AdditionExpressionCstNode[];
   SemiColon: IToken[];
 };
 
@@ -165,8 +165,8 @@ export interface ComparisonExpressionCstNode extends CstNode {
 
 export type ComparisonExpressionCstChildren = {
   lhs: AdditionExpressionCstNode[];
-  ComparisonOperator: IToken[];
-  rhs: AdditionExpressionCstNode[];
+  ComparisonOperator?: IToken[];
+  rhs?: AdditionExpressionCstNode[];
 };
 
 export interface AdditionExpressionCstNode extends CstNode {

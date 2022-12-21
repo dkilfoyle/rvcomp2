@@ -1,4 +1,3 @@
-import { isReactNodeEmpty } from "@blueprintjs/core/lib/esm/common/utils";
 import { ISimpleCLangError } from "../../components/simpleCEditor/monaco/DiagnosticsAdapter";
 import { ScopeStack } from "./ScopeStack";
 
@@ -90,7 +89,7 @@ export type IAstComparisonOperator = "gt" | "lt" | "ge" | "le" | "eq";
 export interface IAstComparisonExpression {
   _name: "comparisonExpression";
   lhs: IAstExpression;
-  rhs: IAstExpression;
+  rhs?: IAstExpression;
   op: IAstComparisonOperator;
   type: "bool";
 }

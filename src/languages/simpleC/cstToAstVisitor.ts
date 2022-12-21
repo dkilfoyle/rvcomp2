@@ -52,12 +52,12 @@ import {
 } from "./ast";
 import { ScopeStack } from "./ScopeStack";
 
-export const convertCstNodeLocationToIPos = (pos: CstNodeLocation) => {
+export const convertCstNodeLocationToIPos = (pos?: CstNodeLocation) => {
   return {
-    startLineNumber: pos.startLine || 0,
-    endLineNumber: pos.endLine || 0,
-    startColumn: pos.startColumn || 0,
-    endColumn: pos.endColumn || 0,
+    startLineNumber: pos?.startLine || 0,
+    endLineNumber: pos?.endLine || 0,
+    startColumn: pos?.startColumn || 0,
+    endColumn: pos?.endColumn || 0,
   };
 };
 
@@ -233,28 +233,41 @@ class CstVisitor extends CstBaseVisitor {
 
   comparisonExpression(ctx: ComparisonExpressionCstChildren): IAstComparisonExpression {
     const lhs = this.visit(ctx.lhs);
-    const rhs = this.visit(ctx.rhs);
-    let op: IAstComparisonOperator;
-    switch (ctx.ComparisonOperator[0].image) {
-      case ">":
-        op = "gt";
-        break;
-      case ">=":
-        op = "ge";
-        break;
-      case "<":
-        op = "lt";
-        break;
-      case "<=":
-        op = "le";
-        break;
-      case "==":
-        op = "eq";
-        break;
-      default:
-        op = "gt";
+
+    if (ctx.rhs && ctx.ComparisonOperator) {
+      const rhs = this.visit(ctx.rhs);
+      let op: IAstComparisonOperator;
+      switch (ctx.ComparisonOperator[0].image) {
+        case ">":
+          op = "gt";
+          break;
+        case ">=":
+          op = "ge";
+          break;
+        case "<":
+          op = "lt";
+          break;
+        case "<=":
+          op = "le";
+          break;
+        case "==":
+          op = "eq";
+          break;
+        default:
+          op = "gt";
+      }
+      return { _name: "comparisonExpression", lhs, rhs, op, type: "bool" };
+    } else {
+      if ((lhs as IAstExpression)._name != "identifierExpression") {
+        const pos = convertCstNodeLocationToIPos(ctx.lhs[0].location);
+        this.errors.push({ ...pos, code: "2", message: "expect identifier or comparison" });
+      }
+      if ((lhs as IAstExpression).type !== "bool") {
+        const pos = convertCstNodeLocationToIPos(ctx.lhs[0].location);
+        this.errors.push({ ...pos, code: "2", message: "expect identifier type is bool" });
+      }
+      return { _name: "comparisonExpression", lhs, op: "eq", type: "bool" };
     }
-    return { _name: "comparisonExpression", lhs, rhs, op, type: "bool" };
   }
 
   getOperator(op: string) {

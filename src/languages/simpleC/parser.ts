@@ -203,8 +203,10 @@ class SimpleCParser extends CstParser {
 
   public comparisonExpression = this.RULE("comparisonExpression", () => {
     this.SUBRULE(this.additionExpression, { LABEL: "lhs" });
-    this.CONSUME(tokens.ComparisonOperator);
-    this.SUBRULE2(this.additionExpression, { LABEL: "rhs" });
+    this.OPTION(() => {
+      this.CONSUME(tokens.ComparisonOperator);
+      this.SUBRULE2(this.additionExpression, { LABEL: "rhs" });
+    });
   });
 
   public additionExpression = this.RULE("additionExpression", () => {
