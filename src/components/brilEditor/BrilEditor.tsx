@@ -8,6 +8,17 @@ import { setupLanguage } from "./monaco/setup";
 
 import { optimiseBril } from "../../languages/bril/BrilCompiler";
 import { useSettingsStore, SettingsState, ParseState, useParseStore } from "../../store/zustore";
+import { ErrorBoundary, FallbackProps } from "react-error-boundary";
+
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
+  return (
+    <div role="alert">
+      <p>Failed to load users:</p>
+      <pre>{error.message}</pre>
+      <button onClick={resetErrorBoundary}>Try again</button>
+    </div>
+  );
+}
 
 let decorations: monaco.editor.IEditorDecorationsCollection;
 
@@ -27,6 +38,7 @@ export const BrilEditor: VFC = () => {
   const brilKeepPhis = useSettingsStore((state: SettingsState) => state.bril.keepPhis);
   const brilIsSSA = useSettingsStore((state: SettingsState) => state.bril.isSSA);
   const doLVN = useSettingsStore((state: SettingsState) => state.optim.doLVN);
+  const doGVN = useSettingsStore((state: SettingsState) => state.optim.doGVN);
   const doDCE = useSettingsStore((state: SettingsState) => state.optim.doDCE);
 
   const brilTxt = useMemo(() => {
@@ -37,14 +49,14 @@ export const BrilEditor: VFC = () => {
   }, [bril, brilIsSSA, brilKeepPhis]);
 
   useEffect(() => {
-    const { optimBril, optimCfg } = optimiseBril(bril, isSSA, keepPhis, doLVN, doDCE, true);
+    const { optimBril, optimCfg } = optimiseBril(bril, isSSA, keepPhis, doLVN, doGVN, doDCE, true);
     setParse((state: ParseState) => {
       state.brilOptim = optimBril;
     });
     setParse((state: ParseState) => {
       state.cfg = optimCfg;
     });
-  }, [bril, keepPhis, isSSA, doLVN, doDCE]);
+  }, [bril, keepPhis, isSSA, doLVN, doGVN, doDCE]);
 
   const brilTxtOptim = useMemo(() => {
     return brilPrinter.print(brilOptim);
@@ -98,8 +110,10 @@ export const BrilEditor: VFC = () => {
   }, [monacoEl.current]);
 
   return (
-    <VStack height="100%" align="left" spacing="0px">
-      <div className={styles.Editor} ref={monacoEl}></div>
-    </VStack>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <VStack height="100%" align="left" spacing="0px">
+        <div className={styles.Editor} ref={monacoEl}></div>
+      </VStack>
+    </ErrorBoundary>
   );
 };

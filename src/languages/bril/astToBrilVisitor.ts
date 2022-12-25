@@ -195,7 +195,8 @@ class AstToBrilVisitor {
       case "identifierExpression": // ie an identifier
         n = node as IAstIdentifierExpression;
         if (n.type == "string" || n.type == "void") throw new Error("String and void identifier type not implemented");
-        else return this.builder.buildValue("id", n.type, [n.id], [], [], dest); // this.builder.buildValue("id", n.type as IBrilType, [n.id]);
+        if (dest) return this.builder.buildValue("id", n.type, [n.id], [], [], dest);
+        else return this.builder.buildIdentifier(n.id, n.type);
       case "binaryExpression":
         n = node as IAstBinaryExpression;
         lhs = this.expression(n.lhs);

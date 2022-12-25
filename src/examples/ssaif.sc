@@ -1,6 +1,6 @@
 void main(bool cond) {
   int a = 47;
-  if (cond == true) {
+  if (cond) {
     a = a + a;
   } else {
     a = a * a;

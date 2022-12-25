@@ -5,12 +5,14 @@ import { lvn } from "./lvn";
 import { blockMap2Instructions, cfgBuilder, getFunctionBlockMap, ICFG } from "./cfgBuilder";
 import { runDCE } from "./dce";
 import { removePhis, runSSA } from "./ssa";
+import { gvn } from "./gvn";
 
 export const optimiseBril = (
   bril: IBrilProgram,
   doSSA: boolean,
   keepPhis: boolean,
   doLVN: boolean = false,
+  doGVN: boolean = false,
   doDCE: boolean = false,
   log = false
 ) => {
@@ -21,22 +23,30 @@ export const optimiseBril = (
   Object.values(bril.functions).forEach((func) => {
     const blockMap = getFunctionBlockMap(func);
 
-    if (doSSA) {
-      const statsSSA = runSSA(blockMap, func);
-      if (log) console.info(`${func.name}: SSA: `, statsSSA);
-      if (!keepPhis) {
-        const statsPhis = removePhis(blockMap);
-        // if (log) console.info(`${func.name}: Phis: `, statsSSA);
+    if (Object.keys(blockMap).length > 0) {
+      if (doSSA) {
+        const statsSSA = runSSA(blockMap, func);
+        if (log) console.info(`${func.name}: SSA: `, statsSSA);
+        if (!keepPhis) {
+          const statsPhis = removePhis(blockMap);
+          // if (log) console.info(`${func.name}: Phis: `, statsSSA);
+        }
       }
-    }
-    if (doLVN) {
-      const lvnStats = lvn(blockMap);
-      if (log) console.info(`${func.name}: LVN: `, lvnStats);
-    }
 
-    if (doDCE) {
-      const statsDCE = runDCE(blockMap, func);
-      if (log) console.info(`${func.name}: DCE: removed ${statsDCE.removedInstructions.length}`);
+      if (doLVN) {
+        const lvnStats = lvn(blockMap);
+        if (log) console.info(`${func.name}: LVN: `, lvnStats);
+      }
+
+      if (doGVN) {
+        const gvnStats = gvn(func, blockMap);
+        if (log) console.info(`${func.name}: LVN: `, gvnStats);
+      }
+
+      if (doDCE) {
+        const statsDCE = runDCE(blockMap, func);
+        if (log) console.info(`${func.name}: DCE: removed ${statsDCE.removedInstructions.length}`);
+      }
     }
     const instrs = blockMap2Instructions(blockMap);
     outBril.functions[func.name] = {

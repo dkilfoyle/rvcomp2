@@ -15,6 +15,7 @@ export interface SettingsState {
     keepPhis: boolean;
     isSSA: boolean;
     doLVN: boolean;
+    doGVN: boolean;
     doDCE: boolean;
   };
   bril: {
@@ -25,7 +26,7 @@ export interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
-  filename: "lvn.sc",
+  filename: "gvn.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

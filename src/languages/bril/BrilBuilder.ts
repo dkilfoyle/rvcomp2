@@ -72,6 +72,12 @@ export class BrilBuilder {
     return instr;
   }
 
+  buildIdentifier(dest: string, type: IBrilType) {
+    // don't return a dummy id instruction to reference dest but don't insert into function
+    let instr: IBrilValueOperation = { op: "id", dest, type, args: [], funcs: [], labels: [] };
+    return instr;
+  }
+
   buildEffect(op: IBrilEffectOpCode, args: string[], funcs?: string[], labels?: string[]) {
     let instr: IBrilEffectOperation = { op, args, funcs, labels };
     this.insert(instr);

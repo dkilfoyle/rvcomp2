@@ -2,6 +2,7 @@ import semanticerrors from "./semanticerrors.sc?raw";
 import syntax from "./syntax.sc?raw";
 import helloint from "./helloint.sc?raw";
 import lvn from "./lvn.sc?raw";
+import gvn from "./gvn.sc?raw";
 import dce from "./dce.sc?raw";
 import df from "./df.sc?raw";
 import dom from "./dom.sc?raw";
@@ -17,6 +18,7 @@ export const examples: Record<string, string> = {
   syntax,
   helloint,
   lvn,
+  gvn,
   dce,
   df,
   dom,

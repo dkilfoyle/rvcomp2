@@ -34,9 +34,9 @@ class BrilPrinter {
       if (ins.op === "const") this.line(`  ${ins.dest}: ${ins.type} = const ${ins.value};`, ins.key || -99);
       else {
         let rhs = `${ins.op}`;
-        if (ins.funcs) rhs += ` ${ins.funcs.join(" @")}`;
-        if (ins.args) rhs += ` ${ins.args.join(" ")}`;
-        if (ins.labels) rhs += ` .${ins.labels.join(" .")}`;
+        if (ins.funcs?.length) rhs += ` ${ins.funcs.join(" @")}`;
+        if (ins.args?.length) rhs += ` ${ins.args.join(" ")}`;
+        if (ins.labels?.length) rhs += ` .${ins.labels.join(" .")}`;
         const insAsValue = ins as IBrilValueInstruction;
         if (insAsValue.dest) {
           let tyann = `: ${insAsValue.type}`;

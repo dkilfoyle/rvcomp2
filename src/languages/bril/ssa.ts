@@ -1,18 +1,6 @@
 import _ from "lodash";
-import { setBrilOptimFunctionInstructions, setCfg } from "../../store/parseSlice";
-import store from "../../store/store";
-import { IBrilFunction, IBrilInstruction, IBrilInstructionOrLabel, IBrilProgram, IBrilValueOperation } from "./BrilInterface";
-import {
-  addCfgEntry,
-  addCfgTerminators,
-  blockMap2Instructions,
-  cfgBuilder,
-  flattenCfgBlocks,
-  getCfgBlockMap,
-  getCfgEdges,
-  ICFGBlock,
-  ICFGBlockMap,
-} from "./cfgBuilder";
+import { IBrilFunction, IBrilValueOperation } from "./BrilInterface";
+import { getCfgEdges, ICFGBlockMap } from "./cfgBuilder";
 import { getDominanceFrontierMap, getDominanceTree, getDominatorMap, stringMap } from "./dom";
 import { getBrilFunctionArgs, getBrilFunctionVarTypes, IDictString, IDictStrings } from "./utils";
 
@@ -98,7 +86,10 @@ export const renameVars = (blockMap: ICFGBlockMap, phis: IDictStrings, succs: ID
       // rename instruction arguments
       if ("args" in instr) {
         // read off bottom (most recent end) of the stack for arg [v.3, v.2, v.1]
-        const newArgs = instr.args?.map((arg) => stack[arg][0]);
+        const newArgs = instr.args?.map((arg) => {
+          if (!stack[arg]) debugger;
+          return stack[arg][0];
+        });
         instr.args = newArgs;
       }
       // rename instruction dests

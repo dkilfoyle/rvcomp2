@@ -4,6 +4,17 @@ import styles from "./Editor.module.css";
 import { setupLanguage } from "./monaco/setup";
 import { examples } from "../../examples/examples";
 import { ParseState, SettingsState, useParseStore, useSettingsStore } from "../../store/zustore";
+import { ErrorBoundary, FallbackProps } from "react-error-boundary";
+
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
+  return (
+    <div role="alert">
+      <p>Failed to load users:</p>
+      <pre>{error.message}</pre>
+      <button onClick={resetErrorBoundary}>Try again</button>
+    </div>
+  );
+}
 
 export const Editor: VFC = () => {
   const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -70,5 +81,9 @@ export const Editor: VFC = () => {
     return () => editor?.dispose();
   }, [monacoEl.current]);
 
-  return <div className={styles.Editor} ref={monacoEl}></div>;
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <div className={styles.Editor} ref={monacoEl}></div>
+    </ErrorBoundary>
+  );
 };

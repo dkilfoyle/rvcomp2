@@ -56,6 +56,7 @@ export const Sidebar = () => {
   const brilKeepPhis = useSettingsStore((state: SettingsState) => state.bril.keepPhis);
   const brilIsSSA = useSettingsStore((state: SettingsState) => state.bril.isSSA);
   const doLVN = useSettingsStore((state: SettingsState) => state.optim.doLVN);
+  const doGVN = useSettingsStore((state: SettingsState) => state.optim.doGVN);
   const doDCE = useSettingsStore((state: SettingsState) => state.optim.doDCE);
   const setSettings = useSettingsStore((state: SettingsState) => state.set);
 
@@ -166,6 +167,21 @@ export const Sidebar = () => {
                   })
                 }>
                 LVN
+              </Checkbox>
+              <Checkbox
+                isChecked={doGVN}
+                onChange={(e) =>
+                  setSettings((state: SettingsState) => {
+                    state.optim.doGVN = e.target.checked;
+                    if (e.target.checked) {
+                      state.optim.isSSA = true;
+                      state.optim.keepPhis = true;
+                      state.bril.isSSA = true;
+                      state.optim.doLVN = false;
+                    }
+                  })
+                }>
+                GVN
               </Checkbox>
               <Checkbox
                 isChecked={doDCE}

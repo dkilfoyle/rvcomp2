@@ -5,7 +5,7 @@ import { IBrilEffectOperation, IBrilFunction, IBrilInstruction, IBrilInstruction
 const TERMINATORS = ["br", "jmp", "ret"];
 
 export interface ICFGBlock {
-  instructions: IBrilInstructionOrLabel[];
+  instructions: IBrilInstruction[];
   keyStart: number;
   keyEnd: number;
   name: string;
@@ -76,14 +76,16 @@ export class CfgBuilder {
         if (this.cur_block.instructions.length) this.endBlock();
         this.startBlock({ name: ins.label });
         this.cur_block.keyStart = ins.key || -1;
-        this.cur_block.instructions = [ins];
+        // this.cur_block.instructions = [ins];
       }
     });
-    if (this.cur_block.instructions.length) this.endBlock();
+    // if (this.cur_block.instructions.length)
+    this.endBlock();
 
     return this.blocks.map((block, i) => {
       if (block.keyStart == -1) block.keyStart = block.instructions[0].key || -1;
-      block.keyEnd = block.instructions[block.instructions.length - 1].key || -1;
+      if (block.instructions.length == 0) block.keyEnd = -1;
+      else block.keyEnd = block.instructions[block.instructions.length - 1].key || -1;
 
       return block;
     });
@@ -97,6 +99,7 @@ export const addCfgEntry = (blockMap: ICFGBlockMap) => {
   // this could happen if jmp or br back to first block
 
   const blocks = Object.values(blockMap);
+  if (blocks.length == 0) return blockMap;
   const firstLabel = blocks[0].name;
   const hasInEdge = flattenCfgBlocks(blocks).find((instr) => {
     return "labels" in instr && (instr as IBrilEffectOperation).labels?.includes(firstLabel);
@@ -141,12 +144,12 @@ export const addCfgTerminators = (blockMap: ICFGBlockMap) => {
 };
 
 export const getCfgBlockMap = (blocks: ICFGBlock[]) => {
-  blocks.forEach((block, index) => {
-    if ("label" in block.instructions[0]) {
-      blocks[index].name = block.instructions[0].label;
-      blocks[index].instructions.shift();
-    }
-  });
+  // blocks.forEach((block, index) => {
+  //   if ("label" in block.instructions[0]) {
+  //     blocks[index].name = block.instructions[0].label;
+  //     blocks[index].instructions.shift();
+  //   }
+  // });
   return blocks.reduce((accum: Record<string, ICFGBlock>, block) => {
     accum[block.name] = block;
     return accum;

@@ -3,6 +3,8 @@ import { IBrilFunction, IBrilProgram } from "./BrilInterface";
 
 export type IDictStrings = Record<string, string[]>;
 export type IDictString = Record<string, string>;
+export type IDictNumber = Record<string, number>;
+export type IDictNumbers = Record<string, number[]>;
 
 export const getBrilFunctionArgs = (func: IBrilFunction) => {
   if (func.args) return func.args.map((a) => a.name);
