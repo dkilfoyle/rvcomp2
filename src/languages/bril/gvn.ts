@@ -33,7 +33,7 @@ export const isRemovablePhi = (instr: IBrilValueOperation, vnTable: VNTable) => 
 
   let meaningless = true;
   let argValueNumber = -1;
-  for (let i = 0; i < instr.args.length / 2; i++) {
+  for (let i = 0; i < instr.args.length; i++) {
     const arg = instr.args[i];
     if (!vnTable.var2num[arg]) {
       meaningless = false;
@@ -227,6 +227,7 @@ const dvn2 = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStri
     // otherwise add to VNTable
     blockMap[blockName].instructions.forEach((instr, i) => {
       if (instr.op !== "phi") return; // phis come first
+      debugger;
       const instrValue = vnTable.instruction2value(instr);
       if (isRemovablePhi(instr, vnTable)) instrsToRemove.push(i);
       else vnTable.addValue(instrValue, instr.dest);
