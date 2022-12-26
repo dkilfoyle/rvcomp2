@@ -10,6 +10,5 @@ void main() {
   } else {
     x = 2;
   }
-//  int x = 5;
-//  print_int(x); 
+  print_int(x); 
 }

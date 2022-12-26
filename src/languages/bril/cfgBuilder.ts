@@ -69,6 +69,7 @@ export class CfgBuilder {
             this.cur_block.out = [ins.labels[0]];
           }
           this.endBlock();
+          this.cur_block.name = "";
         }
       } else {
         ins = <IBrilLabel>ins;
@@ -79,10 +80,10 @@ export class CfgBuilder {
         // this.cur_block.instructions = [ins];
       }
     });
-    // if (this.cur_block.instructions.length)
-    this.endBlock();
+    if (this.cur_block.name != "") this.endBlock();
 
     return this.blocks.map((block, i) => {
+      if (!block.instructions.length) debugger;
       if (block.keyStart == -1) block.keyStart = block.instructions[0].key || -1;
       if (block.instructions.length == 0) block.keyEnd = -1;
       else block.keyEnd = block.instructions[block.instructions.length - 1].key || -1;

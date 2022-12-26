@@ -14,6 +14,7 @@ import { Consoler } from "../components/console";
 
 import DockLayout, { DividerBox, LayoutData } from "rc-dock";
 import "rc-dock/dist/rc-dock.css";
+import { Output } from "../components/output";
 
 // const fullHeight = { maxHeight: "100%" };
 // const fullHeight2 = { height: "100%", display: "flex", flexDirection: "column" };
@@ -93,7 +94,10 @@ const layout: LayoutData = {
         ],
       },
       {
-        tabs: [{ id: "console", title: "Console", group: "card", content: <Consoler></Consoler> }],
+        tabs: [
+          { id: "console", title: "Console", group: "card", content: <Consoler></Consoler> },
+          { id: "output", title: "Output", group: "card", content: <Output></Output> },
+        ],
       },
     ],
   },

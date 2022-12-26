@@ -26,7 +26,7 @@ export interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
-  filename: "gvn.sc",
+  filename: "helloint.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

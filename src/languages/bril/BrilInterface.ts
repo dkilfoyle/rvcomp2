@@ -25,6 +25,7 @@ export interface IBrilValueOperation extends IBrilOp {
 
 export type IBrilValueOpCode = IBrilValueOperation["op"];
 export type IBrilEffectOpCode = IBrilEffectOperation["op"];
+export type IBrilOpCode = IBrilValueOpCode | IBrilEffectOpCode;
 
 export interface IBrilConst extends IBrilNode {
   op: "const";
