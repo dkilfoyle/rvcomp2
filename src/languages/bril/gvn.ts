@@ -227,7 +227,6 @@ const dvn2 = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStri
     // otherwise add to VNTable
     blockMap[blockName].instructions.forEach((instr, i) => {
       if (instr.op !== "phi") return; // phis come first
-      debugger;
       const instrValue = vnTable.instruction2value(instr);
       if (isRemovablePhi(instr, vnTable)) instrsToRemove.push(i);
       else vnTable.addValue(instrValue, instr.dest);

@@ -3,7 +3,8 @@ int getz() {
 }
 
 void main() {
-  int z = 6;
+  int z;
+  z = getz();
   int x;
   if (z > 5) {
     x = 1;

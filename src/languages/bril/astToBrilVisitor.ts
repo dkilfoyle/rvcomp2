@@ -73,7 +73,7 @@ class AstToBrilVisitor {
         const n = node as IAstFunctionCallExpression;
         const params = n.params ? n.params.map((p) => this.expression(p)) : [];
         this.builder.buildCall(
-          "@" + n.id,
+          n.id,
           params.map((p) => p.dest)
         );
         break;

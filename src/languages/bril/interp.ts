@@ -256,7 +256,7 @@ function evalCall(instr: IBrilOperation, state: State): Action {
   let funcName = getFunc(instr, 0);
 
   // check if special function
-  if (funcName == "@print_int") {
+  if (funcName == "print_int") {
     let args = instr.args || [];
     if (args.length !== 1) {
       throw error(`function expected 1 argument, got ${args.length}`);
@@ -268,7 +268,6 @@ function evalCall(instr: IBrilOperation, state: State): Action {
     logger.info(value);
     return NEXT;
   }
-
   let func = state.funcs[funcName];
   if (func === undefined) {
     throw error(`undefined function ${funcName}`);
@@ -316,7 +315,7 @@ function evalCall(instr: IBrilOperation, state: State): Action {
     if (retVal !== null) {
       throw error(`unexpected value returned without destination`);
     }
-    if (func.type !== undefined) {
+    if (func.type !== "void") {
       throw error(`non-void function (type: ${func.type}) doesn't return anything`);
     }
   } else {

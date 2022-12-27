@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Options, Network } from "vis-network";
 import { getDominanceFrontierMap, getDominanceTree, getDominatorMap } from "../languages/bril/dom";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
 import { getDataFlow } from "../languages/bril/df";
-import { Box, Grid, Select, Tooltip, VStack } from "@chakra-ui/react";
+import { Box, Checkbox, Flex, Grid, Select, Table, Td, Th, Thead, Tooltip, Tr, VStack } from "@chakra-ui/react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import "./cfgView.css";
@@ -14,6 +14,8 @@ export const CfgView = () => {
   const functionName = useSettingsStore((state: SettingsState) => state.cfg.functionName);
   const nodeName = useSettingsStore((state: SettingsState) => state.cfg.nodeName);
   const setSettings = useSettingsStore((state: SettingsState) => state.set);
+
+  const [showTable, setShowTable] = useState<boolean>(true);
 
   const visJsRef = useRef<HTMLDivElement>(null);
   let network: Network;
@@ -83,18 +85,20 @@ export const CfgView = () => {
         arrows: "to",
       },
     };
-    if (visJsRef.current) network = new Network(visJsRef.current, cfgVisData, options);
-    // network.on("selectNode", (params) => {
-    //   dispatch(setCfgNodeName(params.nodes[0]));
-    //   // console.log(cfg?.blockMap[params.nodes[0]]);
-    // });
-    network.on("hoverNode", (params) => {
-      setSettings((state: SettingsState) => {
-        state.cfg.nodeName = params.node;
+    if (visJsRef.current) {
+      network = new Network(visJsRef.current, cfgVisData, options);
+      // network.on("selectNode", (params) => {
+      //   dispatch(setCfgNodeName(params.nodes[0]));
+      //   // console.log(cfg?.blockMap[params.nodes[0]]);
+      // });
+      network.on("hoverNode", (params) => {
+        setSettings((state: SettingsState) => {
+          state.cfg.nodeName = params.node;
+        });
+        // dispatch(setCfgNodeName(params.node));
       });
-      // dispatch(setCfgNodeName(params.node));
-    });
-    network?.fit();
+      network?.fit();
+    }
   }, [visJsRef, cfgVisData]);
 
   const brilFunctionNames = useMemo(() => {
@@ -128,47 +132,73 @@ export const CfgView = () => {
     );
   };
 
+  const renderRows = useMemo(() => {
+    if (!cfg) return <tr></tr>;
+
+    const maxRows = Math.max(
+      cfg.dom[nodeName]?.length,
+      cfg.domtree[nodeName]?.length,
+      cfg.dataFlow.definedIn[nodeName]?.length,
+      cfg.dataFlow.liveOut[nodeName]?.length,
+      0
+    );
+    const rows: JSX.Element[] = [];
+    for (let i = 0; i < maxRows; i++) {
+      let row = (
+        <tr>
+          <td className={"DOMATORSlist"}>{i < cfg.dom[nodeName].length ? cfg.dom[nodeName][i] : ""}</td>
+          <td className={"DOMTREElist"}>{i < cfg.domtree[nodeName].length ? cfg.domtree[nodeName][i] : ""}</td>
+          <td className={"DEFINEDlist"}>{i < cfg.dataFlow.definedIn[nodeName].length ? cfg.dataFlow.definedIn[nodeName][i] : ""}</td>
+          <td className={"ALIVElist"}>{i < cfg.dataFlow.liveOut[nodeName].length ? cfg.dataFlow.liveOut[nodeName][i] : ""}</td>
+        </tr>
+      );
+      rows.push(row);
+    }
+    return rows;
+  }, [nodeName]);
+
   return (
-    <Grid templateRows="min-content 4fr 1fr" templateColumns="1fr" h="100%" w="100%">
+    <Grid templateRows="min-content 4fr 1fr" templateColumns="1fr" h="100%" overflow="hidden">
       <Box p={2}>
-        <Select
-          size="sm"
-          value={functionName}
-          onChange={(e) => {
-            setSettings((state: SettingsState) => {
-              state.cfg.functionName = e.target.value;
-            });
-          }}>
-          {brilFunctionNames.map((n, i) => (
-            <option key={i} value={n}>
-              {n}
-            </option>
-          ))}
-        </Select>
+        <Grid templateColumns="1fr auto" gap={5}>
+          <Select
+            size="sm"
+            value={functionName}
+            onChange={(e) => {
+              setSettings((state: SettingsState) => {
+                state.cfg.functionName = e.target.value;
+              });
+            }}>
+            {brilFunctionNames.map((n, i) => (
+              <option key={i} value={n}>
+                {n}
+              </option>
+            ))}
+          </Select>
+          <Checkbox isChecked={showTable} onChange={(e) => setShowTable(e.target.checked)}>
+            Table
+          </Checkbox>
+        </Grid>
       </Box>
-      <Box ref={visJsRef}></Box>
-      <Grid templateColumns="repeat(5, 1fr)" gap={2} mx={2} minHeight="0px">
-        {renderList("DOMATORS", (cfg && cfg.dom[nodeName]) || [])}
-        {renderList("DOMTREE", (cfg && cfg.domtree[nodeName]) || [])}
-        {renderList("DEFINED", (cfg && cfg.dataFlow.definedIn[nodeName]) || [])}
-        {renderList("ALIVE", (cfg && cfg.dataFlow.liveOut[nodeName]) || [])}
-        <VStack className="listbox">
-          <Tooltip label="Constant Propgation" placement="top-end">
-            <div className="listTitle">CPROP</div>
-          </Tooltip>
+
+      <Box ref={visJsRef} overflow="hidden"></Box>
+      {showTable && (
+        <Box p={2} borderTop="1px solid lightgrey" height="250px" width="100%" fontSize="10pt">
           <OverlayScrollbarsComponent defer style={{ marginTop: "0px" }}>
-            <ul className="CPROPlist">
-              {Object.entries((cfg && cfg.dataFlow.cpropOut[nodeName]) || {})
-                .filter(([varName, varValue]) => varValue != "?")
-                .map(([varName, varValue], i) => (
-                  <li key={i}>
-                    {varName}={varValue}
-                  </li>
-                ))}
-            </ul>
+            <table style={{ width: "100%" }}>
+              <thead style={{ textAlign: "left" }}>
+                <tr>
+                  <th>Domators</th>
+                  <th>DomTree</th>
+                  <th>Defined</th>
+                  <th>Alive</th>
+                </tr>
+              </thead>
+              <tbody>{renderRows}</tbody>
+            </table>
           </OverlayScrollbarsComponent>
-        </VStack>
-      </Grid>
+        </Box>
+      )}
     </Grid>
   );
 };

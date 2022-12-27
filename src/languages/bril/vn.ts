@@ -1,4 +1,4 @@
-import { IBrilValueInstruction } from "./BrilInterface";
+import { IBrilValueInstruction, IBrilValueType } from "./BrilInterface";
 
 // eg { op: "add", args: [1,2] } => add #1 #2
 export class VNValue {
@@ -48,7 +48,7 @@ export class VNValue {
 //          }
 
 export class VNTable {
-  rows: { value: VNValue; canonvar: string; constval?: number }[];
+  rows: { value: VNValue; canonvar: string; constval?: number | boolean }[];
   var2num: Record<string, number>;
   constructor() {
     this.rows = [];
@@ -105,20 +105,20 @@ export class VNTable {
   }
 }
 
-const foldable_ops: Record<string, (a: number, b: number) => number> = {
-  add: (a: number, b: number) => a + b,
-  mul: (a: number, b: number) => a * b,
-  sub: (a: number, b: number) => a - b,
-  div: (a: number, b: number) => a / b,
-  gt: (a: number, b: number) => (a > b ? 1 : 0),
-  lt: (a: number, b: number) => (a < b ? 1 : 0),
-  ge: (a: number, b: number) => (a >= b ? 1 : 0),
-  le: (a: number, b: number) => (a <= b ? 1 : 0),
-  ne: (a: number, b: number) => (a != b ? 1 : 0),
-  eq: (a: number, b: number) => (a == b ? 1 : 0),
-  or: (a: number, b: number) => a | b,
-  and: (a: number, b: number) => a & b,
-  not: (a: number) => (!a ? 1 : 0),
+const foldable_ops: Record<string, (a: IBrilValueType, b: IBrilValueType) => IBrilValueType> = {
+  add: (a: IBrilValueType, b: IBrilValueType) => (a as number) + (b as number),
+  mul: (a: IBrilValueType, b: IBrilValueType) => (a as number) * (b as number),
+  sub: (a: IBrilValueType, b: IBrilValueType) => (a as number) - (b as number),
+  div: (a: IBrilValueType, b: IBrilValueType) => (a as number) / (b as number),
+  gt: (a: IBrilValueType, b: IBrilValueType) => a > b,
+  lt: (a: IBrilValueType, b: IBrilValueType) => a < b,
+  ge: (a: IBrilValueType, b: IBrilValueType) => a >= b,
+  le: (a: IBrilValueType, b: IBrilValueType) => a <= b,
+  ne: (a: IBrilValueType, b: IBrilValueType) => a != b,
+  eq: (a: IBrilValueType, b: IBrilValueType) => a == b,
+  or: (a: IBrilValueType, b: IBrilValueType) => (a as boolean) || (b as boolean),
+  and: (a: IBrilValueType, b: IBrilValueType) => (a as boolean) && (b as boolean),
+  not: (a: IBrilValueType) => !a,
 };
 
 export const fold = (vnTable: VNTable, value: VNValue) => {
@@ -134,9 +134,10 @@ export const fold = (vnTable: VNTable, value: VNValue) => {
 
     if (const_count == 2 && value.op in foldable_ops) return foldable_ops[value.op](const_args[0]!, const_args[1]!);
     if (const_count == 1 && value.args.length == 1 && value.op == "not") return foldable_ops["not"](const_args[0]!, 0);
-    if (const_count == 1 && ["eq", "ne", "le", "ge"].includes(value.op) && value.args[0] == value.args[1]) return value.op !== "ne" ? 1 : 0;
+    if (const_count == 1 && ["eq", "ne", "le", "ge"].includes(value.op) && value.args[0] == value.args[1])
+      return value.op !== "ne" ? true : false;
     if (const_count == 1 && ["and", "or"].includes(value.op)) {
-      const const_val = vnTable.rows[typeof const_args[0] !== undefined ? const_args[0]! : const_args[1]!].constval;
+      const const_val = vnTable.rows[typeof const_args[0] !== undefined ? value.args[0]! : value.args[1]!].constval;
       if ((value.op == "and" && !const_val) || (value.op == "or" && const_val)) return const_val;
     }
   }

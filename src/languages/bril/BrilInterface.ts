@@ -3,7 +3,7 @@ import { IPos } from "../simpleC/ast";
 export type IBrilValueType = number | boolean;
 export type IBrilPrimType = "int" | "bool" | "float";
 export type IBrilParamType = { ptr: IBrilType };
-export type IBrilType = IBrilPrimType | IBrilParamType;
+export type IBrilType = IBrilPrimType | IBrilParamType | "void";
 
 export interface IBrilOp extends IBrilNode {
   args?: string[];
