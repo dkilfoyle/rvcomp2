@@ -50,12 +50,14 @@ export const Output: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    setOptimLogs([]);
+    setUnoptimLogs([]);
     runInterpretor(bril, [], window.conout1);
     runInterpretor(brilOptim, [], window.conout2);
   }, [bril, brilOptim]);
 
   return (
-    <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+    <Grid templateColumns="repeat(2, 1fr)" gap={6} height="100%">
       <OverlayScrollbarsComponent defer style={fullHeight}>
         <Console
           logs={unoptimlogs}
