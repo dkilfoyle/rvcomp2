@@ -145,7 +145,7 @@ export const CfgView = () => {
     const rows: JSX.Element[] = [];
     for (let i = 0; i < maxRows; i++) {
       let row = (
-        <tr>
+        <tr key={i}>
           <td className={"DOMATORSlist"}>{i < cfg.dom[nodeName].length ? cfg.dom[nodeName][i] : ""}</td>
           <td className={"DOMTREElist"}>{i < cfg.domtree[nodeName].length ? cfg.domtree[nodeName][i] : ""}</td>
           <td className={"DEFINEDlist"}>{i < cfg.dataFlow.definedIn[nodeName].length ? cfg.dataFlow.definedIn[nodeName][i] : ""}</td>

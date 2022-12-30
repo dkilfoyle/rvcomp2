@@ -28,7 +28,10 @@ export const Editor: VFC = () => {
 
   useEffect(() => {
     if (editor) {
-      editor.getModel()?.setValue(examples[filename.split(".")[0]]);
+      debugger;
+      const code = examples[filename];
+      if (!code) throw new Error(`${filename} not found`);
+      editor.getModel()?.setValue(examples[filename]);
     }
   }, [filename]);
 
@@ -64,7 +67,7 @@ export const Editor: VFC = () => {
       setupLanguage();
       setEditor(
         monaco.editor.create(monacoEl.current!, {
-          value: examples[filename.split(".")[0]], //["void main() {", "\tint x;", "\tx=5;", "\tprint_int(x);", "}"].join("\n"),
+          value: examples[filename], //["void main() {", "\tint x;", "\tx=5;", "\tprint_int(x);", "}"].join("\n"),
           language: "simpleC",
           automaticLayout: true,
         })

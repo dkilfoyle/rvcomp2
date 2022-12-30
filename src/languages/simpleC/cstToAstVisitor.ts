@@ -96,7 +96,9 @@ class CstVisitor extends CstBaseVisitor {
 
   checkParams(fnid: string, pos: IPos, params: IAstVariableDeclaration[]) {
     const fn = this.scopeStack.getSignature(fnid) as IAstFunctionDeclaration;
-    if (fn && fn.params.length != params.length) this.pushError(`Expecting ${fn.params.length} parameters`, pos);
+    if (!fn) return this.pushError(`Function ${fnid} is not defined`, pos);
+    if (fn.params.length != params.length) return this.pushError(`Expecting ${fn.params.length} parameters`, pos);
+    return true;
   }
 
   pushError(message: string, pos: IPos) {
@@ -105,10 +107,12 @@ class CstVisitor extends CstBaseVisitor {
       code: "Linter",
       message,
     });
+    return false;
   }
 
   go(rootNode: CstNode): IAstResult {
     if (!rootNode.location) throw new Error("Need node location");
+    debugger;
     this.reset(rootNode.location);
     return { ast: this.program(rootNode.children), scopeStack: this.scopeStack, errors: this.errors };
   }
@@ -336,7 +340,7 @@ class CstVisitor extends CstBaseVisitor {
   functionCallExpression(ctx: FunctionCallExpressionCstChildren): IAstFunctionCallExpression {
     const fndecl: IAstIdentifierExpression = this.visit(ctx.identifierExpression);
     const params = ctx.expressionList ? this.visit(ctx.expressionList).params : [];
-    this.checkParams(fndecl.id, fndecl.pos!, params);
+    const pass = this.checkParams(fndecl.id, fndecl.pos!, params);
     return { _name: "functionCallExpression", id: fndecl.id, params, type: fndecl.type, pos: fndecl.pos };
   }
 

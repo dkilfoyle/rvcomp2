@@ -75,7 +75,7 @@ class SimpleCParser extends CstParser {
   }
 
   public program = this.RULE("program", () => {
-    this.MANY(() => {
+    this.AT_LEAST_ONE(() => {
       this.SUBRULE(this.functionDeclaration);
     });
     // this.MANY2(() => {
@@ -106,10 +106,15 @@ class SimpleCParser extends CstParser {
 
   public variableDeclaration = this.RULE("variableDeclaration", () => {
     this.SUBRULE(this.typeSpecifier);
-    this.CONSUME(tokens.ID);
     this.OPTION(() => {
+      this.CONSUME(tokens.LSquare);
+      this.SUBRULE2(this.integerLiteralExpression, { LABEL: "arraySize" });
+      this.CONSUME(tokens.RSquare);
+    });
+    this.CONSUME(tokens.ID);
+    this.OPTION2(() => {
       this.CONSUME(tokens.Equals);
-      this.SUBRULE2(this.literalExpression);
+      this.SUBRULE3(this.literalExpression);
     });
   });
 
@@ -124,8 +129,8 @@ class SimpleCParser extends CstParser {
       { ALT: () => this.SUBRULE(this.whileStatement) },
       { ALT: () => this.SUBRULE(this.blockStatement) },
       { ALT: () => this.SUBRULE(this.variableDeclarationStatement) },
-      { ALT: () => this.SUBRULE(this.assignStatement) },
-      { ALT: () => this.SUBRULE(this.expressionStatement) },
+      { GATE: this.BACKTRACK(this.assignStatement), ALT: () => this.SUBRULE(this.assignStatement) },
+      { GATE: this.BACKTRACK(this.expressionStatement), ALT: () => this.SUBRULE(this.expressionStatement) },
       { ALT: () => this.SUBRULE(this.returnStatement) },
     ]);
   });
@@ -228,7 +233,7 @@ class SimpleCParser extends CstParser {
   public atomicExpression = this.RULE("atomicExpression", () => {
     this.OR([
       { ALT: () => this.SUBRULE(this.unaryExpression) },
-      { ALT: () => this.SUBRULE(this.functionCallExpression) },
+      { GATE: this.BACKTRACK(this.functionCallExpression), ALT: () => this.SUBRULE(this.functionCallExpression) },
       { ALT: () => this.SUBRULE(this.identifierExpression) },
       { ALT: () => this.SUBRULE(this.literalExpression) },
       { ALT: () => this.SUBRULE(this.parenExpression) },
@@ -246,6 +251,7 @@ class SimpleCParser extends CstParser {
   // atomics
 
   public functionCallExpression = this.RULE("functionCallExpression", () => {
+    // this.CONSUME(tokens.ID);
     this.SUBRULE(this.identifierExpression);
     this.CONSUME(tokens.LParen);
     this.OPTION(() => this.SUBRULE(this.expressionList));
@@ -265,6 +271,11 @@ class SimpleCParser extends CstParser {
 
   public identifierExpression = this.RULE("identifierExpression", () => {
     this.CONSUME(tokens.ID);
+    this.OPTION(() => {
+      this.CONSUME(tokens.LSquare);
+      this.SUBRULE2(this.integerLiteralExpression, { LABEL: "arrayIndex" });
+      this.CONSUME(tokens.RSquare);
+    });
   });
 
   public literalExpression = this.RULE("literalExpression", () => {
@@ -307,7 +318,7 @@ export const productions: Record<string, Rule> = parserInstance.getGAstProductio
 import { generateCstDts } from "chevrotain";
 
 const dtsString = generateCstDts(productions, { includeVisitorInterface: true });
-// console.log({ dst: dtsString });
+console.log({ dst: dtsString });
 
 export const parse = (text: string) => {
   const lexResult = SimpleCLexer.tokenize(text);

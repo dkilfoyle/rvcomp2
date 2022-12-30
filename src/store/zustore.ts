@@ -26,7 +26,7 @@ export interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
-  filename: "helloint.sc",
+  filename: "./Syntax/array.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

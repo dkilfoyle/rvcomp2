@@ -83,9 +83,9 @@ export class CfgBuilder {
     if (this.cur_block.name != "") this.endBlock();
 
     return this.blocks.map((block, i) => {
-      if (!block.instructions.length) debugger;
+      // if (!block.instructions.length) debugger;
       if (block.keyStart == -1) block.keyStart = block.instructions[0].key || -1;
-      if (block.instructions.length == 0) block.keyEnd = -1;
+      if (block.instructions.length == 0) block.keyEnd = block.keyStart;
       else block.keyEnd = block.instructions[block.instructions.length - 1].key || -1;
 
       return block;

@@ -40,6 +40,9 @@ export interface VariableDeclarationCstNode extends CstNode {
 
 export type VariableDeclarationCstChildren = {
   typeSpecifier: TypeSpecifierCstNode[];
+  LSquare?: IToken[];
+  arraySize?: IntegerLiteralExpressionCstNode[];
+  RSquare?: IToken[];
   ID: IToken[];
   Equals?: IToken[];
   literalExpression?: LiteralExpressionCstNode[];
@@ -252,6 +255,9 @@ export interface IdentifierExpressionCstNode extends CstNode {
 
 export type IdentifierExpressionCstChildren = {
   ID: IToken[];
+  LSquare?: IToken[];
+  arrayIndex?: IntegerLiteralExpressionCstNode[];
+  RSquare?: IToken[];
 };
 
 export interface LiteralExpressionCstNode extends CstNode {

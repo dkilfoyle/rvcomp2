@@ -58,10 +58,12 @@ export default class DiagnosticsAdapter {
       setParse((state: ParseState) => {
         state.ast = ast;
       });
-      const bril = astToBrilVisitor.visit(ast);
-      setParse((state: ParseState) => {
-        state.bril = bril;
-      });
+      if (errors.length == 0) {
+        const bril = astToBrilVisitor.visit(ast);
+        setParse((state: ParseState) => {
+          state.bril = bril;
+        });
+      }
     }
 
     // get the current model(editor or file) which is only one

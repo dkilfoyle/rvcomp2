@@ -1,53 +1,92 @@
 import { Accordion, AccordionButton, AccordionIcon, AccordionItem, AccordionPanel, Box, Checkbox, VStack } from "@chakra-ui/react";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
+import { examples } from "../examples/examples";
 import { useSettingsStore, SettingsState } from "../store/zustore";
 
-const fileTreeData = [
-  {
-    title: "Files",
-    children: [
-      { title: "helloint.sc" },
-      { title: "fib.tc" },
-      { title: "sum.tc" },
-      { title: "mul.tc" },
-      { title: "sqrt.tc" },
-      { title: "blank.tc" },
-      { title: "Parser", children: [{ title: "syntax.sc" }, { title: "semanticerrors.sc" }] },
-      {
-        title: "Tests",
-        children: [
-          {
-            title: "math.tc",
-          },
-          {
-            title: "array.tc",
-          },
-        ],
-      },
-      {
-        title: "Optimisation",
-        children: [
-          {
-            title: "dce.tc",
-          },
-          {
-            title: "lvn.tc",
-          },
-          {
-            title: "df.tc",
-          },
-          {
-            title: "dom.tc",
-          },
-          {
-            title: "ssaif.tc",
-          },
-        ],
-      },
-    ],
-  },
-];
+// const fileTreeData = [
+//   {
+//     title: "Files",
+//     children: [
+//       { title: "helloint.sc" },
+//       { title: "fib.tc" },
+//       { title: "sum.tc" },
+//       { title: "mul.tc" },
+//       { title: "sqrt.tc" },
+//       { title: "blank.tc" },
+//       { title: "Parser", children: [{ title: "syntax.sc" }, { title: "semanticerrors.sc" }] },
+//       {
+//         title: "Tests",
+//         children: [
+//           {
+//             title: "math.tc",
+//           },
+//           {
+//             title: "array.tc",
+//           },
+//         ],
+//       },
+//       {
+//         title: "Optimisation",
+//         children: [
+//           {
+//             title: "dce.tc",
+//           },
+//           {
+//             title: "lvn.tc",
+//           },
+//           {
+//             title: "df.tc",
+//           },
+//           {
+//             title: "dom.tc",
+//           },
+//           {
+//             title: "ssaif.tc",
+//           },
+//         ],
+//       },
+//     ],
+//   },
+// ];
+
+interface dirTreeNode {
+  key: string;
+  title: string;
+  code?: string;
+  path: string;
+  children?: dirTreeNode[];
+}
+
+const dirTree: dirTreeNode[] = [{ key: "./", title: "Files", children: [], path: "./" }];
+Object.keys(examples).forEach((key) => {
+  const stripkey = key.slice(2); // remove the "./"
+  const path = stripkey.split("/"); // nodes = [dir1, dir2, file.sc]
+  const filename = path[path.length - 1];
+  const dirs = path.slice(0, -1);
+
+  let curParent = dirTree[0];
+  let curPath = "./";
+  dirs.forEach((dir) => {
+    if (!curParent.children) throw new Error();
+    curPath = curPath + dir + "/";
+    const existingNode = curParent.children.find((node) => node.key == curPath);
+    if (existingNode) curParent = existingNode;
+    else {
+      curParent.children.push({ title: dir, children: [], key: curPath, path: curPath });
+      curParent = curParent.children[curParent.children.length - 1];
+    }
+  });
+
+  if (!curParent.children) throw new Error();
+
+  curParent.children.push({
+    title: filename,
+    code: examples[curPath + filename],
+    key: curPath + filename,
+    path: curPath + filename,
+  });
+});
 
 export const Sidebar = () => {
   const filename = useSettingsStore((state: SettingsState) => state.filename);
@@ -75,17 +114,18 @@ export const Sidebar = () => {
           </h2>
           <AccordionPanel pb={4}>
             <Tree
-              treeData={fileTreeData as any}
+              treeData={dirTree as any}
               autoExpandParent
-              defaultExpandedKeys={["Files", "Tests"]}
+              defaultExpandedKeys={[filename]}
               defaultSelectedKeys={[filename]}
               expandAction="click"
-              fieldNames={{ key: "title" }}
               showLine
               onSelect={(keys, info) => {
                 if (!info.node.children && keys.length)
                   setSettings((state: SettingsState) => {
-                    state.filename = keys[0].toString();
+                    // state.filename = keys[0].toString();
+                    console.log(info.node);
+                    state.filename = info.node.key as string;
                   });
               }}></Tree>
           </AccordionPanel>
