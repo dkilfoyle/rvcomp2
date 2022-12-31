@@ -35,6 +35,7 @@ import {
   IAstAtomicExpression,
   IAstComparisonExpression,
   IAstComparisonOperator,
+  IAstDeclaration,
   IAstExpression,
   IAstForStatement,
   IAstFunctionCallExpression,
@@ -50,7 +51,7 @@ import {
   IPos,
   parseDocCommentString,
 } from "./ast";
-import { ScopeStack } from "./ScopeStack";
+import { ISignature, ScopeStack } from "./ScopeStack";
 
 export const convertCstNodeLocationToIPos = (pos?: CstNodeLocation) => {
   return {
@@ -101,6 +102,30 @@ class CstVisitor extends CstBaseVisitor {
     return true;
   }
 
+  checkInBounds(decl: IAstVariableDeclaration, index: number, pos: IPos) {
+    if (_.isUndefined(decl.size)) return true;
+    if (index < 0) {
+      this.pushError(`Invalid array index: ${index}`, pos);
+      return false;
+    } else if (index > decl.size - 1) {
+      this.pushError(`Array index out of bounds: ${index} > ${decl.size - 1}`, pos);
+      return false;
+    }
+    return true;
+  }
+
+  checkTypesMatch(lhs: any, rhs: any) {
+    let lhsType: string = lhs.type;
+    if (lhs.size && _.isUndefined(lhs.index)) lhsType = `${lhsType}[${lhs.size}]`;
+    let rhsType: string = rhs.type;
+    if (rhs.size && _.isUndefined(rhs.index)) rhsType = `${rhsType}[${rhs.size}]`;
+
+    if (lhsType !== rhsType) {
+      this.errors.push({ ...rhs.pos, code: "2", message: `Type mismatch: ${lhsType} != ${rhsType}` });
+      return false;
+    } else return true;
+  }
+
   pushError(message: string, pos: IPos) {
     this.errors.push({
       ...pos,
@@ -112,7 +137,6 @@ class CstVisitor extends CstBaseVisitor {
 
   go(rootNode: CstNode): IAstResult {
     if (!rootNode.location) throw new Error("Need node location");
-    debugger;
     this.reset(rootNode.location);
     return { ast: this.program(rootNode.children), scopeStack: this.scopeStack, errors: this.errors };
   }
@@ -163,7 +187,12 @@ class CstVisitor extends CstBaseVisitor {
   // ==========================================================================================================
 
   statement(ctx: StatementCstChildren) {
-    if (ctx.blockStatement) return this.visit(ctx.blockStatement);
+    if (ctx.blockStatement) {
+      this.scopeStack.pushScope("block", ctx.blockStatement[0].location);
+      const block = this.visit(ctx.blockStatement);
+      this.scopeStack.popScope();
+      return { ...block };
+    }
     if (ctx.ifStatement) return this.visit(ctx.ifStatement);
     if (ctx.forStatement) return this.visit(ctx.forStatement);
     if (ctx.whileStatement) return this.visit(ctx.whileStatement);
@@ -211,7 +240,9 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   blockStatement(ctx: BlockStatementCstChildren) {
-    return { _name: "blockStatement", statements: ctx.statement?.map((s) => this.visit(s)) };
+    const statements = ctx.statement?.map((s) => this.visit(s));
+    const heapVars = this.scopeStack.getArrays();
+    return { _name: "blockStatement", statements, heapVars };
   }
 
   variableDeclarationStatement(ctx: VariableDeclarationStatementCstChildren) {
@@ -227,7 +258,8 @@ class CstVisitor extends CstBaseVisitor {
   assignStatement(ctx: any): IAstAssignStatement {
     const lhs = this.visit(ctx.identifierExpression);
     const rhs = this.visit(ctx.additionExpression);
-    if (lhs.type !== rhs.type) this.errors.push({ ...rhs.pos, code: "2", message: "type mismatch (assign)" });
+    this.checkTypesMatch(lhs, rhs);
+
     return { _name: "assignStatement", lhs, rhs };
   }
 
@@ -346,8 +378,12 @@ class CstVisitor extends CstBaseVisitor {
 
   identifierExpression(ctx: IdentifierExpressionCstChildren) {
     const id = ctx.ID[0].image;
-    const decl = this.checkInScope(id, this.getTokenPos(ctx.ID[0]));
-    return { ...decl, _name: "identifierExpression", pos: this.getTokenPos(ctx.ID[0]) };
+    const index = ctx.arrayIndex ? this.visit(ctx.arrayIndex[0]) : undefined;
+    const decl = this.checkInScope(id, this.getTokenPos(ctx.ID[0])) as IAstVariableDeclaration;
+    if (decl && !_.isUndefined(index)) {
+      this.checkInBounds(decl, index.value, index.pos);
+    }
+    return { ...decl, _name: "identifierExpression", pos: this.getTokenPos(ctx.ID[0]), index };
   }
 
   literalExpression(ctx: LiteralExpressionCstChildren) {
@@ -398,10 +434,15 @@ class CstVisitor extends CstBaseVisitor {
   variableDeclaration(ctx: VariableDeclarationCstChildren): IAstVariableDeclaration {
     const id = ctx.ID[0].image;
     const pos = this.getTokenPos(ctx.ID[0]);
-    const type = this.visit(ctx.typeSpecifier).type;
+    let type = this.visit(ctx.typeSpecifier).type;
+
+    const arraySize = ctx.arraySize ? this.visit(ctx.arraySize[0]).value : undefined;
+
+    // TODO: Support any numeric expression for initValue including array
     let initValue = ctx.literalExpression ? this.visit(ctx.literalExpression) : undefined;
     if (initValue && initValue.type !== type) this.errors.push({ ...pos, code: "2", message: "type mismatch (var decl)" });
-    return { _name: "variableDeclaration", id, pos, type, initValue };
+
+    return { _name: "variableDeclaration", id, pos, type, initValue, size: arraySize };
   }
 }
 

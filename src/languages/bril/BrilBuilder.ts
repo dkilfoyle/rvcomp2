@@ -72,6 +72,12 @@ export class BrilBuilder {
     return instr;
   }
 
+  buildArray(dest: string, type: IBrilType, sizeVar: string) {
+    const instr: IBrilValueOperation = { op: "alloc", dest, type: { ptr: type }, args: [sizeVar] };
+    this.insert(instr);
+    return instr;
+  }
+
   buildIdentifier(dest: string, type: IBrilType) {
     // don't return a dummy id instruction to reference dest but don't insert into function
     let instr: IBrilValueOperation = { op: "id", dest, type, args: [], funcs: [], labels: [] };

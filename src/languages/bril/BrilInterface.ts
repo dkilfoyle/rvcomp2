@@ -13,11 +13,30 @@ export interface IBrilOp extends IBrilNode {
 }
 
 export interface IBrilEffectOperation extends IBrilOp {
-  op: "br" | "jmp" | "ret" | "call" | "print";
+  op: "br" | "jmp" | "ret" | "call" | "print" | "free";
 }
 
 export interface IBrilValueOperation extends IBrilOp {
-  op: "add" | "sub" | "mul" | "div" | "call" | "id" | "nop" | "phi" | "eq" | "lt" | "gt" | "ge" | "le" | "not" | "and" | "or";
+  op:
+    | "add"
+    | "sub"
+    | "mul"
+    | "div"
+    | "call"
+    | "id"
+    | "nop"
+    | "phi"
+    | "eq"
+    | "lt"
+    | "gt"
+    | "ge"
+    | "le"
+    | "not"
+    | "and"
+    | "or"
+    | "load"
+    | "ptradd"
+    | "alloc";
   dest: string;
   type: IBrilType;
   args: string[];

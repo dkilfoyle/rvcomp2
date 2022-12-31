@@ -1,3 +1,4 @@
+import _ from "lodash";
 import {
   IAstAssignStatement,
   IAstBinaryExpression,
@@ -44,7 +45,7 @@ class AstToBrilVisitor {
     const args = node.params.map((vd) => ({ name: vd.id, type: vd.type as IBrilType }));
     this.builder.buildFunction(node.id, args, node.type as IBrilType);
 
-    if (node.block && node.block.statements) node.block.statements.forEach((s) => this.statement(s));
+    if (node.block && node.block.statements) this.blockStatement(node.block); // node.block.statements.forEach((s) => this.statement(s));
   }
 
   // ==========================================================================================================
@@ -91,8 +92,19 @@ class AstToBrilVisitor {
   }
 
   variableDeclarationStatement(node: IAstVariableDeclaration) {
+    if (node.size) {
+      // array declaration
+      if (node.type == "int" || node.type == "bool") {
+        const v = this.builder.buildConst(node.size, "int");
+        this.builder.buildArray(node.id, node.type, v.dest);
+      } else debugger;
+      return;
+    }
+
+    // TODO: Support expressions for initValue
     if (node.initValue) {
-      if (node.type == "int" || node.type == "bool") this.builder.buildConst(node.initValue.value, node.type, node.id);
+      if ((node.type == "int" || node.type == "bool") && _.isUndefined(node.size))
+        this.builder.buildConst(node.initValue.value, node.type, node.id);
       else this.builder.nop("variableDeclarationStatement: unsupported type");
     }
   }
@@ -170,6 +182,10 @@ class AstToBrilVisitor {
 
   blockStatement(node: IAstBlock) {
     node.statements.forEach((s) => this.statement(s));
+    debugger;
+    node.heapVars.forEach((heapVarName) => {
+      this.builder.buildEffect("free", [heapVarName]);
+    });
   }
 
   returnStatement(node: IAstReturnStatement) {

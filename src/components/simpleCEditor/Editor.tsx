@@ -28,7 +28,6 @@ export const Editor: VFC = () => {
 
   useEffect(() => {
     if (editor) {
-      debugger;
       const code = examples[filename];
       if (!code) throw new Error(`${filename} not found`);
       editor.getModel()?.setValue(examples[filename]);

@@ -25,6 +25,12 @@ export class ScopeStack {
     this.currentScope = this.stack;
   }
 
+  getArrays() {
+    const arrayDecls = this.currentScope.signatures.filter((sig) => sig._name == "variableDeclaration" && sig.size);
+    if (arrayDecls.length == 0) return [];
+    return arrayDecls.map((sig) => sig.id);
+  }
+
   getGlobalScope(location: CstNodeLocation): IScope {
     const getLibPos = () => ({ startLineNumber: 0, endLineNumber: 0, startColumn: 0, endColumn: 0 });
     return {
@@ -37,7 +43,7 @@ export class ScopeStack {
           _name: "functionDeclaration",
           id: "print_int",
           type: "void",
-          block: { _name: "block", statements: [] },
+          block: { _name: "block", statements: [], heapVars: [] },
           params: [{ _name: "variableDeclaration", id: "x", type: "int" }],
           docComment: parseDocCommentString("/**\n* @desc Print an integer to console\n* @param [int num] Number to print\n*/"),
         },

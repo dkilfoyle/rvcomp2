@@ -1,4 +1,4 @@
-import { IBrilArgument, IBrilFunction, IBrilInstruction, IBrilLabel, IBrilProgram, IBrilValueInstruction } from "./BrilInterface";
+import { IBrilArgument, IBrilFunction, IBrilInstruction, IBrilLabel, IBrilProgram, IBrilType, IBrilValueInstruction } from "./BrilInterface";
 
 class BrilPrinter {
   public hr: string = "";
@@ -19,11 +19,16 @@ class BrilPrinter {
   formatArgument(arg: IBrilArgument) {
     return `${arg.name}: ${arg.type}`;
   }
+  formatType(typ: IBrilType) {
+    if (typeof typ === "object" && typ.hasOwnProperty("ptr")) {
+      return `ptr<${typ.ptr}>`;
+    } else return `${typ}`;
+  }
   printFunction(fn: IBrilFunction) {
     this.curFn = fn.name;
     this.irkeys[fn.name] = {};
     const args = fn.args ? "(" + fn.args.map((arg) => this.formatArgument(arg)).join(", ") + ")" : "";
-    const kind = fn.type ? `: ${fn.type}` : "";
+    const kind = fn.type ? this.formatType(fn.type) : "";
     this.line(`@${fn.name}${args}${kind} {`, fn.key || -99);
     fn.instrs.forEach((instr) => this.printInstruction(instr));
     this.line("}", fn.key || -99);
@@ -39,7 +44,7 @@ class BrilPrinter {
         if (ins.labels?.length) rhs += ` .${ins.labels.join(" .")}`;
         const insAsValue = ins as IBrilValueInstruction;
         if (insAsValue.dest) {
-          let tyann = `: ${insAsValue.type}`;
+          let tyann = `: ${this.formatType(insAsValue.type)}`;
           this.line(`  ${insAsValue.dest}${tyann} = ${rhs};`, ins.key || -99);
         } else this.line(`  ${rhs};`, ins.key || -99);
       }

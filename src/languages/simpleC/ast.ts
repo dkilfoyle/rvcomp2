@@ -27,6 +27,7 @@ export interface IAstStatement extends IAstNode {}
 export interface IAstBlock extends IAstNode {
   _name: "block";
   statements: IAstStatement[];
+  heapVars: string[];
 }
 
 export interface IAstIfStatement extends IAstStatement {
@@ -59,6 +60,7 @@ export interface IAstDeclaration extends IAstNode {
 export interface IAstVariableDeclaration extends IAstDeclaration {
   _name: "variableDeclaration";
   initValue?: IAstLiteralExpression;
+  size?: number;
 }
 
 export interface IAstFunctionDeclaration extends IAstDeclaration {
@@ -103,6 +105,7 @@ export interface IAstIdentifierExpression extends IAstDeclaration, IAstExpressio
   _name: "identifierExpression";
   id: string;
   type: IDeclarationType;
+  index?: number;
 }
 
 export interface IAstFunctionCallExpression extends IAstExpression {
