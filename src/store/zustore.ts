@@ -33,14 +33,14 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   },
   optim: {
     keepPhis: true,
-    isSSA: true,
+    isSSA: false,
     doLVN: false,
     doGVN: false,
     doDCE: false,
   },
   bril: {
     keepPhis: true,
-    isSSA: true,
+    isSSA: false,
   },
   set: (fn: (state: SettingsState) => void) => set(produce(fn)),
 }));

@@ -1,3 +1,5 @@
+import _ from "lodash";
+import { IAstIdentifierExpression } from "../simpleC/ast";
 import {
   IBrilProgram,
   IBrilFunction,
@@ -29,8 +31,8 @@ export class BrilBuilder {
     this.keyIndex = 1;
   }
 
-  freshVar() {
-    let out = "v" + this.nextFresh.toString();
+  freshVar(prefix = "v") {
+    let out = prefix + this.nextFresh.toString();
     this.nextFresh += 1;
     return out;
   }
@@ -65,10 +67,10 @@ export class BrilBuilder {
     return func;
   }
 
-  buildValue(op: IBrilValueOpCode, type: IBrilType, args: string[], funcs?: string[], labels?: string[], dest?: string) {
-    dest = dest || this.freshVar();
+  buildValue(op: IBrilValueOpCode, type: IBrilType, args: string[], funcs?: string[], labels?: string[], insert = true) {
+    const dest = this.freshVar(op);
     let instr: IBrilValueOperation = { op, dest, type, args, funcs, labels };
-    this.insert(instr);
+    if (insert) this.insert(instr);
     return instr;
   }
 
@@ -78,10 +80,32 @@ export class BrilBuilder {
     return instr;
   }
 
-  buildIdentifier(dest: string, type: IBrilType) {
-    // don't return a dummy id instruction to reference dest but don't insert into function
-    let instr: IBrilValueOperation = { op: "id", dest, type, args: [], funcs: [], labels: [] };
-    return instr;
+  buildArrayReference(type: IBrilType, id: string, index: number) {
+    const indexConst = this.buildConst(index, "int");
+    const ptrDest = `p_${id}_${index}`;
+    let instrPtr: IBrilValueOperation = { op: "ptradd", dest: ptrDest, type: { ptr: type }, args: [id, indexConst.dest] };
+    this.insert(instrPtr);
+    return ptrDest;
+  }
+
+  buildArrayValue(type: IBrilType, id: string, index: number, insert = true) {
+    const ptr = this.buildArrayReference(type, id, index);
+    const dest = this.freshVar(id);
+    let instrLoad: IBrilValueOperation = { op: "load", dest, type, args: [ptr] };
+    if (insert) this.insert(instrLoad);
+    return instrLoad;
+  }
+
+  buildIdentifier(dest: string, type: IBrilType, index: number | undefined, insert = true) {
+    // return a dummy id instruction to reference dest but don't insert into function
+    let instr: IBrilValueOperation;
+    if (!_.isUndefined(index)) {
+      instr = this.buildArrayValue(type, dest, index, insert);
+      return instr;
+    } else {
+      instr = { op: "id", dest, type, args: [], funcs: [], labels: [] };
+      return instr;
+    }
   }
 
   buildEffect(op: IBrilEffectOpCode, args: string[], funcs?: string[], labels?: string[]) {
@@ -90,20 +114,18 @@ export class BrilBuilder {
     return instr;
   }
 
-  buildCall(func: string, args: string[], type: IBrilType, dest?: string): IBrilValueOperation;
-  buildCall(func: string, args: string[], type?: undefined, dest?: string): IBrilEffectOperation;
-  buildCall(func: string, args: string[], type?: IBrilType, dest?: string): IBrilOperation {
-    if (type) {
-      return this.buildValue("call", type, args, [func], undefined, dest);
-    } else {
-      return this.buildEffect("call", args, [func], undefined);
-    }
+  buildEffectCall(func: string, args: string[]): IBrilEffectOperation {
+    return this.buildEffect("call", args, [func], undefined);
   }
 
-  buildConst(value: IBrilValueType, type: IBrilType, dest?: string) {
-    dest = dest || this.freshVar();
+  buildValueCall(func: string, args: string[], type: IBrilType, insert = true): IBrilValueOperation {
+    return this.buildValue("call", type, args, [func], undefined, insert);
+  }
+
+  buildConst(value: IBrilValueType, type: IBrilType, insert = true) {
+    const dest = `c${value}`;
     let instr: IBrilConst = { op: "const", value, dest, type };
-    this.insert(instr);
+    if (insert) this.insert(instr);
     return instr;
   }
 

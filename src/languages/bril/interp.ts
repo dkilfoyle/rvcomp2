@@ -1,4 +1,13 @@
-import { IBrilArgument, IBrilFunction, IBrilInstruction, IBrilOpCode, IBrilOperation, IBrilProgram, IBrilType } from "./BrilInterface";
+import {
+  IBrilArgument,
+  IBrilFunction,
+  IBrilInstruction,
+  IBrilOpCode,
+  IBrilOperation,
+  IBrilParamType,
+  IBrilProgram,
+  IBrilType,
+} from "./BrilInterface";
 
 let logger: Console;
 
@@ -115,11 +124,11 @@ const argCounts: { [key in IBrilOpCode]: number | null } = {
   ret: null, // (Should be 0 or 1.)
   nop: 0,
   call: null,
-  // alloc: 1,
-  // free: 1,
-  // store: 2,
-  // load: 1,
-  // ptradd: 2,
+  alloc: 1,
+  free: 1,
+  store: 2,
+  load: 1,
+  ptradd: 2,
   phi: null,
   // speculate: 0,
   // guard: 1,
@@ -148,7 +157,7 @@ function typeCheck(val: Value, typ: IBrilType): boolean {
 }
 
 function typeCmp(lhs: IBrilType, rhs: IBrilType): boolean {
-  if (lhs === "int" || lhs == "bool" || lhs == "float") {
+  if (lhs === "int" || lhs == "bool" || lhs == "float" || lhs == "void") {
     return lhs == rhs;
   } else {
     if (typeof rhs === "object" && rhs.hasOwnProperty("ptr")) {
@@ -162,6 +171,7 @@ function typeCmp(lhs: IBrilType, rhs: IBrilType): boolean {
 function get(env: Env, ident: string) {
   let val = env.get(ident);
   if (typeof val === "undefined") {
+    debugger;
     throw error(`undefined variable ${ident}`);
   }
   return val;
@@ -189,6 +199,7 @@ function getArgument(instr: IBrilOperation, env: Env, index: number, typ?: IBril
   }
   let val = get(env, args[index]);
   if (typ && !typeCheck(val, typ)) {
+    debugger;
     throw error(`${instr.op} argument ${index} must be a ${typ}`);
   }
   return val;
@@ -224,6 +235,21 @@ function getFunc(instr: IBrilOperation, index: number): string {
     throw error(`expecting ${index + 1} functions; found ${instr.funcs.length}`);
   }
   return instr.funcs[index];
+}
+
+function alloc(ptrType: IBrilParamType, amt: number, heap: Heap<Value>): Pointer {
+  if (typeof ptrType != "object") {
+    throw error(`unspecified pointer type ${ptrType}`);
+  } else if (amt <= 0) {
+    throw error(`must allocate a positive amount of memory: ${amt} <= 0`);
+  } else {
+    let loc = heap.alloc(amt);
+    let dataType = ptrType.ptr;
+    return {
+      loc: loc,
+      type: dataType,
+    };
+  }
 }
 
 type Action =
@@ -570,7 +596,7 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
       return evalCall(instr, state);
     }
 
-    /*case "alloc": {
+    case "alloc": {
       let amt = getInt(instr, state.env, 0);
       let typ = instr.type;
       if (!(typeof typ === "object" && typ.hasOwnProperty("ptr"))) {
@@ -609,7 +635,7 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
       let val = getInt(instr, state.env, 1);
       state.env.set(instr.dest, { loc: ptr.loc.add(Number(val)), type: ptr.type });
       return NEXT;
-    }*/
+    }
 
     case "phi": {
       let labels = instr.labels || [];

@@ -13,7 +13,7 @@ export interface IBrilOp extends IBrilNode {
 }
 
 export interface IBrilEffectOperation extends IBrilOp {
-  op: "br" | "jmp" | "ret" | "call" | "print" | "free";
+  op: "br" | "jmp" | "ret" | "call" | "print" | "free" | "store";
 }
 
 export interface IBrilValueOperation extends IBrilOp {

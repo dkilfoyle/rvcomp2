@@ -73,7 +73,7 @@ class AstToBrilVisitor {
       case "functionCallExpression":
         const n = node as IAstFunctionCallExpression;
         const params = n.params ? n.params.map((p) => this.expression(p)) : [];
-        this.builder.buildCall(
+        this.builder.buildEffectCall(
           n.id,
           params.map((p) => p.dest)
         );
@@ -103,21 +103,12 @@ class AstToBrilVisitor {
 
     // TODO: Support expressions for initValue
     if (node.initValue) {
-      if ((node.type == "int" || node.type == "bool") && _.isUndefined(node.size))
-        this.builder.buildConst(node.initValue.value, node.type, node.id);
-      else this.builder.nop("variableDeclarationStatement: unsupported type");
+      if ((node.type == "int" || node.type == "bool") && _.isUndefined(node.size)) {
+        const initInstr = this.builder.buildConst(node.initValue.value, node.type, false);
+        initInstr.dest = node.id;
+        this.builder.insert(initInstr);
+      } else this.builder.nop("variableDeclarationStatement: unsupported type");
     }
-  }
-
-  assignStatement(node: IAstAssignStatement) {
-    // if (node.rhs._name == "integerLiteralExpression") {
-    //   const n = node.rhs as IAstIntegerLiteralExpression;
-    //   return this.builder.buildConst(n.value, n.type, node.lhs.id);
-    // } else {
-    //   const rhs = this.expression(node.rhs);
-    //   return this.builder.buildValue("id", node.lhs.type as IBrilType, [rhs.dest], undefined, undefined, node.lhs.id);
-    // }
-    this.expression(node.rhs, node.lhs.id);
   }
 
   ifStatement(node: IAstIfStatement) {
@@ -182,7 +173,6 @@ class AstToBrilVisitor {
 
   blockStatement(node: IAstBlock) {
     node.statements.forEach((s) => this.statement(s));
-    debugger;
     node.heapVars.forEach((heapVarName) => {
       this.builder.buildEffect("free", [heapVarName]);
     });
@@ -193,39 +183,52 @@ class AstToBrilVisitor {
     this.builder.buildEffect("ret", lhs ? [lhs.dest] : []);
   }
 
+  assignStatement(node: IAstAssignStatement) {
+    const rhs = this.expression(node.rhs, false);
+
+    if (!_.isUndefined(node.lhs.index)) {
+      // j[1] = rhs
+      if (rhs.op !== "id") this.builder.insert(rhs); // dont insert if rhs is id only ie j[1] = x; rhs is only to reference dest
+      const ptr = this.builder.buildArrayReference(node.lhs.type as IBrilType, node.lhs.id, node.lhs.index);
+      const storeInstr = this.builder.buildEffect("store", [ptr, rhs.dest]);
+    } else {
+      rhs.dest = node.lhs.id;
+      this.builder.insert(rhs);
+    }
+  }
+
   // ==========================================================================================================
   // Expressions
   // ==========================================================================================================
 
-  expression(node: IAstExpression, dest: string | undefined = undefined): IBrilValueInstruction {
+  expression(node: IAstExpression, insert = true): IBrilValueInstruction {
     // dest is defined if coming directly from assign statement
     // eg x = 2 + 3
     let n, lhs, rhs;
     switch (node._name) {
       case "integerLiteralExpression":
         n = node as IAstIntegerLiteralExpression;
-        return this.builder.buildConst(n.value, n.type, dest);
+        return this.builder.buildConst(n.value, n.type, insert);
       case "boolLiteralExpression":
         n = node as IAstBoolLiteralExpression;
-        return this.builder.buildConst(n.value, n.type, dest);
+        return this.builder.buildConst(n.value, n.type, insert);
       case "identifierExpression": // ie an identifier
         n = node as IAstIdentifierExpression;
         if (n.type == "string" || n.type == "void") throw new Error("String and void identifier type not implemented");
-        if (dest) return this.builder.buildValue("id", n.type, [n.id], [], [], dest);
-        else return this.builder.buildIdentifier(n.id, n.type);
+        return this.builder.buildIdentifier(n.id, n.type, n.index, insert);
       case "binaryExpression":
         n = node as IAstBinaryExpression;
         lhs = this.expression(n.lhs);
         rhs = this.expression(n.rhs);
-        return this.builder.buildValue(n.op, n.type as IBrilType, [lhs.dest, rhs.dest], undefined, undefined, dest);
+        return this.builder.buildValue(n.op, n.type as IBrilType, [lhs.dest, rhs.dest], undefined, undefined, insert);
       case "functionCallExpression":
         n = node as IAstFunctionCallExpression;
         const params = n.params ? n.params.map((p) => this.expression(p)) : [];
-        return this.builder.buildCall(
+        return this.builder.buildValueCall(
           n.id,
           params.map((p) => p.dest),
           n.type as IBrilType,
-          dest
+          insert
         );
       case "invalidExpression":
         return this.builder.buildConst(0, "int");
@@ -234,11 +237,11 @@ class AstToBrilVisitor {
     }
   }
 
-  comparisonExpression(node: IAstComparisonExpression): IBrilValueInstruction {
+  comparisonExpression(node: IAstComparisonExpression, insert = true): IBrilValueInstruction {
     const lhs = this.expression(node.lhs);
     if (node.rhs) {
       const rhs = this.expression(node.rhs);
-      return this.builder.buildValue(node.op, "bool", [lhs.dest, rhs.dest]);
+      return this.builder.buildValue(node.op, "bool", [lhs.dest, rhs.dest], undefined, undefined, insert);
     } else {
       return lhs;
     }

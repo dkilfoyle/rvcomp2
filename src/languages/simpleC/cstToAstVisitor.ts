@@ -321,7 +321,6 @@ class CstVisitor extends CstBaseVisitor {
 
   binaryExpression(ctx: AdditionExpressionCstChildren | MultiplicationExpressionCstChildren) {
     const typeError = (node: any): IAstInvalidExpression => {
-      debugger;
       this.errors.push({ ...node.pos, code: "2", message: "Arthrimetic operand must be of type int" });
       return { _name: "invalidExpression", type: "int" };
     };
@@ -378,7 +377,7 @@ class CstVisitor extends CstBaseVisitor {
 
   identifierExpression(ctx: IdentifierExpressionCstChildren) {
     const id = ctx.ID[0].image;
-    const index = ctx.arrayIndex ? this.visit(ctx.arrayIndex[0]) : undefined;
+    const index = ctx.arrayIndex ? this.visit(ctx.arrayIndex[0]).value : undefined;
     const decl = this.checkInScope(id, this.getTokenPos(ctx.ID[0])) as IAstVariableDeclaration;
     if (decl && !_.isUndefined(index)) {
       this.checkInBounds(decl, index.value, index.pos);
