@@ -2,7 +2,7 @@ import { Editor } from "../components/simpleCEditor/Editor";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import "./ui.css";
 import { Sidebar } from "../components/SideBar";
-import { Box, ChakraProvider, Icon, Tab, TabList, Tabs } from "@chakra-ui/react";
+import { Box, ChakraProvider, HStack, Icon, Tab, TabList, Tabs } from "@chakra-ui/react";
 import "rc-tree/assets/index.css";
 
 import { CstView } from "../components/cstView";
@@ -19,6 +19,7 @@ import {
   TbArrowBarToDown,
   TbArrowBarToLeft,
   TbArrowBarToRight,
+  TbArrowBarToUp,
   TbArrowBarUp,
 } from "react-icons/tb";
 import { BiCollapse, BiExpand } from "react-icons/bi";
@@ -152,13 +153,13 @@ const tabs: Record<string, TabData> = {
 };
 
 const createCollapsedTab = (tabbases: TabBase[]) => {
-  const lis = tabbases.map((tabbase) => <li>{tabs[tabbase.id!].title}</li>);
+  const lis = tabbases.map((tabbase) => <span>{tabs[tabbase.id!].title}</span>);
   return {
     id: "collapsed",
     title: "",
     content: (
-      <div className="verticaltabs">
-        <ul className="verticaltabsul">{lis}</ul>
+      <div className="verticalTabs">
+        <HStack className="verticalTabsR">{lis}</HStack>
       </div>
     ),
   };
@@ -172,8 +173,8 @@ const iconLookup = {
       middle: BiExpand,
     },
     vertical: {
-      first: TbArrowBarUp,
-      last: TbArrowBarToDown,
+      first: TbArrowBarToDown,
+      last: TbArrowBarUp,
       middle: BiExpand,
     },
   },
@@ -248,8 +249,14 @@ export const UI: React.FC = () => {
               key="collapse"
               onClick={() => {
                 if (!panel.id) throw new Error("Panels must have id");
-                setSizes({ ...sizes, [panel.id]: panel.size || 200 });
-                panel.size = 0;
+                if (panel.size == 0) {
+                  // expand
+                  panel.size = sizes[panel.id] || 200;
+                } else {
+                  // collapse
+                  setSizes({ ...sizes, [panel.id]: panel.size || 200 });
+                  panel.size = 0;
+                }
                 context.onSilentChange();
               }}></Icon>
           );

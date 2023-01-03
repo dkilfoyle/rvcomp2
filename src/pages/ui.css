@@ -11,32 +11,45 @@ body {
   background: #fafafd;
 }
 
+.dock-layout > :not(.dock-fbox) .dock-panel.dock-style-notabs .dock-bar {
+  border-bottom: 1px solid #ddd;
+  height: 37px;
+}
+
 .dock-layout > :not(.dock-fbox) .dock-panel.dock-style-notabs .dock-nav-list {
   display: none;
 }
 
-.dock-layout > :not(.dock-fbox) .dock-panel.dock-style-notabs .dock-bar {
-  height: 35px;
-  /* border: none; */
+.dock-layout > :not(.dock-fbox) .dock-panel.dock-style-notabs .dock-extra-content {
+  height: 37px;
 }
 
-.verticaltabs {
-  position: relative;
-  width: 800px;
+.verticalTabs {
+  width: 30px;
+  height: 100%;
 }
 
-.verticaltabsul {
+.verticalTabsL {
   position: absolute;
-  margin: 0;
-  padding: 0;
-  list-style: none;
   height: 35px;
-  transform-origin: 0 0;
-  transform: rotate(-90deg) translate(-800px, 0px);
+  transform-origin: 100% 0;
+  line-height: 30px;
+  transform: translate(-100%, 0) rotate(-90deg);
 }
 
-.verticalul li {
-  float: left;
+.verticalTabsL span {
   display: block;
-  line-height: 30px;
+  margin-right: 5px;
+}
+
+.verticalTabsR {
+  position: absolute;
+  line-height: 35px;
+  transform-origin: 0% 100%;
+  transform: rotate(90deg) translate(-30px, 0px);
+}
+
+.verticalTabsR span {
+  display: block;
+  margin-left: 10px !important;
 }
