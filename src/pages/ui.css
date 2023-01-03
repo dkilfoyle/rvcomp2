@@ -5,3 +5,38 @@ body {
 .viewer {
   overflow: auto;
 }
+
+.dock-layout > :not(.dock-fbox) .dock-panel.dock-style-notabs {
+  border: none;
+  background: #fafafd;
+}
+
+.dock-layout > :not(.dock-fbox) .dock-panel.dock-style-notabs .dock-nav-list {
+  display: none;
+}
+
+.dock-layout > :not(.dock-fbox) .dock-panel.dock-style-notabs .dock-bar {
+  height: 35px;
+  /* border: none; */
+}
+
+.verticaltabs {
+  position: relative;
+  width: 800px;
+}
+
+.verticaltabsul {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  height: 35px;
+  transform-origin: 0 0;
+  transform: rotate(-90deg) translate(-800px, 0px);
+}
+
+.verticalul li {
+  float: left;
+  display: block;
+  line-height: 30px;
+}
