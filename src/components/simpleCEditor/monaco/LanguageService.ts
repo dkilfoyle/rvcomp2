@@ -77,6 +77,7 @@ export default class SimpleCLanguageService {
           parameters: sig2.params.map((p) => ({ label: p.id, documentation: p.type })),
         },
       ];
+    else return [];
   }
 
   completions(code: string, offset: number, range: monaco.IRange): monaco.languages.CompletionItem[] {
