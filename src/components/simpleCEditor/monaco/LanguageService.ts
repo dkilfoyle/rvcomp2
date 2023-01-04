@@ -70,12 +70,13 @@ export default class SimpleCLanguageService {
     if (!sig) return [];
     const sig2 = sig as IAstFunctionDeclaration;
 
-    return [
-      {
-        label: `${sig2.id}(${sig2.params.map((p) => p.id).join(",")})`,
-        parameters: sig2.params.map((p) => ({ label: p.id, documentation: p.type })),
-      },
-    ];
+    if (sig2.params)
+      return [
+        {
+          label: `${sig2.id}(${sig2.params.map((p) => p.id).join(",")})`,
+          parameters: sig2.params.map((p) => ({ label: p.id, documentation: p.type })),
+        },
+      ];
   }
 
   completions(code: string, offset: number, range: monaco.IRange): monaco.languages.CompletionItem[] {

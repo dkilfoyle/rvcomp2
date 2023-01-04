@@ -289,11 +289,26 @@ function evalCall(instr: IBrilOperation, state: State): Action {
     }
     let value = get(state.env, args[0]);
     if (!typeCheck(value, "int")) {
-      throw error(`function argument type mismatch`);
+      throw error(`function argument type mismatch - expected int`);
     }
     logger.info(value);
     return NEXT;
   }
+
+  // check if special function
+  if (funcName == "print_bool") {
+    let args = instr.args || [];
+    if (args.length !== 1) {
+      throw error(`function expected 1 argument, got ${args.length}`);
+    }
+    let value = get(state.env, args[0]);
+    if (!typeCheck(value, "bool")) {
+      throw error(`function argument type mismatch - expected bool`);
+    }
+    logger.info(value);
+    return NEXT;
+  }
+
   let func = state.funcs[funcName];
   if (func === undefined) {
     throw error(`undefined function ${funcName}`);

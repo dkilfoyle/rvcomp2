@@ -45,7 +45,7 @@ export type VariableDeclarationCstChildren = {
   RSquare?: IToken[];
   ID: IToken[];
   Equals?: IToken[];
-  literalExpression?: LiteralExpressionCstNode[];
+  additionExpression?: AdditionExpressionCstNode[];
 };
 
 export interface StatementCstNode extends CstNode {
@@ -167,9 +167,8 @@ export interface ComparisonExpressionCstNode extends CstNode {
 }
 
 export type ComparisonExpressionCstChildren = {
-  lhs: AdditionExpressionCstNode[];
-  ComparisonOperator?: IToken[];
-  rhs?: AdditionExpressionCstNode[];
+  operands: MultiplicationExpressionCstNode[];
+  operators?: IToken[];
 };
 
 export interface AdditionExpressionCstNode extends CstNode {
@@ -178,7 +177,7 @@ export interface AdditionExpressionCstNode extends CstNode {
 }
 
 export type AdditionExpressionCstChildren = {
-  operands: MultiplicationExpressionCstNode[];
+  operands: ComparisonExpressionCstNode[];
   operators?: IToken[];
 };
 

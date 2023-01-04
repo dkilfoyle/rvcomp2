@@ -59,7 +59,7 @@ export interface IAstDeclaration extends IAstNode {
 
 export interface IAstVariableDeclaration extends IAstDeclaration {
   _name: "variableDeclaration";
-  initValue?: IAstLiteralExpression;
+  initExpr?: IAstExpression;
   size?: number;
 }
 

@@ -75,7 +75,7 @@ class SimpleCParser extends CstParser {
   }
 
   public program = this.RULE("program", () => {
-    this.AT_LEAST_ONE(() => {
+    this.MANY(() => {
       this.SUBRULE(this.functionDeclaration);
     });
     // this.MANY2(() => {
@@ -111,10 +111,11 @@ class SimpleCParser extends CstParser {
       this.SUBRULE2(this.integerLiteralExpression, { LABEL: "arraySize" });
       this.CONSUME(tokens.RSquare);
     });
+
     this.CONSUME(tokens.ID);
     this.OPTION2(() => {
       this.CONSUME(tokens.Equals);
-      this.SUBRULE3(this.literalExpression);
+      this.SUBRULE(this.additionExpression);
     });
   });
 
@@ -207,18 +208,18 @@ class SimpleCParser extends CstParser {
   // ==========================================================================================================
 
   public comparisonExpression = this.RULE("comparisonExpression", () => {
-    this.SUBRULE(this.additionExpression, { LABEL: "lhs" });
+    this.SUBRULE(this.multiplicationExpression, { LABEL: "operands" });
     this.OPTION(() => {
-      this.CONSUME(tokens.ComparisonOperator);
-      this.SUBRULE2(this.additionExpression, { LABEL: "rhs" });
+      this.CONSUME(tokens.ComparisonOperator, { LABEL: "operators" });
+      this.SUBRULE2(this.multiplicationExpression, { LABEL: "operands" });
     });
   });
 
   public additionExpression = this.RULE("additionExpression", () => {
-    this.SUBRULE(this.multiplicationExpression, { LABEL: "operands" });
+    this.SUBRULE(this.comparisonExpression, { LABEL: "operands" });
     this.MANY(() => {
       this.CONSUME(tokens.AdditionOperator, { LABEL: "operators" });
-      this.SUBRULE2(this.multiplicationExpression, { LABEL: "operands" });
+      this.SUBRULE2(this.comparisonExpression, { LABEL: "operands" });
     });
   });
 
