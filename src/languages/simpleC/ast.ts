@@ -55,12 +55,14 @@ export interface IAstDeclaration extends IAstNode {
   id: string;
   type: IDeclarationType;
   docComment?: IAstDocComment;
+  pos: IPos;
 }
 
 export interface IAstVariableDeclaration extends IAstDeclaration {
   _name: "variableDeclaration";
   initExpr?: IAstExpression;
   size?: number;
+  pos: IPos;
 }
 
 export interface IAstFunctionDeclaration extends IAstDeclaration {
@@ -78,12 +80,14 @@ export interface IAstExpression extends IAstNode {
   _name:
     | "integerLiteralExpression"
     | "boolLiteralExpression"
+    | "arrayLiteralExpression"
     | "identifierExpression"
     | "stringLiteralExpression"
     | "functionCallExpression"
     | "binaryExpression"
     | "invalidExpression";
   type: IDeclarationType;
+  pos: IPos;
 }
 
 export type IAstComparisonOperator = "gt" | "lt" | "ge" | "le" | "eq";
@@ -106,6 +110,7 @@ export interface IAstIdentifierExpression extends IAstDeclaration, IAstExpressio
   id: string;
   type: IDeclarationType;
   index?: number;
+  size?: number;
 }
 
 export interface IAstFunctionCallExpression extends IAstExpression {
@@ -118,7 +123,7 @@ export interface IAstFunctionCallExpression extends IAstExpression {
 export interface IAstUnaryExpression extends IAstExpression {}
 
 export interface IAstLiteralExpression extends IAstExpression {
-  value: number | boolean;
+  value: number | boolean | Array<number | boolean>;
   type: "int" | "bool";
 }
 
@@ -132,6 +137,12 @@ export interface IAstBoolLiteralExpression extends IAstLiteralExpression {
   _name: "boolLiteralExpression";
   value: boolean;
   type: "bool";
+}
+
+export interface IAstArrayLiteralExpression extends IAstLiteralExpression {
+  _name: "arrayLiteralExpression";
+  value: Array<number | boolean>;
+  size: number;
 }
 
 export type IAstAtomicExpression = IAstIdentifierExpression | IAstLiteralExpression | IAstFunctionCallExpression | IAstUnaryExpression;
