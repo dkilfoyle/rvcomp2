@@ -125,6 +125,7 @@ const tabs: Record<string, TabData> = {
   cfg: {
     id: "cfg",
     title: "CFG",
+    // content: <div></div>,
     content: <CfgView></CfgView>,
     minWidth: 30,
   },

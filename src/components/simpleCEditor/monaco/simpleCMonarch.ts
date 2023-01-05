@@ -107,7 +107,7 @@ export const monarchLanguage = <ILanguage>{
     "false",
   ],
 
-  typeKeywords: ["boolean", "double", "byte", "int", "short", "char", "void", "long", "float"],
+  typeKeywords: ["bool", "double", "byte", "int", "short", "char", "void", "long", "float"],
 
   operators: [
     "=",

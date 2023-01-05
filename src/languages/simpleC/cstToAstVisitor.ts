@@ -9,9 +9,9 @@ import {
   BoolLiteralExpressionCstChildren,
   ComparisonExpressionCstChildren,
   ExpressionListCstChildren,
-  ExpressionStatementCstChildren,
   ForStatementCstChildren,
   FunctionCallExpressionCstChildren,
+  FunctionCallStatementCstChildren,
   FunctionDeclarationCstChildren,
   IdentifierExpressionCstChildren,
   IfStatementCstChildren,
@@ -20,6 +20,7 @@ import {
   MultiplicationExpressionCstChildren,
   ParenExpressionCstChildren,
   ProgramCstChildren,
+  ProgramCstNode,
   ReturnStatementCstChildren,
   StatementCstChildren,
   StringLiteralExpressionCstChildren,
@@ -121,6 +122,7 @@ class CstVisitor extends CstBaseVisitor {
     if (rhs.size && _.isUndefined(rhs.index)) rhsType = `${rhsType}[${rhs.size}]`;
 
     if (lhsType !== rhsType) {
+      // debugger;
       this.errors.push({ ...rhs.pos, code: "2", message: `Type mismatch: ${lhsType} != ${rhsType}` });
       return false;
     } else return true;
@@ -138,7 +140,7 @@ class CstVisitor extends CstBaseVisitor {
   go(rootNode: CstNode): IAstResult {
     if (!rootNode.location) throw new Error("Need node location");
     this.reset(rootNode.location);
-    return { ast: this.program(rootNode.children), scopeStack: this.scopeStack, errors: this.errors };
+    return { ast: this.program((rootNode as ProgramCstNode).children), scopeStack: this.scopeStack, errors: this.errors };
   }
 
   program(ctx: ProgramCstChildren): IAstProgram {
@@ -197,18 +199,20 @@ class CstVisitor extends CstBaseVisitor {
     if (ctx.forStatement) return this.visit(ctx.forStatement);
     if (ctx.whileStatement) return this.visit(ctx.whileStatement);
     if (ctx.variableDeclarationStatement) return this.visit(ctx.variableDeclarationStatement);
-    if (ctx.expressionStatement) return this.visit(ctx.expressionStatement);
+    if (ctx.functionCallStatement) return this.visit(ctx.functionCallStatement);
     if (ctx.assignStatement) return this.visit(ctx.assignStatement);
     if (ctx.returnStatement) return this.visit(ctx.returnStatement);
     throw new Error();
   }
 
   ifStatement(ctx: IfStatementCstChildren): IAstIfStatement {
+    const cond = this.visit(ctx.testExpression) as IAstExpression;
+    if (cond.type != "bool") this.pushError("Expecting bool expression", convertCstNodeLocationToIPos(ctx.testExpression[0].location));
     return {
       _name: "ifStatement",
-      cond: this.visit(ctx.comparisonExpression),
-      then: this.visit(ctx.statement[0]),
-      else: ctx.statement.length == 2 ? this.visit(ctx.statement[1]) : undefined,
+      cond: this.visit(ctx.testExpression),
+      then: this.visit(ctx.thenStatement),
+      else: ctx.elseStatement ? this.visit(ctx.elseStatement) : undefined,
     };
   }
 
@@ -240,7 +244,7 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   blockStatement(ctx: BlockStatementCstChildren) {
-    const statements = ctx.statement?.map((s) => this.visit(s));
+    const statements = ctx.statement?.map((s) => this.visit(s)) || [];
     const heapVars = this.scopeStack.getArrays();
     return { _name: "blockStatement", statements, heapVars };
   }
@@ -251,8 +255,12 @@ class CstVisitor extends CstBaseVisitor {
     return decl;
   }
 
-  expressionStatement(ctx: ExpressionStatementCstChildren) {
-    return this.visit(ctx.additionExpression);
+  // expressionStatement(ctx: ExpressionStatementCstChildren) {
+  //   return this.visit(ctx.additionExpression);
+  // }
+
+  functionCallStatement(ctx: FunctionCallStatementCstChildren) {
+    return this.visit(ctx.functionCallExpression);
   }
 
   assignStatement(ctx: any): IAstAssignStatement {
@@ -267,44 +275,44 @@ class CstVisitor extends CstBaseVisitor {
   // Expressions
   // ==========================================================================================================
 
-  comparisonExpression(ctx: ComparisonExpressionCstChildren): IAstComparisonExpression {
-    const lhs = this.visit(ctx.lhs);
+  // comparisonExpression(ctx: ComparisonExpressionCstChildren): IAstComparisonExpression {
+  //   const lhs = this.visit(ctx.lhs);
 
-    if (ctx.rhs && ctx.ComparisonOperator) {
-      const rhs = this.visit(ctx.rhs);
-      let op: IAstComparisonOperator;
-      switch (ctx.ComparisonOperator[0].image) {
-        case ">":
-          op = "gt";
-          break;
-        case ">=":
-          op = "ge";
-          break;
-        case "<":
-          op = "lt";
-          break;
-        case "<=":
-          op = "le";
-          break;
-        case "==":
-          op = "eq";
-          break;
-        default:
-          op = "gt";
-      }
-      return { _name: "comparisonExpression", lhs, rhs, op, type: "bool" };
-    } else {
-      if ((lhs as IAstExpression)._name != "identifierExpression") {
-        const pos = convertCstNodeLocationToIPos(ctx.lhs[0].location);
-        this.errors.push({ ...pos, code: "2", message: "expect identifier or comparison" });
-      }
-      if ((lhs as IAstExpression).type !== "bool") {
-        const pos = convertCstNodeLocationToIPos(ctx.lhs[0].location);
-        this.errors.push({ ...pos, code: "2", message: "expect identifier type is bool" });
-      }
-      return { _name: "comparisonExpression", lhs, op: "eq", type: "bool" };
-    }
-  }
+  //   if (ctx.rhs && ctx.ComparisonOperator) {
+  //     const rhs = this.visit(ctx.rhs);
+  //     let op: IAstComparisonOperator;
+  //     switch (ctx.ComparisonOperator[0].image) {
+  //       case ">":
+  //         op = "gt";
+  //         break;
+  //       case ">=":
+  //         op = "ge";
+  //         break;
+  //       case "<":
+  //         op = "lt";
+  //         break;
+  //       case "<=":
+  //         op = "le";
+  //         break;
+  //       case "==":
+  //         op = "eq";
+  //         break;
+  //       default:
+  //         op = "gt";
+  //     }
+  //     return { _name: "comparisonExpression", lhs, rhs, op, type: "bool" };
+  //   } else {
+  //     if ((lhs as IAstExpression)._name != "identifierExpression") {
+  //       const pos = convertCstNodeLocationToIPos(ctx.lhs[0].location);
+  //       this.errors.push({ ...pos, code: "2", message: "expect identifier or comparison" });
+  //     }
+  //     if ((lhs as IAstExpression).type !== "bool") {
+  //       const pos = convertCstNodeLocationToIPos(ctx.lhs[0].location);
+  //       this.errors.push({ ...pos, code: "2", message: "expect identifier type is bool" });
+  //     }
+  //     return { _name: "comparisonExpression", lhs, op: "eq", type: "bool" };
+  //   }
+  // }
 
   getOperator(op: string) {
     switch (op) {
@@ -316,12 +324,47 @@ class CstVisitor extends CstBaseVisitor {
         return "mul";
       case "/":
         return "div";
+      case ">":
+        return "gt";
+      case ">=":
+        return "ge";
+      case "<":
+        return "lt";
+      case "<=":
+        return "le";
+      case "==":
+        return "eq";
     }
   }
 
-  binaryExpression(ctx: AdditionExpressionCstChildren | MultiplicationExpressionCstChildren) {
+  getOperationType(op: string) {
+    switch (op) {
+      case "+":
+        return "int";
+      case "-":
+        return "int";
+      case "*":
+        return "int";
+      case "/":
+        return "int";
+      case ">":
+        return "bool";
+      case ">=":
+        return "bool";
+      case "<":
+        return "bool";
+      case "<=":
+        return "bool";
+      case "==":
+        return "bool";
+      default:
+        throw new Error("Unknown operation");
+    }
+  }
+
+  binaryExpression(ctx: AdditionExpressionCstChildren | MultiplicationExpressionCstChildren | ComparisonExpressionCstChildren) {
     const typeError = (node: any): IAstInvalidExpression => {
-      this.errors.push({ ...node.pos, code: "2", message: "Arthrimetic operand must be of type int" });
+      this.errors.push({ ...node.pos, code: "2", message: "Expression operands must be all of same type" });
       return { _name: "invalidExpression", type: "int" };
     };
 
@@ -330,14 +373,14 @@ class CstVisitor extends CstBaseVisitor {
 
     for (let i = 1; i < ctx.operands.length; i++) {
       const rhs = this.visit(ctx.operands[i]);
-      if (rhs.type !== "int") return typeError(rhs);
+      if (rhs.type !== lhs.type) return typeError(rhs);
 
       lhs = {
         _name: "binaryExpression",
         lhs: { ...lhs },
         rhs,
         op: ctx.operators ? this.getOperator(ctx.operators[i - 1].image) : undefined,
-        type: "int",
+        type: ctx.operators ? this.getOperationType(ctx.operators[i - 1].image) : lhs.type,
       };
 
       // console.log("AdditionExpression LHS", lhs);
@@ -351,6 +394,10 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   multiplicationExpression(ctx: MultiplicationExpressionCstChildren): IAstExpression {
+    return this.binaryExpression(ctx);
+  }
+
+  comparisonExpression(ctx: ComparisonExpressionCstChildren): IAstExpression {
     return this.binaryExpression(ctx);
   }
 
@@ -369,10 +416,12 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   functionCallExpression(ctx: FunctionCallExpressionCstChildren): IAstFunctionCallExpression {
-    const fndecl: IAstIdentifierExpression = this.visit(ctx.identifierExpression);
+    const id = ctx.ID[0].image;
+    const decl = this.checkInScope(id, this.getTokenPos(ctx.ID[0])) as IAstVariableDeclaration;
+
     const params = ctx.expressionList ? this.visit(ctx.expressionList).params : [];
-    const pass = this.checkParams(fndecl.id, fndecl.pos!, params);
-    return { _name: "functionCallExpression", id: fndecl.id, params, type: fndecl.type, pos: fndecl.pos };
+    const pass = this.checkParams(decl.id, decl.pos!, params);
+    return { _name: "functionCallExpression", id: decl.id, params, type: decl.type, pos: decl.pos };
   }
 
   identifierExpression(ctx: IdentifierExpressionCstChildren) {
@@ -437,11 +486,15 @@ class CstVisitor extends CstBaseVisitor {
 
     const arraySize = ctx.arraySize ? this.visit(ctx.arraySize[0]).value : undefined;
 
-    // TODO: Support any numeric expression for initValue including array
-    let initValue = ctx.literalExpression ? this.visit(ctx.literalExpression) : undefined;
-    if (initValue && initValue.type !== type) this.errors.push({ ...pos, code: "2", message: "type mismatch (var decl)" });
+    let initExpr = ctx.additionExpression ? this.visit(ctx.additionExpression) : undefined;
+    if (initExpr && initExpr.type !== type)
+      this.errors.push({
+        ...pos,
+        code: "2",
+        message: `Variable declaration type does not match initiator expression type: ${type} != ${initExpr.type}`,
+      });
 
-    return { _name: "variableDeclaration", id, pos, type, initValue, size: arraySize };
+    return { _name: "variableDeclaration", id, pos, type, initExpr, size: arraySize };
   }
 }
 

@@ -74,9 +74,11 @@ export class CfgBuilder {
       } else {
         ins = <IBrilLabel>ins;
         if (this.cur_block.out.length == 0) this.cur_block.out = [ins.label];
-        if (this.cur_block.instructions.length) this.endBlock();
+        if (this.cur_block.name != "") this.endBlock();
+        // if (this.cur_block.instructions.length) this.endBlock();
         this.startBlock({ name: ins.label });
-        this.cur_block.keyStart = ins.key || -1;
+        if (_.isUndefined(ins.key)) debugger;
+        else this.cur_block.keyStart = ins.key;
         // this.cur_block.instructions = [ins];
       }
     });
@@ -84,7 +86,8 @@ export class CfgBuilder {
 
     return this.blocks.map((block, i) => {
       // if (!block.instructions.length) debugger;
-      if (block.keyStart == -1) block.keyStart = block.instructions[0].key || -1;
+
+      // if (block.keyStart == -1) block.keyStart = block.instructions[0].key || -1;
       if (block.instructions.length == 0) block.keyEnd = block.keyStart;
       else block.keyEnd = block.instructions[block.instructions.length - 1].key || -1;
 

@@ -100,14 +100,19 @@ class AstToBrilVisitor {
       } else debugger;
       return;
     }
-
-    // TODO: Support expressions for initValue
-    if (node.initValue) {
-      if ((node.type == "int" || node.type == "bool") && _.isUndefined(node.size)) {
-        const initInstr = this.builder.buildConst(node.initValue.value, node.type, false);
-        initInstr.dest = node.id;
-        this.builder.insert(initInstr);
-      } else this.builder.nop("variableDeclarationStatement: unsupported type");
+    // Build and visit assignStatement for the initExpr if exists
+    if (node.initExpr) {
+      const assignNode: IAstAssignStatement = {
+        _name: "assignStatement",
+        lhs: { _name: "identifierExpression", id: node.id, type: node.type },
+        rhs: node.initExpr,
+      };
+      this.assignStatement(assignNode);
+      // if ((node.type == "int" || node.type == "bool") && _.isUndefined(node.size)) {
+      //   const initInstr = this.builder.buildConst(node.initValue.value, node.type, false);
+      //   initInstr.dest = node.id;
+      //   this.builder.insert(initInstr);
+      // } else this.builder.nop("variableDeclarationStatement: unsupported type");
     }
   }
 
@@ -119,7 +124,7 @@ class AstToBrilVisitor {
     let endLab = "endif" + sfx;
 
     // branch
-    const cond = this.comparisonExpression(node.cond);
+    const cond = this.expression(node.cond);
     this.builder.buildEffect("br", [cond.dest], undefined, [thenLab, elseLab]);
 
     this.builder.buildLabel(thenLab);

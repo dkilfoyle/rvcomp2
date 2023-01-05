@@ -32,7 +32,7 @@ export interface IAstBlock extends IAstNode {
 
 export interface IAstIfStatement extends IAstStatement {
   _name: "ifStatement";
-  cond: IAstComparisonExpression;
+  cond: IAstExpression;
   then: IAstStatement;
   else?: IAstStatement;
 }
@@ -59,7 +59,7 @@ export interface IAstDeclaration extends IAstNode {
 
 export interface IAstVariableDeclaration extends IAstDeclaration {
   _name: "variableDeclaration";
-  initValue?: IAstLiteralExpression;
+  initExpr?: IAstExpression;
   size?: number;
 }
 

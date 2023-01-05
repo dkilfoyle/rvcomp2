@@ -15,7 +15,7 @@ export class SimpleCCompletionProvider extends Adapter implements monaco.languag
       startColumn: word.startColumn,
       endColumn: word.endColumn,
     };
-    console.log("Word: ", word, range);
+    // console.log("Word: ", word, range);
 
     const resource = model.uri;
     const worker = await this.worker(resource);

@@ -75,7 +75,7 @@ class SimpleCParser extends CstParser {
   }
 
   public program = this.RULE("program", () => {
-    this.AT_LEAST_ONE(() => {
+    this.MANY(() => {
       this.SUBRULE(this.functionDeclaration);
     });
     // this.MANY2(() => {
@@ -111,10 +111,11 @@ class SimpleCParser extends CstParser {
       this.SUBRULE2(this.integerLiteralExpression, { LABEL: "arraySize" });
       this.CONSUME(tokens.RSquare);
     });
+
     this.CONSUME(tokens.ID);
     this.OPTION2(() => {
       this.CONSUME(tokens.Equals);
-      this.SUBRULE3(this.literalExpression);
+      this.SUBRULE(this.additionExpression);
     });
   });
 
@@ -129,8 +130,8 @@ class SimpleCParser extends CstParser {
       { ALT: () => this.SUBRULE(this.whileStatement) },
       { ALT: () => this.SUBRULE(this.blockStatement) },
       { ALT: () => this.SUBRULE(this.variableDeclarationStatement) },
-      { GATE: this.BACKTRACK(this.assignStatement), ALT: () => this.SUBRULE(this.assignStatement) },
-      { GATE: this.BACKTRACK(this.expressionStatement), ALT: () => this.SUBRULE(this.expressionStatement) },
+      { ALT: () => this.SUBRULE(this.assignStatement) },
+      { ALT: () => this.SUBRULE(this.functionCallStatement) },
       { ALT: () => this.SUBRULE(this.returnStatement) },
     ]);
   });
@@ -138,12 +139,12 @@ class SimpleCParser extends CstParser {
   public ifStatement = this.RULE("ifStatement", () => {
     this.CONSUME(tokens.If);
     this.CONSUME(tokens.LParen);
-    this.SUBRULE(this.comparisonExpression);
+    this.SUBRULE(this.additionExpression, { LABEL: "testExpression" });
     this.CONSUME(tokens.RParen);
-    this.SUBRULE(this.statement);
+    this.SUBRULE(this.statement, { LABEL: "thenStatement" });
     this.OPTION(() => {
       this.CONSUME(tokens.Else);
-      this.SUBRULE2(this.statement);
+      this.SUBRULE2(this.statement, { LABEL: "elseStatement" });
     });
   });
 
@@ -182,8 +183,13 @@ class SimpleCParser extends CstParser {
     this.CONSUME(tokens.SemiColon);
   });
 
-  public expressionStatement = this.RULE("expressionStatement", () => {
-    this.SUBRULE(this.additionExpression);
+  // public expressionStatement = this.RULE("expressionStatement", () => {
+  //   this.SUBRULE(this.additionExpression);
+  //   this.CONSUME(tokens.SemiColon);
+  // });
+
+  public functionCallStatement = this.RULE("functionCallStatement", () => {
+    this.SUBRULE(this.functionCallExpression);
     this.CONSUME(tokens.SemiColon);
   });
 
@@ -207,18 +213,18 @@ class SimpleCParser extends CstParser {
   // ==========================================================================================================
 
   public comparisonExpression = this.RULE("comparisonExpression", () => {
-    this.SUBRULE(this.additionExpression, { LABEL: "lhs" });
+    this.SUBRULE(this.multiplicationExpression, { LABEL: "operands" });
     this.OPTION(() => {
-      this.CONSUME(tokens.ComparisonOperator);
-      this.SUBRULE2(this.additionExpression, { LABEL: "rhs" });
+      this.CONSUME(tokens.ComparisonOperator, { LABEL: "operators" });
+      this.SUBRULE2(this.multiplicationExpression, { LABEL: "operands" });
     });
   });
 
   public additionExpression = this.RULE("additionExpression", () => {
-    this.SUBRULE(this.multiplicationExpression, { LABEL: "operands" });
+    this.SUBRULE(this.comparisonExpression, { LABEL: "operands" });
     this.MANY(() => {
       this.CONSUME(tokens.AdditionOperator, { LABEL: "operators" });
-      this.SUBRULE2(this.multiplicationExpression, { LABEL: "operands" });
+      this.SUBRULE2(this.comparisonExpression, { LABEL: "operands" });
     });
   });
 
@@ -251,8 +257,8 @@ class SimpleCParser extends CstParser {
   // atomics
 
   public functionCallExpression = this.RULE("functionCallExpression", () => {
-    // this.CONSUME(tokens.ID);
-    this.SUBRULE(this.identifierExpression);
+    this.CONSUME(tokens.ID);
+    // this.SUBRULE(this.identifierExpression);
     this.CONSUME(tokens.LParen);
     this.OPTION(() => this.SUBRULE(this.expressionList));
     this.CONSUME(tokens.RParen);

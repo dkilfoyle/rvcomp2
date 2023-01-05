@@ -47,6 +47,14 @@ export class ScopeStack {
           params: [{ _name: "variableDeclaration", id: "x", type: "int" }],
           docComment: parseDocCommentString("/**\n* @desc Print an integer to console\n* @param [int num] Number to print\n*/"),
         },
+        {
+          _name: "functionDeclaration",
+          id: "print_bool",
+          type: "void",
+          block: { _name: "block", statements: [], heapVars: [] },
+          params: [{ _name: "variableDeclaration", id: "b", type: "bool" }],
+          docComment: parseDocCommentString("/**\n* @desc Print an boolean to console\n* @param [int num] Number to print\n*/"),
+        },
       ],
     };
   }

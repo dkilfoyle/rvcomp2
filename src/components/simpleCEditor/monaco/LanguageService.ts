@@ -70,12 +70,14 @@ export default class SimpleCLanguageService {
     if (!sig) return [];
     const sig2 = sig as IAstFunctionDeclaration;
 
-    return [
-      {
-        label: `${sig2.id}(${sig2.params.map((p) => p.id).join(",")})`,
-        parameters: sig2.params.map((p) => ({ label: p.id, documentation: p.type })),
-      },
-    ];
+    if (sig2.params)
+      return [
+        {
+          label: `${sig2.id}(${sig2.params.map((p) => p.id).join(",")})`,
+          parameters: sig2.params.map((p) => ({ label: p.id, documentation: p.type })),
+        },
+      ];
+    else return [];
   }
 
   completions(code: string, offset: number, range: monaco.IRange): monaco.languages.CompletionItem[] {
@@ -121,6 +123,10 @@ export default class SimpleCLanguageService {
         if (lastRuleName == "functionDeclaration") {
           // NO-OP
         } else if (["functionCallExpression", "identifierExpression"].includes(lastRuleName)) {
+          if (!cstVisitor.scopeStack.stack) {
+            // TODO: Why happen?
+            return [];
+          }
           const scope = cstVisitor.scopeStack.getScopeAtLocation(offset);
           if (!scope) throw new Error();
           const symbols = cstVisitor.scopeStack.flattenUp(scope).map((sig) => ({
