@@ -124,7 +124,7 @@ class AstToBrilVisitor {
     let endLab = "endif" + sfx;
 
     // branch
-    const cond = this.comparisonExpression(node.cond);
+    const cond = this.expression(node.cond);
     this.builder.buildEffect("br", [cond.dest], undefined, [thenLab, elseLab]);
 
     this.builder.buildLabel(thenLab);

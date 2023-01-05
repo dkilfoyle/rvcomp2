@@ -130,8 +130,8 @@ class SimpleCParser extends CstParser {
       { ALT: () => this.SUBRULE(this.whileStatement) },
       { ALT: () => this.SUBRULE(this.blockStatement) },
       { ALT: () => this.SUBRULE(this.variableDeclarationStatement) },
-      { GATE: this.BACKTRACK(this.assignStatement), ALT: () => this.SUBRULE(this.assignStatement) },
-      { GATE: this.BACKTRACK(this.expressionStatement), ALT: () => this.SUBRULE(this.expressionStatement) },
+      { ALT: () => this.SUBRULE(this.assignStatement) },
+      { ALT: () => this.SUBRULE(this.functionCallStatement) },
       { ALT: () => this.SUBRULE(this.returnStatement) },
     ]);
   });
@@ -139,12 +139,12 @@ class SimpleCParser extends CstParser {
   public ifStatement = this.RULE("ifStatement", () => {
     this.CONSUME(tokens.If);
     this.CONSUME(tokens.LParen);
-    this.SUBRULE(this.comparisonExpression);
+    this.SUBRULE(this.additionExpression, { LABEL: "testExpression" });
     this.CONSUME(tokens.RParen);
-    this.SUBRULE(this.statement);
+    this.SUBRULE(this.statement, { LABEL: "thenStatement" });
     this.OPTION(() => {
       this.CONSUME(tokens.Else);
-      this.SUBRULE2(this.statement);
+      this.SUBRULE2(this.statement, { LABEL: "elseStatement" });
     });
   });
 
@@ -183,8 +183,13 @@ class SimpleCParser extends CstParser {
     this.CONSUME(tokens.SemiColon);
   });
 
-  public expressionStatement = this.RULE("expressionStatement", () => {
-    this.SUBRULE(this.additionExpression);
+  // public expressionStatement = this.RULE("expressionStatement", () => {
+  //   this.SUBRULE(this.additionExpression);
+  //   this.CONSUME(tokens.SemiColon);
+  // });
+
+  public functionCallStatement = this.RULE("functionCallStatement", () => {
+    this.SUBRULE(this.functionCallExpression);
     this.CONSUME(tokens.SemiColon);
   });
 
@@ -252,8 +257,8 @@ class SimpleCParser extends CstParser {
   // atomics
 
   public functionCallExpression = this.RULE("functionCallExpression", () => {
-    // this.CONSUME(tokens.ID);
-    this.SUBRULE(this.identifierExpression);
+    this.CONSUME(tokens.ID);
+    // this.SUBRULE(this.identifierExpression);
     this.CONSUME(tokens.LParen);
     this.OPTION(() => this.SUBRULE(this.expressionList));
     this.CONSUME(tokens.RParen);

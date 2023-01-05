@@ -9,9 +9,9 @@ import {
   BoolLiteralExpressionCstChildren,
   ComparisonExpressionCstChildren,
   ExpressionListCstChildren,
-  ExpressionStatementCstChildren,
   ForStatementCstChildren,
   FunctionCallExpressionCstChildren,
+  FunctionCallStatementCstChildren,
   FunctionDeclarationCstChildren,
   IdentifierExpressionCstChildren,
   IfStatementCstChildren,
@@ -122,7 +122,7 @@ class CstVisitor extends CstBaseVisitor {
     if (rhs.size && _.isUndefined(rhs.index)) rhsType = `${rhsType}[${rhs.size}]`;
 
     if (lhsType !== rhsType) {
-      debugger;
+      // debugger;
       this.errors.push({ ...rhs.pos, code: "2", message: `Type mismatch: ${lhsType} != ${rhsType}` });
       return false;
     } else return true;
@@ -199,18 +199,20 @@ class CstVisitor extends CstBaseVisitor {
     if (ctx.forStatement) return this.visit(ctx.forStatement);
     if (ctx.whileStatement) return this.visit(ctx.whileStatement);
     if (ctx.variableDeclarationStatement) return this.visit(ctx.variableDeclarationStatement);
-    if (ctx.expressionStatement) return this.visit(ctx.expressionStatement);
+    if (ctx.functionCallStatement) return this.visit(ctx.functionCallStatement);
     if (ctx.assignStatement) return this.visit(ctx.assignStatement);
     if (ctx.returnStatement) return this.visit(ctx.returnStatement);
     throw new Error();
   }
 
   ifStatement(ctx: IfStatementCstChildren): IAstIfStatement {
+    const cond = this.visit(ctx.testExpression) as IAstExpression;
+    if (cond.type != "bool") this.pushError("Expecting bool expression", convertCstNodeLocationToIPos(ctx.testExpression[0].location));
     return {
       _name: "ifStatement",
-      cond: this.visit(ctx.comparisonExpression),
-      then: this.visit(ctx.statement[0]),
-      else: ctx.statement.length == 2 ? this.visit(ctx.statement[1]) : undefined,
+      cond: this.visit(ctx.testExpression),
+      then: this.visit(ctx.thenStatement),
+      else: ctx.elseStatement ? this.visit(ctx.elseStatement) : undefined,
     };
   }
 
@@ -242,7 +244,7 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   blockStatement(ctx: BlockStatementCstChildren) {
-    const statements = ctx.statement?.map((s) => this.visit(s));
+    const statements = ctx.statement?.map((s) => this.visit(s)) || [];
     const heapVars = this.scopeStack.getArrays();
     return { _name: "blockStatement", statements, heapVars };
   }
@@ -253,8 +255,12 @@ class CstVisitor extends CstBaseVisitor {
     return decl;
   }
 
-  expressionStatement(ctx: ExpressionStatementCstChildren) {
-    return this.visit(ctx.additionExpression);
+  // expressionStatement(ctx: ExpressionStatementCstChildren) {
+  //   return this.visit(ctx.additionExpression);
+  // }
+
+  functionCallStatement(ctx: FunctionCallStatementCstChildren) {
+    return this.visit(ctx.functionCallExpression);
   }
 
   assignStatement(ctx: any): IAstAssignStatement {
@@ -410,10 +416,12 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   functionCallExpression(ctx: FunctionCallExpressionCstChildren): IAstFunctionCallExpression {
-    const fndecl: IAstIdentifierExpression = this.visit(ctx.identifierExpression);
+    const id = ctx.ID[0].image;
+    const decl = this.checkInScope(id, this.getTokenPos(ctx.ID[0])) as IAstVariableDeclaration;
+
     const params = ctx.expressionList ? this.visit(ctx.expressionList).params : [];
-    const pass = this.checkParams(fndecl.id, fndecl.pos!, params);
-    return { _name: "functionCallExpression", id: fndecl.id, params, type: fndecl.type, pos: fndecl.pos };
+    const pass = this.checkParams(decl.id, decl.pos!, params);
+    return { _name: "functionCallExpression", id: decl.id, params, type: decl.type, pos: decl.pos };
   }
 
   identifierExpression(ctx: IdentifierExpressionCstChildren) {

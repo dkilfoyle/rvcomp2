@@ -60,7 +60,7 @@ export type StatementCstChildren = {
   blockStatement?: BlockStatementCstNode[];
   variableDeclarationStatement?: VariableDeclarationStatementCstNode[];
   assignStatement?: AssignStatementCstNode[];
-  expressionStatement?: ExpressionStatementCstNode[];
+  functionCallStatement?: FunctionCallStatementCstNode[];
   returnStatement?: ReturnStatementCstNode[];
 };
 
@@ -72,10 +72,11 @@ export interface IfStatementCstNode extends CstNode {
 export type IfStatementCstChildren = {
   If: IToken[];
   LParen: IToken[];
-  comparisonExpression: ComparisonExpressionCstNode[];
+  testExpression: AdditionExpressionCstNode[];
   RParen: IToken[];
-  statement: StatementCstNode[];
+  thenStatement: StatementCstNode[];
   Else?: IToken[];
+  elseStatement?: StatementCstNode[];
 };
 
 export interface WhileStatementCstNode extends CstNode {
@@ -128,13 +129,13 @@ export type VariableDeclarationStatementCstChildren = {
   SemiColon: IToken[];
 };
 
-export interface ExpressionStatementCstNode extends CstNode {
-  name: "expressionStatement";
-  children: ExpressionStatementCstChildren;
+export interface FunctionCallStatementCstNode extends CstNode {
+  name: "functionCallStatement";
+  children: FunctionCallStatementCstChildren;
 }
 
-export type ExpressionStatementCstChildren = {
-  additionExpression: AdditionExpressionCstNode[];
+export type FunctionCallStatementCstChildren = {
+  functionCallExpression: FunctionCallExpressionCstNode[];
   SemiColon: IToken[];
 };
 
@@ -220,7 +221,7 @@ export interface FunctionCallExpressionCstNode extends CstNode {
 }
 
 export type FunctionCallExpressionCstChildren = {
-  identifierExpression: IdentifierExpressionCstNode[];
+  ID: IToken[];
   LParen: IToken[];
   expressionList?: ExpressionListCstNode[];
   RParen: IToken[];
@@ -321,7 +322,7 @@ export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   forStatement(children: ForStatementCstChildren, param?: IN): OUT;
   blockStatement(children: BlockStatementCstChildren, param?: IN): OUT;
   variableDeclarationStatement(children: VariableDeclarationStatementCstChildren, param?: IN): OUT;
-  expressionStatement(children: ExpressionStatementCstChildren, param?: IN): OUT;
+  functionCallStatement(children: FunctionCallStatementCstChildren, param?: IN): OUT;
   returnStatement(children: ReturnStatementCstChildren, param?: IN): OUT;
   assignStatement(children: AssignStatementCstChildren, param?: IN): OUT;
   comparisonExpression(children: ComparisonExpressionCstChildren, param?: IN): OUT;

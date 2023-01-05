@@ -123,6 +123,10 @@ export default class SimpleCLanguageService {
         if (lastRuleName == "functionDeclaration") {
           // NO-OP
         } else if (["functionCallExpression", "identifierExpression"].includes(lastRuleName)) {
+          if (!cstVisitor.scopeStack.stack) {
+            // TODO: Why happen?
+            return [];
+          }
           const scope = cstVisitor.scopeStack.getScopeAtLocation(offset);
           if (!scope) throw new Error();
           const symbols = cstVisitor.scopeStack.flattenUp(scope).map((sig) => ({

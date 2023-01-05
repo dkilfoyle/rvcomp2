@@ -1,3 +1,7 @@
+int add(int a, int b) {
+  return a + b;
+}
+
 void main() {
   int i = 5;
   print_int(i); // 5
@@ -10,6 +14,9 @@ void main() {
 
   int m = (5 + 2) * 3;
   print_int(m); // 21;
+
+  int n = 3 + add(4,5);
+  print_int(n); // 12
 
   bool b = 5 == 5;
   print_bool(b); // true
