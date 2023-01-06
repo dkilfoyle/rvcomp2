@@ -97,10 +97,11 @@ class SimpleCParser extends CstParser {
   });
 
   public variableDeclarationList = this.RULE("variableDeclarationList", () => {
-    this.SUBRULE(this.variableDeclaration);
-    this.MANY(() => {
-      this.CONSUME(tokens.Comma);
-      this.SUBRULE2(this.variableDeclaration);
+    this.AT_LEAST_ONE_SEP({
+      SEP: tokens.Comma,
+      DEF: () => {
+        this.SUBRULE(this.variableDeclaration);
+      },
     });
   });
 
@@ -289,6 +290,7 @@ class SimpleCParser extends CstParser {
       { ALT: () => this.SUBRULE(this.integerLiteralExpression) },
       { ALT: () => this.SUBRULE(this.stringLiteralExpression) },
       { ALT: () => this.SUBRULE(this.boolLiteralExpression) },
+      { ALT: () => this.SUBRULE(this.arrayLiteralExpression) },
     ]);
   });
 
@@ -302,6 +304,15 @@ class SimpleCParser extends CstParser {
 
   public boolLiteralExpression = this.RULE("boolLiteralExpression", () => {
     this.OR([{ ALT: () => this.CONSUME(tokens.True) }, { ALT: () => this.CONSUME(tokens.False) }]);
+  });
+
+  public arrayLiteralExpression = this.RULE("arrayLiteralExpression", () => {
+    this.CONSUME(tokens.LSquare);
+    this.AT_LEAST_ONE_SEP({
+      SEP: tokens.Comma,
+      DEF: () => this.SUBRULE(this.additionExpression),
+    });
+    this.CONSUME(tokens.RSquare);
   });
 
   // ------------------ utils ----------------------------------

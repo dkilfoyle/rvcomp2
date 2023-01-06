@@ -1,5 +1,6 @@
 import _ from "lodash";
 import {
+  IAstArrayLiteralExpression,
   IAstAssignStatement,
   IAstBinaryExpression,
   IAstBlock,
@@ -21,6 +22,7 @@ import {
 } from "../simpleC/ast";
 import { BrilBuilder } from "./BrilBuilder";
 import { IBrilProgram, IBrilType, IBrilValueInstruction } from "./BrilInterface";
+import { lchownSync } from "fs";
 
 class AstToBrilVisitor {
   public builder: BrilBuilder = new BrilBuilder();
@@ -92,19 +94,19 @@ class AstToBrilVisitor {
   }
 
   variableDeclarationStatement(node: IAstVariableDeclaration) {
-    if (node.size) {
-      // array declaration
+    if (node.size && _.isUndefined(node.initExpr)) {
+      // array declaration without init, eg int[4] x;
       if (node.type == "int" || node.type == "bool") {
-        const v = this.builder.buildConst(node.size, "int");
-        this.builder.buildArray(node.id, node.type, v.dest);
+        this.builder.buildArray(node.id, node.type, node.size);
       } else debugger;
       return;
     }
+
     // Build and visit assignStatement for the initExpr if exists
     if (node.initExpr) {
       const assignNode: IAstAssignStatement = {
         _name: "assignStatement",
-        lhs: { _name: "identifierExpression", id: node.id, type: node.type },
+        lhs: { _name: "identifierExpression", id: node.id, type: node.type, pos: node.pos },
         rhs: node.initExpr,
       };
       this.assignStatement(assignNode);
@@ -189,43 +191,46 @@ class AstToBrilVisitor {
   }
 
   assignStatement(node: IAstAssignStatement) {
-    const rhs = this.expression(node.rhs, false);
+    // possible assign forms
+    // x = 5;          => x:int = const 5;
+    // x[2] = 5;       => c5:int = const 5; p_x_2:ptr<int> = ptradd x c2; store p_x_2 c5;
+    // x = y;          => x:int = id y;
+    // x = j[1];       => c1:int = const 1; p_j_1:ptr<int> = ptradd j c1; x:int = load p_j_1;
+    // int[2] x = [1,2];   => v.0:int = const 1; v.1:int = const 2; x:ptr<int> = alloc 3;  x_iter: ptr<int> = id x; store x_ind v.0; x_iter: ptr<int> = ptradd x_iter c1; ... repeat
 
-    if (!_.isUndefined(node.lhs.index)) {
-      // j[1] = rhs
-      if (rhs.op !== "id") this.builder.insert(rhs); // dont insert if rhs is id only ie j[1] = x; rhs is only to reference dest
-      const ptr = this.builder.buildArrayReference(node.lhs.type as IBrilType, node.lhs.id, node.lhs.index);
-      const storeInstr = this.builder.buildEffect("store", [ptr, rhs.dest]);
-    } else {
-      rhs.dest = node.lhs.id;
-      this.builder.insert(rhs);
-    }
+    const rhs = this.expression(node.rhs, node.lhs);
   }
 
   // ==========================================================================================================
   // Expressions
   // ==========================================================================================================
 
-  expression(node: IAstExpression, insert = true): IBrilValueInstruction {
+  expression(node: IAstExpression, assignIDExpr?: IAstIdentifierExpression): IBrilValueInstruction {
     // dest is defined if coming directly from assign statement
     // eg x = 2 + 3
     let n, lhs, rhs;
     switch (node._name) {
       case "integerLiteralExpression":
         n = node as IAstIntegerLiteralExpression;
-        return this.builder.buildConst(n.value, n.type, insert);
+        return this.builder.buildConst(n.value, n.type, assignIDExpr);
       case "boolLiteralExpression":
         n = node as IAstBoolLiteralExpression;
-        return this.builder.buildConst(n.value, n.type, insert);
+        return this.builder.buildConst(n.value, n.type, assignIDExpr);
+      case "arrayLiteralExpression":
+        n = node as IAstArrayLiteralExpression;
+        if (assignIDExpr) {
+          const itemConsts = n.value.map((v) => this.expression(v));
+          return this.builder.buildArrayLiteral(itemConsts, assignIDExpr);
+        } else throw new Error("Array literal should only occur as assign - todo: fix parser");
       case "identifierExpression": // ie an identifier
         n = node as IAstIdentifierExpression;
         if (n.type == "string" || n.type == "void") throw new Error("String and void identifier type not implemented");
-        return this.builder.buildIdentifier(n.id, n.type, n.index, insert);
+        return this.builder.buildIdentifier(n.id, n.type, n.index, assignIDExpr);
       case "binaryExpression":
         n = node as IAstBinaryExpression;
         lhs = this.expression(n.lhs);
         rhs = this.expression(n.rhs);
-        return this.builder.buildValue(n.op, n.type as IBrilType, [lhs.dest, rhs.dest], undefined, undefined, insert);
+        return this.builder.buildValue(n.op, n.type as IBrilType, [lhs.dest, rhs.dest], undefined, undefined, assignIDExpr);
       case "functionCallExpression":
         n = node as IAstFunctionCallExpression;
         const params = n.params ? n.params.map((p) => this.expression(p)) : [];
@@ -233,7 +238,7 @@ class AstToBrilVisitor {
           n.id,
           params.map((p) => p.dest),
           n.type as IBrilType,
-          insert
+          assignIDExpr
         );
       case "invalidExpression":
         return this.builder.buildConst(0, "int");
@@ -242,11 +247,11 @@ class AstToBrilVisitor {
     }
   }
 
-  comparisonExpression(node: IAstComparisonExpression, insert = true): IBrilValueInstruction {
+  comparisonExpression(node: IAstComparisonExpression, assignIDExpr?: IAstIdentifierExpression): IBrilValueInstruction {
     const lhs = this.expression(node.lhs);
     if (node.rhs) {
       const rhs = this.expression(node.rhs);
-      return this.builder.buildValue(node.op, "bool", [lhs.dest, rhs.dest], undefined, undefined, insert);
+      return this.builder.buildValue(node.op, "bool", [lhs.dest, rhs.dest], undefined, undefined, assignIDExpr);
     } else {
       return lhs;
     }

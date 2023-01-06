@@ -269,6 +269,7 @@ export type LiteralExpressionCstChildren = {
   integerLiteralExpression?: IntegerLiteralExpressionCstNode[];
   stringLiteralExpression?: StringLiteralExpressionCstNode[];
   boolLiteralExpression?: BoolLiteralExpressionCstNode[];
+  arrayLiteralExpression?: ArrayLiteralExpressionCstNode[];
 };
 
 export interface IntegerLiteralExpressionCstNode extends CstNode {
@@ -297,6 +298,18 @@ export interface BoolLiteralExpressionCstNode extends CstNode {
 export type BoolLiteralExpressionCstChildren = {
   True?: IToken[];
   False?: IToken[];
+};
+
+export interface ArrayLiteralExpressionCstNode extends CstNode {
+  name: "arrayLiteralExpression";
+  children: ArrayLiteralExpressionCstChildren;
+}
+
+export type ArrayLiteralExpressionCstChildren = {
+  LSquare: IToken[];
+  additionExpression: AdditionExpressionCstNode[];
+  Comma?: IToken[];
+  RSquare: IToken[];
 };
 
 export interface TypeSpecifierCstNode extends CstNode {
@@ -338,5 +351,6 @@ export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   integerLiteralExpression(children: IntegerLiteralExpressionCstChildren, param?: IN): OUT;
   stringLiteralExpression(children: StringLiteralExpressionCstChildren, param?: IN): OUT;
   boolLiteralExpression(children: BoolLiteralExpressionCstChildren, param?: IN): OUT;
+  arrayLiteralExpression(children: ArrayLiteralExpressionCstChildren, param?: IN): OUT;
   typeSpecifier(children: TypeSpecifierCstChildren, param?: IN): OUT;
 }
