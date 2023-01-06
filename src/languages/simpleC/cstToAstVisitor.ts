@@ -525,12 +525,13 @@ class CstVisitor extends CstBaseVisitor {
         message: `Variable declaration type does not match initiator expression type: ${type} != ${initExpr.type}`,
       });
 
-    if (initExpr?.size !== arraySize)
+    if (initExpr && initExpr?.size !== arraySize) {
       this.errors.push({
         ...pos,
         code: "2",
         message: `Variable declaration size does not match initiator expression size: ${arraySize} != ${initExpr.size}`,
       });
+    }
 
     return { _name: "variableDeclaration", id, pos, type, initExpr, size: arraySize };
   }

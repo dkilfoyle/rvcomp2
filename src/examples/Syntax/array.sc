@@ -1,20 +1,24 @@
 void main() {
-  int x = 10;
-  int[5] z = [2, 4, x, x+2, x+4]
 
-  //int[5] j;
-  //j[0] = 1;
-  //j[1] = x;
-  //j[2] = x + 2;
-  //int y;
-  //y = j[0] + 8;
+  int a = 10;
+  int b = 20;
 
-  //print_int(j[0]); // 1
-  //print_int(j[1]); // 10
-  //print_int(j[2]); // 12
-  //print_int(y);    // 9
-  print_int(z[2]); // 10
-  print_int(z[3]); // 12
-  print_int(z[4]); // 14
+  // declare array
+  int[3] x;
+
+  // assign to array
+  x[0] = b;
+  x[1] = a + b;
+  x[2] = 15;
+  print_int(x[0]); // expect 20;
+  print_int(x[1]); // expect 30
+  print_int(x[2]); // expect 15
+
+  int[5] z = [2, 4, a, a+b, a+b+10];
+  print_int(z[4]); // expect 40
+
+  // read from array in expression
+  int j = z[0] + z[1];
+  print_int(j); // expect 6;
 }
 

@@ -123,7 +123,7 @@ export interface IAstFunctionCallExpression extends IAstExpression {
 export interface IAstUnaryExpression extends IAstExpression {}
 
 export interface IAstLiteralExpression extends IAstExpression {
-  value: number | boolean | Array<number | boolean>;
+  value: number | boolean | Array<IAstExpression>;
   type: "int" | "bool";
 }
 
@@ -141,7 +141,7 @@ export interface IAstBoolLiteralExpression extends IAstLiteralExpression {
 
 export interface IAstArrayLiteralExpression extends IAstLiteralExpression {
   _name: "arrayLiteralExpression";
-  value: Array<number | boolean>;
+  value: Array<IAstExpression>;
   size: number;
 }
 
