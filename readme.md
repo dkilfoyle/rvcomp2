@@ -7,43 +7,50 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
 1. Chevrotain based simple C-like parser with AST generation
 2. Basic UI for code editing, AST/IR/CFG visualisation
 3. C-like AST to Bril IR ("blang?")
-4. Bril IR 
-   1. Control Flow Graph (CFG) visualisation with dominance highlighting 
+4. Bril IR
+   1. Control Flow Graph (CFG) visualisation with dominance highlighting
    2. Conversion to Single Static Assignment (SSA) form
    3. Data flow analysis
       1. Defined variables
       2. Live variables
    4. Optimisations
       1. Dead-code elimination
-      2. Local value numbering
+      2. Local and global value numbering
          1. Common expression evaluation
          2. Constant folding
+         3. Copy propogation
 
 ## Planned
 
 1. Expand SimpleC
-   1. ~~if (cond) instead of if (cond == true) where cond is boolean identifier~~
-   2. if (cond) instead of if (cond == true) where cond is boolean function call
-2. Improve UI
-   1. CFG node selection shows DFA for that node
-   2. ~~Bril IR diffeditor - plain vs SSA and SSA vs optimisations~~
-3. Refactor
-   1. ~~Switch from redux-toolkit to zustand~~
-   2. Use Map instead of Record<string,>
-4. Optimisations
-   1. Use DFA
-      1. Use DFA to do global DCE - research how
-      2. Copy propogation
-      3. Global constant folding??
+   - [x] if (cond) instead of if (cond == true) where cond is boolean expression
+2. Expand Bril
+   - [x] Memory extension for arrays
+   - [x] Display buffer
+3. Improve UI
+   - [x] CFG node selection shows DFA for that node
+   - [x] CFG node selection highlights relevant bril code
+   - [x] Bril IR diffeditor - plain vs SSA and SSA vs optimisations
+4. Refactor
+   - [x] Switch from redux-toolkit to zustand
+   - [x] Use Map instead of Record<string,>?
+5. Optimisations
+   1. DFA-based
+      - [x] Jump to Jump Elimination (Mogensen pg 224)
    2. CFG optimisations
-      1. Branch removal
-      2. Unreachable code elimination
-      3. CFG cleaning
-      4. Tail merging
-      5. Remove top label and any unnecessary terminator instructions
-5. Many more examples
-6. IR to RiscV
-7. LLVM IR?
+      - [ ] Branch removal
+      - [ ] Unreachable code elimination
+      - [ ] CFG cleaning
+      - [ ] Tail merging
+      - [ ] Remove top label and any unnecessary terminator instructions
+   3. Loop optimisation
+      - [ ] Unrolling
+      - [ ] Loop-invariant computation hoisting
+6. Many more examples
+7. Code generators
+   - [ ] IR to RiscV
+   - [ ] IR to WebAssembly (https://github.com/ColinEberhardt/chasm)
+8. Add LLVM mid-end?
 
 ### Tools
 

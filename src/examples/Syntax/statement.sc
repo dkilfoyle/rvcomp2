@@ -2,8 +2,11 @@ void myeffectonlyfunc() {
   print_int(16);
 }
 
-void main() {
+bool mytruefunc() {
+  return 5 > 2;
+}
 
+void main() {
   // variable declaration statement
   int x = 1;
   print_int(x); // expect 1
@@ -30,6 +33,12 @@ void main() {
     print_int(5);
   } else {}
 
+  // if true expression
+  if (mytruefunc()) 
+    print_int(1);
+  else
+    print_int(0);
+
   // for loop
   for (int y = 6; y < 11; y = y + 1;) {
     print_int(y);
@@ -47,5 +56,4 @@ void main() {
 
   // return statement
   return 17;
-
 }
