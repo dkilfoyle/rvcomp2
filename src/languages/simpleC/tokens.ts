@@ -52,6 +52,7 @@ const Return = createKeywordToken({ name: "Return", pattern: /return/ });
 
 // types
 const Int = createKeywordToken({ name: "Int", pattern: /int/ });
+const Float = createKeywordToken({ name: "Float", pattern: /float/ });
 const Void = createKeywordToken({ name: "Void", pattern: /void/ });
 const String = createKeywordToken({ name: "String", pattern: /string/ });
 const Bool = createKeywordToken({ name: "Bool", pattern: /bool/ });
@@ -83,6 +84,7 @@ const Divide = createToken({ name: "Divide", pattern: /\//, categories: Multipli
 const Comma = createToken({ name: "Comma", pattern: /,/ });
 
 // literals
+const FloatLiteral = createToken({ name: "FloatLiteral", pattern: /[+-]?([0-9]*[.])?[0-9]+f/ });
 const IntegerLiteral = createToken({ name: "IntegerLiteral", pattern: /[0-9]+/ });
 const StringLiteral = createToken({ name: "StringLiteral", pattern: /"(?:""|[^"])*"/ });
 
@@ -98,6 +100,7 @@ export const tokens = {
   Return,
   // types
   Int,
+  Float,
   Void,
   Bool,
   String,
@@ -125,6 +128,7 @@ export const tokens = {
   LineComment,
   // literals
   StringLiteral,
+  FloatLiteral,
   IntegerLiteral,
   True,
   False,

@@ -28,7 +28,7 @@ class BrilPrinter {
     this.curFn = fn.name;
     this.irkeys[fn.name] = {};
     const args = fn.args ? "(" + fn.args.map((arg) => this.formatArgument(arg)).join(", ") + ")" : "";
-    const kind = fn.type ? this.formatType(fn.type) : "";
+    const kind = fn.type ? ":" + this.formatType(fn.type) : "";
     this.line(`@${fn.name}${args}${kind} {`, fn.key || -99);
     fn.instrs.forEach((instr) => this.printInstruction(instr));
     this.line("}", fn.key || -99);

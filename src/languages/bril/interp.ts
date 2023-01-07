@@ -109,15 +109,15 @@ const argCounts: { [key in IBrilOpCode]: number | null } = {
   not: 1,
   and: 2,
   or: 2,
-  // fadd: 2,
-  // fmul: 2,
-  // fsub: 2,
-  // fdiv: 2,
-  // flt: 2,
-  // fle: 2,
-  // fgt: 2,
-  // fge: 2,
-  // feq: 2,
+  fadd: 2,
+  fmul: 2,
+  fsub: 2,
+  fdiv: 2,
+  flt: 2,
+  fle: 2,
+  fgt: 2,
+  fge: 2,
+  feq: 2,
   print: null, // Any number of arguments.
   br: 1,
   jmp: 0,
@@ -290,6 +290,19 @@ function evalCall(instr: IBrilOperation, state: State): Action {
     let value = get(state.env, args[0]);
     if (!typeCheck(value, "int")) {
       throw error(`function argument type mismatch - expected int`);
+    }
+    logger.info(value);
+    return NEXT;
+  }
+
+  if (funcName == "print_float") {
+    let args = instr.args || [];
+    if (args.length !== 1) {
+      throw error(`function expected 1 argument, got ${args.length}`);
+    }
+    let value = get(state.env, args[0]);
+    if (!typeCheck(value, "float")) {
+      throw error(`function argument type mismatch - expected float`);
     }
     logger.info(value);
     return NEXT;
@@ -506,7 +519,7 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
       state.env.set(instr.dest, val);
       return NEXT;
     }
-    /*
+
     case "fadd": {
       let val = getFloat(instr, state.env, 0) + getFloat(instr, state.env, 1);
       state.env.set(instr.dest, val);
@@ -559,7 +572,7 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
       let val = getFloat(instr, state.env, 0) === getFloat(instr, state.env, 1);
       state.env.set(instr.dest, val);
       return NEXT;
-    }*/
+    }
 
     case "print": {
       let args = instr.args || [];
