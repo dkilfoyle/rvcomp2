@@ -1,7 +1,7 @@
 import { ISimpleCLangError } from "../../components/simpleCEditor/monaco/DiagnosticsAdapter";
 import { ScopeStack } from "./ScopeStack";
 
-export type IDeclarationType = "int" | "string" | "bool" | "void";
+export type IDeclarationType = "int" | "string" | "bool" | "void" | "float";
 export type IDeclarationValue = number | string | boolean | undefined;
 
 export interface IPos {
@@ -79,25 +79,17 @@ export interface IAstReturnStatement extends IAstStatement {
 export interface IAstExpression extends IAstNode {
   _name:
     | "integerLiteralExpression"
+    | "floatLiteralExpression"
     | "boolLiteralExpression"
     | "arrayLiteralExpression"
     | "identifierExpression"
     | "stringLiteralExpression"
     | "functionCallExpression"
-    | "binaryExpression"
+    | "floatBinaryExpression"
+    | "intBinaryExpression"
     | "invalidExpression";
   type: IDeclarationType;
   pos: IPos;
-}
-
-export type IAstComparisonOperator = "gt" | "lt" | "ge" | "le" | "eq";
-
-export interface IAstComparisonExpression {
-  _name: "comparisonExpression";
-  lhs: IAstExpression;
-  rhs?: IAstExpression;
-  op: IAstComparisonOperator;
-  type: "bool";
 }
 
 export interface IAstInvalidExpression extends IAstExpression {
@@ -123,8 +115,8 @@ export interface IAstFunctionCallExpression extends IAstExpression {
 export interface IAstUnaryExpression extends IAstExpression {}
 
 export interface IAstLiteralExpression extends IAstExpression {
-  value: number | boolean | Array<IAstExpression>;
-  type: "int" | "bool";
+  value: number | boolean;
+  type: "int" | "bool" | "float";
 }
 
 export interface IAstIntegerLiteralExpression extends IAstLiteralExpression {
@@ -139,7 +131,7 @@ export interface IAstBoolLiteralExpression extends IAstLiteralExpression {
   type: "bool";
 }
 
-export interface IAstArrayLiteralExpression extends IAstLiteralExpression {
+export interface IAstArrayLiteralExpression extends IAstExpression {
   _name: "arrayLiteralExpression";
   value: Array<IAstExpression>;
   size: number;
@@ -147,12 +139,45 @@ export interface IAstArrayLiteralExpression extends IAstLiteralExpression {
 
 export type IAstAtomicExpression = IAstIdentifierExpression | IAstLiteralExpression | IAstFunctionCallExpression | IAstUnaryExpression;
 
+export type IAstIntArthimeticOperator = "add" | "sub" | "mul" | "div";
+export type IAstFloatArthimeticOperator = "fadd" | "fsub" | "fmul" | "fdiv";
+export type IAstIntComparisonOperator = "gt" | "lt" | "ge" | "le" | "eq";
+export type IAstFloatComparisonOperator = "fgt" | "flt" | "fge" | "fle" | "feq";
+
+export interface IAstComparisonExpression {
+  _name: "comparisonExpression";
+  lhs: IAstExpression;
+  rhs?: IAstExpression;
+  op: IAstIntComparisonOperator | IAstFloatComparisonOperator;
+  type: "bool";
+}
+
+export interface IAstIntComparisonExpression extends IAstComparisonExpression {
+  op: IAstIntComparisonOperator;
+}
+
+export interface IAstFloatComparisonExpression extends IAstComparisonExpression {
+  op: IAstFloatComparisonOperator;
+}
+
 export interface IAstBinaryExpression extends IAstExpression {
-  _name: "binaryExpression";
+  _name: "intBinaryExpression" | "floatBinaryExpression";
   lhs: IAstExpression;
   rhs: IAstExpression;
-  op: "add" | "sub" | "mul" | "div";
+  op: IAstIntArthimeticOperator | IAstFloatArthimeticOperator;
+  type: "int" | "float";
+}
+
+export interface IAstIntBinaryExpression extends IAstBinaryExpression {
+  _name: "intBinaryExpression";
+  op: IAstIntArthimeticOperator;
   type: "int";
+}
+
+export interface IAstFloatBinaryExpression extends IAstBinaryExpression {
+  _name: "floatBinaryExpression";
+  op: IAstFloatArthimeticOperator;
+  type: "float";
 }
 
 export interface IAstAssignStatement extends IAstNode {

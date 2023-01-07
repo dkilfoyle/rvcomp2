@@ -162,16 +162,6 @@ export type AssignStatementCstChildren = {
   SemiColon: IToken[];
 };
 
-export interface ComparisonExpressionCstNode extends CstNode {
-  name: "comparisonExpression";
-  children: ComparisonExpressionCstChildren;
-}
-
-export type ComparisonExpressionCstChildren = {
-  operands: MultiplicationExpressionCstNode[];
-  operators?: IToken[];
-};
-
 export interface AdditionExpressionCstNode extends CstNode {
   name: "additionExpression";
   children: AdditionExpressionCstChildren;
@@ -179,6 +169,16 @@ export interface AdditionExpressionCstNode extends CstNode {
 
 export type AdditionExpressionCstChildren = {
   operands: ComparisonExpressionCstNode[];
+  operators?: IToken[];
+};
+
+export interface ComparisonExpressionCstNode extends CstNode {
+  name: "comparisonExpression";
+  children: ComparisonExpressionCstChildren;
+}
+
+export type ComparisonExpressionCstChildren = {
+  operands: MultiplicationExpressionCstNode[];
   operators?: IToken[];
 };
 
@@ -267,6 +267,7 @@ export interface LiteralExpressionCstNode extends CstNode {
 
 export type LiteralExpressionCstChildren = {
   integerLiteralExpression?: IntegerLiteralExpressionCstNode[];
+  floatLiteralExpression?: FloatLiteralExpressionCstNode[];
   stringLiteralExpression?: StringLiteralExpressionCstNode[];
   boolLiteralExpression?: BoolLiteralExpressionCstNode[];
   arrayLiteralExpression?: ArrayLiteralExpressionCstNode[];
@@ -279,6 +280,15 @@ export interface IntegerLiteralExpressionCstNode extends CstNode {
 
 export type IntegerLiteralExpressionCstChildren = {
   IntegerLiteral: IToken[];
+};
+
+export interface FloatLiteralExpressionCstNode extends CstNode {
+  name: "floatLiteralExpression";
+  children: FloatLiteralExpressionCstChildren;
+}
+
+export type FloatLiteralExpressionCstChildren = {
+  FloatLiteral: IToken[];
 };
 
 export interface StringLiteralExpressionCstNode extends CstNode {
@@ -319,6 +329,7 @@ export interface TypeSpecifierCstNode extends CstNode {
 
 export type TypeSpecifierCstChildren = {
   Int?: IToken[];
+  Float?: IToken[];
   Void?: IToken[];
   String?: IToken[];
   Bool?: IToken[];
@@ -338,8 +349,8 @@ export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   functionCallStatement(children: FunctionCallStatementCstChildren, param?: IN): OUT;
   returnStatement(children: ReturnStatementCstChildren, param?: IN): OUT;
   assignStatement(children: AssignStatementCstChildren, param?: IN): OUT;
-  comparisonExpression(children: ComparisonExpressionCstChildren, param?: IN): OUT;
   additionExpression(children: AdditionExpressionCstChildren, param?: IN): OUT;
+  comparisonExpression(children: ComparisonExpressionCstChildren, param?: IN): OUT;
   multiplicationExpression(children: MultiplicationExpressionCstChildren, param?: IN): OUT;
   atomicExpression(children: AtomicExpressionCstChildren, param?: IN): OUT;
   expressionList(children: ExpressionListCstChildren, param?: IN): OUT;
@@ -349,6 +360,7 @@ export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   identifierExpression(children: IdentifierExpressionCstChildren, param?: IN): OUT;
   literalExpression(children: LiteralExpressionCstChildren, param?: IN): OUT;
   integerLiteralExpression(children: IntegerLiteralExpressionCstChildren, param?: IN): OUT;
+  floatLiteralExpression(children: FloatLiteralExpressionCstChildren, param?: IN): OUT;
   stringLiteralExpression(children: StringLiteralExpressionCstChildren, param?: IN): OUT;
   boolLiteralExpression(children: BoolLiteralExpressionCstChildren, param?: IN): OUT;
   arrayLiteralExpression(children: ArrayLiteralExpressionCstChildren, param?: IN): OUT;

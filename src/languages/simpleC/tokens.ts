@@ -52,6 +52,7 @@ const Return = createKeywordToken({ name: "Return", pattern: /return/ });
 
 // types
 const Int = createKeywordToken({ name: "Int", pattern: /int/ });
+const Float = createKeywordToken({ name: "Float", pattern: /float/ });
 const Void = createKeywordToken({ name: "Void", pattern: /void/ });
 const String = createKeywordToken({ name: "String", pattern: /string/ });
 const Bool = createKeywordToken({ name: "Bool", pattern: /bool/ });
@@ -74,6 +75,8 @@ const LessThan = createToken({ name: "LessThan", pattern: /</, categories: Compa
 const GreaterThanEqual = createToken({ name: "GreaterThanEqual", pattern: />=/, categories: ComparisonOperator });
 const GreaterThan = createToken({ name: "GreaterThan", pattern: />/, categories: ComparisonOperator });
 const EqualsEquals = createToken({ name: "EqualsEquals", pattern: /==/, categories: ComparisonOperator });
+const And = createToken({ name: "And", pattern: /&&/, categories: ComparisonOperator });
+const Or = createToken({ name: "Or", pattern: /\|\|/, categories: ComparisonOperator });
 
 const Equals = createToken({ name: "Equals", pattern: /=/ });
 const Plus = createToken({ name: "Plus", pattern: /\+/, categories: AdditionOperator });
@@ -83,6 +86,7 @@ const Divide = createToken({ name: "Divide", pattern: /\//, categories: Multipli
 const Comma = createToken({ name: "Comma", pattern: /,/ });
 
 // literals
+const FloatLiteral = createToken({ name: "FloatLiteral", pattern: /[+-]?([0-9]*[.])?[0-9]+f/ });
 const IntegerLiteral = createToken({ name: "IntegerLiteral", pattern: /[0-9]+/ });
 const StringLiteral = createToken({ name: "StringLiteral", pattern: /"(?:""|[^"])*"/ });
 
@@ -98,6 +102,7 @@ export const tokens = {
   Return,
   // types
   Int,
+  Float,
   Void,
   Bool,
   String,
@@ -114,6 +119,8 @@ export const tokens = {
   GreaterThan,
   GreaterThanEqual,
   EqualsEquals,
+  And,
+  Or,
   Equals,
   Plus,
   Minus,
@@ -125,6 +132,7 @@ export const tokens = {
   LineComment,
   // literals
   StringLiteral,
+  FloatLiteral,
   IntegerLiteral,
   True,
   False,
