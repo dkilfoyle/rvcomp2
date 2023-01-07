@@ -213,19 +213,19 @@ class SimpleCParser extends CstParser {
   // Expressions
   // ==========================================================================================================
 
-  public comparisonExpression = this.RULE("comparisonExpression", () => {
-    this.SUBRULE(this.multiplicationExpression, { LABEL: "operands" });
-    this.OPTION(() => {
-      this.CONSUME(tokens.ComparisonOperator, { LABEL: "operators" });
-      this.SUBRULE2(this.multiplicationExpression, { LABEL: "operands" });
-    });
-  });
-
   public additionExpression = this.RULE("additionExpression", () => {
     this.SUBRULE(this.comparisonExpression, { LABEL: "operands" });
     this.MANY(() => {
       this.CONSUME(tokens.AdditionOperator, { LABEL: "operators" });
       this.SUBRULE2(this.comparisonExpression, { LABEL: "operands" });
+    });
+  });
+
+  public comparisonExpression = this.RULE("comparisonExpression", () => {
+    this.SUBRULE(this.multiplicationExpression, { LABEL: "operands" });
+    this.OPTION(() => {
+      this.CONSUME(tokens.ComparisonOperator, { LABEL: "operators" });
+      this.SUBRULE2(this.multiplicationExpression, { LABEL: "operands" });
     });
   });
 
@@ -288,6 +288,7 @@ class SimpleCParser extends CstParser {
   public literalExpression = this.RULE("literalExpression", () => {
     this.OR([
       { ALT: () => this.SUBRULE(this.integerLiteralExpression) },
+      { ALT: () => this.SUBRULE(this.floatLiteralExpression) },
       { ALT: () => this.SUBRULE(this.stringLiteralExpression) },
       { ALT: () => this.SUBRULE(this.boolLiteralExpression) },
       { ALT: () => this.SUBRULE(this.arrayLiteralExpression) },
@@ -296,6 +297,10 @@ class SimpleCParser extends CstParser {
 
   public integerLiteralExpression = this.RULE("integerLiteralExpression", () => {
     this.CONSUME(tokens.IntegerLiteral);
+  });
+
+  public floatLiteralExpression = this.RULE("floatLiteralExpression", () => {
+    this.CONSUME(tokens.FloatLiteral);
   });
 
   public stringLiteralExpression = this.RULE("stringLiteralExpression", () => {
@@ -320,6 +325,7 @@ class SimpleCParser extends CstParser {
   public typeSpecifier = this.RULE("typeSpecifier", () => {
     this.OR([
       { ALT: () => this.CONSUME(tokens.Int) },
+      { ALT: () => this.CONSUME(tokens.Float) },
       { ALT: () => this.CONSUME(tokens.Void) },
       { ALT: () => this.CONSUME(tokens.String) },
       { ALT: () => this.CONSUME(tokens.Bool) },

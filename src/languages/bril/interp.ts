@@ -37,6 +37,8 @@ export class Key {
   }
 }
 
+const display = new Uint8Array(10000);
+
 // map a number (base+offset) to an array of type X
 export class Heap<X> {
   private readonly storage: Map<number, X[]>;
@@ -109,15 +111,15 @@ const argCounts: { [key in IBrilOpCode]: number | null } = {
   not: 1,
   and: 2,
   or: 2,
-  // fadd: 2,
-  // fmul: 2,
-  // fsub: 2,
-  // fdiv: 2,
-  // flt: 2,
-  // fle: 2,
-  // fgt: 2,
-  // fge: 2,
-  // feq: 2,
+  fadd: 2,
+  fmul: 2,
+  fsub: 2,
+  fdiv: 2,
+  flt: 2,
+  fle: 2,
+  fgt: 2,
+  fge: 2,
+  feq: 2,
   print: null, // Any number of arguments.
   br: 1,
   jmp: 0,
@@ -295,6 +297,19 @@ function evalCall(instr: IBrilOperation, state: State): Action {
     return NEXT;
   }
 
+  if (funcName == "print_float") {
+    let args = instr.args || [];
+    if (args.length !== 1) {
+      throw error(`function expected 1 argument, got ${args.length}`);
+    }
+    let value = get(state.env, args[0]);
+    if (!typeCheck(value, "float")) {
+      throw error(`function argument type mismatch - expected float`);
+    }
+    logger.info(value);
+    return NEXT;
+  }
+
   // check if special function
   if (funcName == "print_bool") {
     let args = instr.args || [];
@@ -306,6 +321,27 @@ function evalCall(instr: IBrilOperation, state: State): Action {
       throw error(`function argument type mismatch - expected bool`);
     }
     logger.info(value);
+    return NEXT;
+  }
+
+  if (funcName == "setpixel") {
+    let args = instr.args || [];
+    if (args.length !== 3) {
+      throw error(`function expected 3 arguments, got ${args.length}`);
+    }
+    let x = get(state.env, args[0]);
+    let y = get(state.env, args[1]);
+    let c = get(state.env, args[2]);
+    if (!(typeCheck(x, "float") && typeCheck(y, "float") && typeCheck(c, "float"))) {
+      throw error(`function argument type mismatch - expected bool`);
+    }
+
+    x = x as number;
+    y = y as number;
+    c = c as number;
+
+    display[y * 100 + x] = c;
+
     return NEXT;
   }
 
@@ -506,7 +542,7 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
       state.env.set(instr.dest, val);
       return NEXT;
     }
-    /*
+
     case "fadd": {
       let val = getFloat(instr, state.env, 0) + getFloat(instr, state.env, 1);
       state.env.set(instr.dest, val);
@@ -559,7 +595,7 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
       let val = getFloat(instr, state.env, 0) === getFloat(instr, state.env, 1);
       state.env.set(instr.dest, val);
       return NEXT;
-    }*/
+    }
 
     case "print": {
       let args = instr.args || [];
@@ -882,4 +918,5 @@ export function runInterpretor(prog: IBrilProgram, args: string[], mylogger: Con
       throw e;
     }
   }
+  return display;
 }

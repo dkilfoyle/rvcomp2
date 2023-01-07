@@ -13,6 +13,7 @@ import {
   IAstIdentifierExpression,
   IAstIfStatement,
   IAstIntegerLiteralExpression,
+  IAstLiteralExpression,
   IAstProgram,
   IAstReturnStatement,
   IAstStatement,
@@ -211,10 +212,9 @@ class AstToBrilVisitor {
     let n, lhs, rhs;
     switch (node._name) {
       case "integerLiteralExpression":
-        n = node as IAstIntegerLiteralExpression;
-        return this.builder.buildConst(n.value, n.type, assignIDExpr);
+      case "floatLiteralExpression":
       case "boolLiteralExpression":
-        n = node as IAstBoolLiteralExpression;
+        n = node as IAstLiteralExpression;
         return this.builder.buildConst(n.value, n.type, assignIDExpr);
       case "arrayLiteralExpression":
         n = node as IAstArrayLiteralExpression;
@@ -226,7 +226,8 @@ class AstToBrilVisitor {
         n = node as IAstIdentifierExpression;
         if (n.type == "string" || n.type == "void") throw new Error("String and void identifier type not implemented");
         return this.builder.buildIdentifier(n.id, n.type, n.index, assignIDExpr);
-      case "binaryExpression":
+      case "intBinaryExpression":
+      case "floatBinaryExpression":
         n = node as IAstBinaryExpression;
         lhs = this.expression(n.lhs);
         rhs = this.expression(n.rhs);

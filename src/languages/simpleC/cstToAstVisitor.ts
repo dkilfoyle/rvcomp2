@@ -10,6 +10,7 @@ import {
   BoolLiteralExpressionCstChildren,
   ComparisonExpressionCstChildren,
   ExpressionListCstChildren,
+  FloatLiteralExpressionCstChildren,
   ForStatementCstChildren,
   FunctionCallExpressionCstChildren,
   FunctionCallStatementCstChildren,
@@ -37,27 +38,24 @@ import {
   IAstAssignStatement,
   IAstAtomicExpression,
   IAstBoolLiteralExpression,
-  IAstComparisonExpression,
-  IAstComparisonOperator,
-  IAstDeclaration,
   IAstExpression,
   IAstForStatement,
-  IAstFunctionCallExpression,
   IAstFunctionDeclaration,
   IAstIdentifierExpression,
   IAstIfStatement,
+  IAstIntArthimeticOperator,
   IAstInvalidExpression,
   IAstLiteralExpression,
-  IAstNode,
   IAstProgram,
   IAstResult,
   IAstReturnStatement,
   IAstVariableDeclaration,
-  IDeclarationType,
   IPos,
   parseDocCommentString,
 } from "./ast";
-import { ISignature, ScopeStack } from "./ScopeStack";
+import { ScopeStack } from "./ScopeStack";
+import { BreadcrumbLink } from "@chakra-ui/react";
+import { removeHandlers } from "rc-dock";
 
 export const convertCstNodeLocationToIPos = (pos?: CstNodeLocation) => {
   return {
@@ -66,6 +64,18 @@ export const convertCstNodeLocationToIPos = (pos?: CstNodeLocation) => {
     startColumn: pos?.startColumn || 0,
     endColumn: pos?.endColumn || 0,
   };
+};
+
+const operatorLookup = {
+  "+": { op: "add", type: "num" },
+  "-": { op: "sub", type: "num" },
+  "*": { op: "mul", type: "num" },
+  "/": { op: "div", type: "num" },
+  ">": { op: "gt", type: "bool" },
+  "<": { op: "lt", type: "bool" },
+  ">=": { op: "ge", type: "bool" },
+  "<=": { op: "le", type: "bool" },
+  "==": { op: "eq", type: "bool" },
 };
 
 const CstBaseVisitor = parser.parserInstance.getBaseCstVisitorConstructor();
@@ -290,78 +300,58 @@ class CstVisitor extends CstBaseVisitor {
   // Expressions
   // ==========================================================================================================
 
-  // comparisonExpression(ctx: ComparisonExpressionCstChildren): IAstComparisonExpression {
-  //   const lhs = this.visit(ctx.lhs);
-
-  //   if (ctx.rhs && ctx.ComparisonOperator) {
-  //     const rhs = this.visit(ctx.rhs);
-  //     let op: IAstComparisonOperator;
-  //     switch (ctx.ComparisonOperator[0].image) {
-  //       case ">":
-  //         op = "gt";
-  //         break;
-  //       case ">=":
-  //         op = "ge";
-  //         break;
-  //       case "<":
-  //         op = "lt";
-  //         break;
-  //       case "<=":
-  //         op = "le";
-  //         break;
-  //       case "==":
-  //         op = "eq";
-  //         break;
-  //       default:
-  //         op = "gt";
-  //     }
-  //     return { _name: "comparisonExpression", lhs, rhs, op, type: "bool" };
-  //   } else {
-  //     if ((lhs as IAstExpression)._name != "identifierExpression") {
-  //       const pos = convertCstNodeLocationToIPos(ctx.lhs[0].location);
-  //       this.errors.push({ ...pos, code: "2", message: "expect identifier or comparison" });
-  //     }
-  //     if ((lhs as IAstExpression).type !== "bool") {
-  //       const pos = convertCstNodeLocationToIPos(ctx.lhs[0].location);
-  //       this.errors.push({ ...pos, code: "2", message: "expect identifier type is bool" });
-  //     }
-  //     return { _name: "comparisonExpression", lhs, op: "eq", type: "bool" };
-  //   }
-  // }
-
-  getOperator(op: string) {
+  getOperator(op: string, type: string) {
+    let res: string;
     switch (op) {
       case "+":
-        return "add";
+        res = "add";
+        break;
       case "-":
-        return "sub";
+        res = "sub";
+        break;
       case "*":
-        return "mul";
+        res = "mul";
+        break;
       case "/":
-        return "div";
+        res = "div";
+        break;
       case ">":
-        return "gt";
+        res = "gt";
+        break;
       case ">=":
-        return "ge";
+        res = "ge";
+        break;
       case "<":
-        return "lt";
+        res = "lt";
+        break;
       case "<=":
-        return "le";
+        res = "le";
+        break;
       case "==":
-        return "eq";
+        res = "eq";
+        break;
+      case "&&":
+        res = "and";
+        break;
+      case "||":
+        res = "or";
+        break;
+      default:
+        throw new Error();
     }
+    return type == "float" ? "f" + res : res;
   }
 
-  getOperationType(op: string) {
+  getOperationType(op: string, type: string) {
     switch (op) {
       case "+":
-        return "int";
+        return type;
       case "-":
-        return "int";
+        return type;
       case "*":
-        return "int";
+        return type;
       case "/":
-        return "int";
+        return type;
       case ">":
         return "bool";
       case ">=":
@@ -371,6 +361,10 @@ class CstVisitor extends CstBaseVisitor {
       case "<=":
         return "bool";
       case "==":
+        return "bool";
+      case "&&":
+        return "bool";
+      case "||":
         return "bool";
       default:
         throw new Error("Unknown operation");
@@ -388,14 +382,19 @@ class CstVisitor extends CstBaseVisitor {
 
     for (let i = 1; i < ctx.operands.length; i++) {
       const rhs = this.visit(ctx.operands[i]);
+
       if (rhs.type !== lhs.type) return typeError(rhs);
+      if (ctx.operators && this.getOperationType(ctx.operators[i - 1].image, "num") == "num" && lhs.type == "bool") {
+        this.pushError("Expression operator type does not match operand type", this.getTokenPos(ctx.operators[i - 1]));
+        return { _name: "invalidExpression", type: "int", pos: this.getTokenPos(ctx.operators[i - 1]) };
+      }
 
       lhs = {
-        _name: "binaryExpression",
+        _name: lhs.type == "int" ? "intBinaryExpression" : "floatBinaryExpression",
         lhs: { ...lhs },
         rhs,
-        op: ctx.operators ? this.getOperator(ctx.operators[i - 1].image) : undefined,
-        type: ctx.operators ? this.getOperationType(ctx.operators[i - 1].image) : lhs.type,
+        op: ctx.operators ? this.getOperator(ctx.operators[i - 1].image, lhs.type) : undefined,
+        type: ctx.operators ? this.getOperationType(ctx.operators[i - 1].image, lhs.type) : lhs.type,
       };
 
       // console.log("AdditionExpression LHS", lhs);
@@ -430,9 +429,13 @@ class CstVisitor extends CstBaseVisitor {
     return { name: "unaryExpression", lhs, type: lhs.type };
   }
 
-  functionCallExpression(ctx: FunctionCallExpressionCstChildren): IAstFunctionCallExpression {
+  functionCallExpression(ctx: FunctionCallExpressionCstChildren) {
     const id = ctx.ID[0].image;
     const decl = this.checkInScope(id, this.getTokenPos(ctx.ID[0])) as IAstVariableDeclaration;
+    if (!decl) {
+      this.pushError(`Function ${id} not defined`, this.getTokenPos(ctx.ID[0]));
+      return { _name: "nop" };
+    }
 
     const params = ctx.expressionList ? this.visit(ctx.expressionList).params : [];
     const pass = this.checkParams(decl.id, decl.pos!, params);
@@ -451,6 +454,7 @@ class CstVisitor extends CstBaseVisitor {
 
   literalExpression(ctx: LiteralExpressionCstChildren): IAstLiteralExpression {
     if (ctx.integerLiteralExpression) return this.visit(ctx.integerLiteralExpression);
+    else if (ctx.floatLiteralExpression) return this.visit(ctx.floatLiteralExpression);
     else if (ctx.stringLiteralExpression) return this.visit(ctx.stringLiteralExpression);
     else if (ctx.boolLiteralExpression) return this.visit(ctx.boolLiteralExpression);
     else if (ctx.arrayLiteralExpression) return this.visit(ctx.arrayLiteralExpression);
@@ -462,6 +466,11 @@ class CstVisitor extends CstBaseVisitor {
   integerLiteralExpression(ctx: IntegerLiteralExpressionCstChildren) {
     const value: number = parseInt(ctx.IntegerLiteral[0].image);
     return { _name: "integerLiteralExpression", value, type: "int", pos: this.getTokenPos(ctx.IntegerLiteral[0]) };
+  }
+
+  floatLiteralExpression(ctx: FloatLiteralExpressionCstChildren) {
+    const value: number = parseFloat(ctx.FloatLiteral[0].image);
+    return { _name: "floatLiteralExpression", value, type: "float", pos: this.getTokenPos(ctx.FloatLiteral[0]) };
   }
 
   stringLiteralExpression(ctx: StringLiteralExpressionCstChildren) {
@@ -505,6 +514,7 @@ class CstVisitor extends CstBaseVisitor {
     else if (ctx.Void) t = "void";
     else if (ctx.Bool) t = "bool";
     else if (ctx.String) t = "string";
+    else if (ctx.Float) t = "float";
     else throw new Error();
 
     return { _name: "typeSpecifier", type: t };
