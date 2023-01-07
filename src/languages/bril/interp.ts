@@ -37,6 +37,8 @@ export class Key {
   }
 }
 
+const display = new Uint8Array(10000);
+
 // map a number (base+offset) to an array of type X
 export class Heap<X> {
   private readonly storage: Map<number, X[]>;
@@ -319,6 +321,27 @@ function evalCall(instr: IBrilOperation, state: State): Action {
       throw error(`function argument type mismatch - expected bool`);
     }
     logger.info(value);
+    return NEXT;
+  }
+
+  if (funcName == "setpixel") {
+    let args = instr.args || [];
+    if (args.length !== 3) {
+      throw error(`function expected 3 arguments, got ${args.length}`);
+    }
+    let x = get(state.env, args[0]);
+    let y = get(state.env, args[1]);
+    let c = get(state.env, args[2]);
+    if (!(typeCheck(x, "float") && typeCheck(y, "float") && typeCheck(c, "float"))) {
+      throw error(`function argument type mismatch - expected bool`);
+    }
+
+    x = x as number;
+    y = y as number;
+    c = c as number;
+
+    display[y * 100 + x] = c;
+
     return NEXT;
   }
 
@@ -890,4 +913,5 @@ export function runInterpretor(prog: IBrilProgram, args: string[], mylogger: Con
       throw e;
     }
   }
+  return display;
 }

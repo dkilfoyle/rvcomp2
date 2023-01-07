@@ -41,6 +41,19 @@ export class ScopeStack {
       signatures: [
         {
           _name: "functionDeclaration",
+          id: "setpixel",
+          type: "void",
+          block: { _name: "block", statements: [], heapVars: [] },
+          params: [
+            { _name: "variableDeclaration", id: "x", type: "float", pos: getLibPos() },
+            { _name: "variableDeclaration", id: "x", type: "float", pos: getLibPos() },
+            { _name: "variableDeclaration", id: "x", type: "float", pos: getLibPos() },
+          ],
+          docComment: parseDocCommentString("/**\n* @desc Print an integer to console\n* @param [int num] Number to print\n*/"),
+          pos: getLibPos(),
+        },
+        {
+          _name: "functionDeclaration",
           id: "print_int",
           type: "void",
           block: { _name: "block", statements: [], heapVars: [] },

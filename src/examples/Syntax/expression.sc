@@ -18,8 +18,17 @@ void main() {
   int n = 3 + add(4,5);
   print_int(n); // 12
 
-  bool b = 5 == 5;
+  bool b = (true && true);
   print_bool(b); // true
+
+  b = ((5>4) && (3>4));
+  print_bool(b); // false
+
+  b = ((5==5) && (4>3));
+  print_bool(b); // true
+
+  b = ((5>=3) || (5<3));
+  print_bool(b); // true;
 
   bool c = 5 >= 4;
   print_bool(c); // true

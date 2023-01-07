@@ -75,6 +75,8 @@ const LessThan = createToken({ name: "LessThan", pattern: /</, categories: Compa
 const GreaterThanEqual = createToken({ name: "GreaterThanEqual", pattern: />=/, categories: ComparisonOperator });
 const GreaterThan = createToken({ name: "GreaterThan", pattern: />/, categories: ComparisonOperator });
 const EqualsEquals = createToken({ name: "EqualsEquals", pattern: /==/, categories: ComparisonOperator });
+const And = createToken({ name: "And", pattern: /&&/, categories: ComparisonOperator });
+const Or = createToken({ name: "Or", pattern: /\|\|/, categories: ComparisonOperator });
 
 const Equals = createToken({ name: "Equals", pattern: /=/ });
 const Plus = createToken({ name: "Plus", pattern: /\+/, categories: AdditionOperator });
@@ -117,6 +119,8 @@ export const tokens = {
   GreaterThan,
   GreaterThanEqual,
   EqualsEquals,
+  And,
+  Or,
   Equals,
   Plus,
   Minus,

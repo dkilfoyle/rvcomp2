@@ -330,10 +330,16 @@ class CstVisitor extends CstBaseVisitor {
       case "==":
         res = "eq";
         break;
+      case "&&":
+        res = "and";
+        break;
+      case "||":
+        res = "or";
+        break;
       default:
         throw new Error();
     }
-    return type == "int" ? res : "f" + res;
+    return type == "float" ? "f" + res : res;
   }
 
   getOperationType(op: string, type: string) {
@@ -356,6 +362,10 @@ class CstVisitor extends CstBaseVisitor {
         return "bool";
       case "==":
         return "bool";
+      case "&&":
+        return "bool";
+      case "||":
+        return "bool";
       default:
         throw new Error("Unknown operation");
     }
@@ -374,7 +384,7 @@ class CstVisitor extends CstBaseVisitor {
       const rhs = this.visit(ctx.operands[i]);
 
       if (rhs.type !== lhs.type) return typeError(rhs);
-      if (ctx.operators && lhs.type != this.getOperationType(ctx.operators[i - 1].image, lhs.type)) {
+      if (ctx.operators && this.getOperationType(ctx.operators[i - 1].image, "num") == "num" && lhs.type == "bool") {
         this.pushError("Expression operator type does not match operand type", this.getTokenPos(ctx.operators[i - 1]));
         return { _name: "invalidExpression", type: "int", pos: this.getTokenPos(ctx.operators[i - 1]) };
       }

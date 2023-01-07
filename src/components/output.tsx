@@ -53,11 +53,22 @@ export const Output: React.FC = () => {
     setOptimLogs([]);
     setUnoptimLogs([]);
     runInterpretor(bril, [], window.conout1);
-    runInterpretor(brilOptim, [], window.conout2);
+    const display = runInterpretor(brilOptim, [], window.conout2);
+    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+    const context = canvas.getContext("2d");
+    const imgData = context!.createImageData(100, 100);
+    for (let i = 0; i < 100 * 100; i++) {
+      imgData.data[i * 4] = display[i];
+      imgData.data[i * 4 + 1] = display[i];
+      imgData.data[i * 4 + 2] = display[i];
+      imgData.data[i * 4 + 3] = 255;
+    }
+    // const data = scaleImageData(imgData, 3, context);
+    context!.putImageData(imgData, 0, 0);
   }, [bril, brilOptim]);
 
   return (
-    <Grid templateColumns="repeat(2, 1fr)" gap={6} height="100%">
+    <Grid templateColumns="1fr 1fr 150px" gap={6} height="100%">
       <OverlayScrollbarsComponent defer style={fullHeight}>
         <Console
           logs={unoptimlogs}
@@ -91,6 +102,9 @@ export const Output: React.FC = () => {
             LOG_BACKGROUND: "white",
           }}></Console>
       </OverlayScrollbarsComponent>
+      <Grid borderLeft="1px solid lightgrey">
+        <canvas id="canvas" width="100" height="100" style={{ margin: "auto" }}></canvas>
+      </Grid>
     </Grid>
   );
 };

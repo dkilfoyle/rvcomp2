@@ -1,28 +1,29 @@
 void main() {
-  float y  = 0
-while (y < 100)
-  y = (y + 1)
-  var x  = 0
-  while (x < 100)
-    x = (x + 1)
+  float y  = 0f;
+  while (y < 100f) {
+    y = y + 1f;
+    float x  = 0f;
+    while (x < 100f) {
+      x = x + 1f;
 
-    var e = ((y / 50) - 1.5)
-    var f = ((x / 50) - 1)
+      float e = (y / 50f) - 1.5f;
+      float f = (x / 50f) - 1f;
 
-    var a = 0
-    var b = 0
-    var i = 0
-    var j = 0
-    var c = 0
+      float a = 0f;
+      float b = 0f;
+      float i = 0f;
+      float j = 0f;
+      float c = 0f;
 
-    while ((((i * i) + (j * j)) < 4) && (c < 255))
-      i = (((a * a) - (b * b)) + e)
-      j = (((2 * a) * b) + f)
-      a = i
-      b = j
-      c = (c + 1)
-    endwhile
-    setpixel (x, y, c)
-  endwhile
-endwhile
+      while ((((i * i) + (j * j)) < 4f) && (c < 255f)) {
+        i = ((a * a) - (b * b)) + e;
+        j = ((2f * a) * b) + f;
+        a = i;
+        b = j;
+        c = c + 1f;
+      }
+      setpixel(x, y, c);
+    }
+  }
+}
     
