@@ -4,6 +4,7 @@ import { ISimpleCLangError } from "../../components/simpleCEditor/monaco/Diagnos
 import parser from "./parser";
 import {
   AdditionExpressionCstChildren,
+  ArrayLiteralExpressionCstChildren,
   AtomicExpressionCstChildren,
   BlockStatementCstChildren,
   BoolLiteralExpressionCstChildren,
@@ -32,8 +33,10 @@ import {
   WhileStatementCstChildren,
 } from "./simpleC";
 import {
+  IAstArrayLiteralExpression,
   IAstAssignStatement,
   IAstAtomicExpression,
+  IAstBoolLiteralExpression,
   IAstComparisonExpression,
   IAstComparisonOperator,
   IAstDeclaration,
@@ -44,11 +47,13 @@ import {
   IAstIdentifierExpression,
   IAstIfStatement,
   IAstInvalidExpression,
+  IAstLiteralExpression,
   IAstNode,
   IAstProgram,
   IAstResult,
   IAstReturnStatement,
   IAstVariableDeclaration,
+  IDeclarationType,
   IPos,
   parseDocCommentString,
 } from "./ast";
@@ -115,14 +120,24 @@ class CstVisitor extends CstBaseVisitor {
     return true;
   }
 
-  checkTypesMatch(lhs: any, rhs: any) {
-    let lhsType: string = lhs.type;
-    if (lhs.size && _.isUndefined(lhs.index)) lhsType = `${lhsType}[${lhs.size}]`;
-    let rhsType: string = rhs.type;
-    if (rhs.size && _.isUndefined(rhs.index)) rhsType = `${rhsType}[${rhs.size}]`;
+  getExpressionType(lhs: IAstExpression) {
+    if (lhs._name == "arrayLiteralExpression") {
+      const expr = lhs as IAstArrayLiteralExpression;
+      return `${expr.type}[${expr.size}]`;
+    } else if (lhs._name == "identifierExpression") {
+      const expr = lhs as IAstIdentifierExpression;
+      if (expr.size && _.isUndefined(expr.index)) return `${expr.type}[${expr.size}]`;
+      else return expr.type;
+    } else return lhs.type;
+  }
+
+  checkTypesMatch(lhs: IAstExpression | string, rhs: IAstExpression) {
+    let lhsType: string;
+    if (typeof lhs === "string") lhsType = lhs;
+    else lhsType = this.getExpressionType(lhs);
+    const rhsType = this.getExpressionType(rhs);
 
     if (lhsType !== rhsType) {
-      // debugger;
       this.errors.push({ ...rhs.pos, code: "2", message: `Type mismatch: ${lhsType} != ${rhsType}` });
       return false;
     } else return true;
@@ -363,9 +378,9 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   binaryExpression(ctx: AdditionExpressionCstChildren | MultiplicationExpressionCstChildren | ComparisonExpressionCstChildren) {
-    const typeError = (node: any): IAstInvalidExpression => {
+    const typeError = (node: IAstExpression): IAstInvalidExpression => {
       this.errors.push({ ...node.pos, code: "2", message: "Expression operands must be all of same type" });
-      return { _name: "invalidExpression", type: "int" };
+      return { _name: "invalidExpression", type: "int", pos: node.pos };
     };
 
     let lhs = this.visit(ctx.operands[0]);
@@ -434,10 +449,11 @@ class CstVisitor extends CstBaseVisitor {
     return { ...decl, _name: "identifierExpression", pos: this.getTokenPos(ctx.ID[0]), index };
   }
 
-  literalExpression(ctx: LiteralExpressionCstChildren) {
+  literalExpression(ctx: LiteralExpressionCstChildren): IAstLiteralExpression {
     if (ctx.integerLiteralExpression) return this.visit(ctx.integerLiteralExpression);
     else if (ctx.stringLiteralExpression) return this.visit(ctx.stringLiteralExpression);
     else if (ctx.boolLiteralExpression) return this.visit(ctx.boolLiteralExpression);
+    else if (ctx.arrayLiteralExpression) return this.visit(ctx.arrayLiteralExpression);
     else {
       throw new Error();
     }
@@ -454,10 +470,25 @@ class CstVisitor extends CstBaseVisitor {
     return { _name: "stringLiteralExpression", value, type: "string", pos: this.getTokenPos(ctx.StringLiteral[0]) };
   }
 
-  boolLiteralExpression(ctx: BoolLiteralExpressionCstChildren) {
+  boolLiteralExpression(ctx: BoolLiteralExpressionCstChildren): IAstBoolLiteralExpression {
     const token = ctx.True || ctx.False;
     const value: boolean = ctx.True !== undefined;
     return { _name: "boolLiteralExpression", value, type: "bool", pos: this.getTokenPos(token![0]) };
+  }
+
+  arrayLiteralExpression(ctx: ArrayLiteralExpressionCstChildren): IAstArrayLiteralExpression {
+    const items = ctx.additionExpression.map((itemCtx, i) => this.visit(itemCtx));
+    const type = items[0].type;
+    items.forEach((item) => {
+      if (item.type !== type) this.pushError("Array items must be all same type", item.pos);
+    });
+    return {
+      _name: "arrayLiteralExpression",
+      type,
+      value: items,
+      size: items.length,
+      pos: convertCstNodeLocationToIPos(ctx.additionExpression[0].location),
+    };
   }
 
   parenExpression(ctx: ParenExpressionCstChildren) {
@@ -493,6 +524,14 @@ class CstVisitor extends CstBaseVisitor {
         code: "2",
         message: `Variable declaration type does not match initiator expression type: ${type} != ${initExpr.type}`,
       });
+
+    if (initExpr && initExpr?.size !== arraySize) {
+      this.errors.push({
+        ...pos,
+        code: "2",
+        message: `Variable declaration size does not match initiator expression size: ${arraySize} != ${initExpr.size}`,
+      });
+    }
 
     return { _name: "variableDeclaration", id, pos, type, initExpr, size: arraySize };
   }
