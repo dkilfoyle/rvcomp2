@@ -866,10 +866,15 @@ function evalProg(prog: IBrilProgram, args: string[]): Value | null {
   return result;
 }
 
-export function runInterpretor(prog: IBrilProgram, args: string[], mylogger: Console) {
+export function runInterpretor(prog: IBrilProgram, args: string[], mylogger: Console, optimLevel = "Unknown") {
   logger = mylogger;
   try {
-    evalProg(prog, args);
+    logger.info(`Running ${optimLevel}`);
+    const startTime = performance.now();
+    const result = evalProg(prog, args);
+    const endTime = performance.now();
+    if (result != null) logger.info(`Returned ${result}`);
+    logger.info(`Completed in ${(endTime - startTime).toFixed(1)}ms`);
   } catch (e) {
     if (e instanceof BriliError) {
       logger.error(`error: ${e.message}`);

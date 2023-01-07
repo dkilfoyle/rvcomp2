@@ -22,6 +22,11 @@ export interface SettingsState {
     keepPhis: boolean;
     isSSA: boolean;
   };
+  interp: {
+    isRunUnoptim: boolean;
+    isRunOptim: boolean;
+    isRunAuto: boolean;
+  };
   set: (fn: (state: SettingsState) => void) => void;
 }
 
@@ -41,6 +46,11 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   bril: {
     keepPhis: true,
     isSSA: false,
+  },
+  interp: {
+    isRunUnoptim: true,
+    isRunOptim: true,
+    isRunAuto: true,
   },
   set: (fn: (state: SettingsState) => void) => set(produce(fn)),
 }));

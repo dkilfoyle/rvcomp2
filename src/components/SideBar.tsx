@@ -1,8 +1,9 @@
-import { Accordion, AccordionButton, AccordionIcon, AccordionItem, AccordionPanel, Box, Checkbox, VStack } from "@chakra-ui/react";
+import { Accordion, AccordionButton, AccordionIcon, AccordionItem, AccordionPanel, Box, Button, Checkbox, VStack } from "@chakra-ui/react";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 import { examples } from "../examples/examples";
 import { useSettingsStore, SettingsState } from "../store/zustore";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 // const fileTreeData = [
 //   {
@@ -88,6 +89,8 @@ Object.keys(examples).forEach((key) => {
   });
 });
 
+const fullHeight = { maxHeight: "100%", height: "100%" };
+
 export const Sidebar = () => {
   const filename = useSettingsStore((state: SettingsState) => state.filename);
   const keepPhis = useSettingsStore((state: SettingsState) => state.optim.keepPhis);
@@ -97,145 +100,195 @@ export const Sidebar = () => {
   const doLVN = useSettingsStore((state: SettingsState) => state.optim.doLVN);
   const doGVN = useSettingsStore((state: SettingsState) => state.optim.doGVN);
   const doDCE = useSettingsStore((state: SettingsState) => state.optim.doDCE);
+  const isRunOptim = useSettingsStore((state: SettingsState) => state.interp.isRunOptim);
+  const isRunUnoptim = useSettingsStore((state: SettingsState) => state.interp.isRunUnoptim);
+  const isRunAuto = useSettingsStore((state: SettingsState) => state.interp.isRunAuto);
   const setSettings = useSettingsStore((state: SettingsState) => state.set);
 
   return (
-    <div style={{ backgroundColor: "whitesmoke" }}>
-      <Box p={4}>RVComp2</Box>
-      <Accordion defaultIndex={[0, 2]} allowMultiple size="sm">
-        <AccordionItem>
-          <h2>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                Source Files
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-          </h2>
-          <AccordionPanel pb={4}>
-            <Tree
-              treeData={dirTree as any}
-              autoExpandParent
-              defaultExpandedKeys={[filename]}
-              defaultSelectedKeys={[filename]}
-              expandAction="click"
-              showLine
-              onSelect={(keys, info) => {
-                if (!info.node.children && keys.length)
-                  setSettings((state: SettingsState) => {
-                    // state.filename = keys[0].toString();
-                    console.log(info.node);
-                    state.filename = info.node.key as string;
-                  });
-              }}></Tree>
-          </AccordionPanel>
-        </AccordionItem>
-
-        <AccordionItem>
-          <h2>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                Bril
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-          </h2>
-          <AccordionPanel pb={4}>
-            <VStack alignItems="start">
-              <Checkbox
-                isChecked={brilIsSSA}
-                onChange={(e) => {
-                  setSettings((state: SettingsState) => {
-                    state.bril.isSSA = e.target.checked;
-                  });
-                  if (e.target.checked)
+    <OverlayScrollbarsComponent defer style={fullHeight}>
+      <div style={{ backgroundColor: "whitesmoke", height: "100%" }}>
+        <Box p={2} fontWeight="bold" textAlign="center">
+          RVComp2
+        </Box>
+        <Accordion defaultIndex={[0, 2]} allowMultiple size="sm">
+          <AccordionItem>
+            <h2>
+              <AccordionButton>
+                <Box flex="1" textAlign="left">
+                  Source Files
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+            </h2>
+            <AccordionPanel p={2}>
+              <Tree
+                treeData={dirTree as any}
+                autoExpandParent
+                defaultExpandedKeys={[filename]}
+                defaultSelectedKeys={[filename]}
+                expandAction="click"
+                showLine
+                onSelect={(keys, info) => {
+                  if (!info.node.children && keys.length)
                     setSettings((state: SettingsState) => {
-                      state.optim.isSSA = true;
+                      // state.filename = keys[0].toString();
+                      console.log(info.node);
+                      state.filename = info.node.key as string;
                     });
-                  // dispatch(setBrilIsSSA(e.target.checked));
-                  // if (e.target.checked) dispatch(setIsSSA(true));
-                }}>
-                SSA
-              </Checkbox>
-              <Checkbox
-                isChecked={brilKeepPhis}
-                onChange={(e) =>
-                  setSettings((state: SettingsState) => {
-                    state.bril.keepPhis = e.target.checked;
-                  })
-                }>
-                KeepPhis
-              </Checkbox>
-            </VStack>
-          </AccordionPanel>
-        </AccordionItem>
+                }}></Tree>
+            </AccordionPanel>
+          </AccordionItem>
 
-        <AccordionItem>
-          <h2>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                Optimisations
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-          </h2>
-          <AccordionPanel pb={4}>
-            <VStack alignItems="start">
-              <Checkbox
-                isChecked={isSSA}
-                onChange={(e) =>
-                  setSettings((state: SettingsState) => {
-                    state.optim.isSSA = e.target.checked;
-                  })
-                }>
-                SSA
-              </Checkbox>
-              <Checkbox
-                isChecked={keepPhis}
-                onChange={(e) =>
-                  setSettings((state: SettingsState) => {
-                    state.optim.keepPhis = e.target.checked;
-                  })
-                }>
-                KeepPhis
-              </Checkbox>
-              <Checkbox
-                isChecked={doLVN}
-                onChange={(e) =>
-                  setSettings((state: SettingsState) => {
-                    state.optim.doLVN = e.target.checked;
-                  })
-                }>
-                LVN
-              </Checkbox>
-              <Checkbox
-                isChecked={doGVN}
-                onChange={(e) =>
-                  setSettings((state: SettingsState) => {
-                    state.optim.doGVN = e.target.checked;
-                    if (e.target.checked) {
-                      state.optim.isSSA = true;
-                      state.optim.keepPhis = true;
-                      state.bril.isSSA = true;
-                      state.optim.doLVN = false;
-                    }
-                  })
-                }>
-                GVN
-              </Checkbox>
-              <Checkbox
-                isChecked={doDCE}
-                onChange={(e) =>
-                  setSettings((state: SettingsState) => {
-                    state.optim.doDCE = e.target.checked;
-                  })
-                }>
-                DCE
-              </Checkbox>
-            </VStack>
-          </AccordionPanel>
-        </AccordionItem>
-      </Accordion>
-    </div>
+          <AccordionItem>
+            <h2>
+              <AccordionButton>
+                <Box flex="1" textAlign="left">
+                  Bril
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+            </h2>
+            <AccordionPanel pb={4}>
+              <VStack alignItems="start">
+                <Checkbox
+                  isChecked={brilIsSSA}
+                  onChange={(e) => {
+                    setSettings((state: SettingsState) => {
+                      state.bril.isSSA = e.target.checked;
+                    });
+                    if (e.target.checked)
+                      setSettings((state: SettingsState) => {
+                        state.optim.isSSA = true;
+                      });
+                    // dispatch(setBrilIsSSA(e.target.checked));
+                    // if (e.target.checked) dispatch(setIsSSA(true));
+                  }}>
+                  SSA
+                </Checkbox>
+                <Checkbox
+                  isChecked={brilKeepPhis}
+                  onChange={(e) =>
+                    setSettings((state: SettingsState) => {
+                      state.bril.keepPhis = e.target.checked;
+                    })
+                  }>
+                  KeepPhis
+                </Checkbox>
+              </VStack>
+            </AccordionPanel>
+          </AccordionItem>
+
+          <AccordionItem>
+            <h2>
+              <AccordionButton>
+                <Box flex="1" textAlign="left">
+                  Optimisations
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+            </h2>
+            <AccordionPanel pb={4}>
+              <VStack alignItems="start">
+                <Checkbox
+                  isChecked={isSSA}
+                  onChange={(e) =>
+                    setSettings((state: SettingsState) => {
+                      state.optim.isSSA = e.target.checked;
+                    })
+                  }>
+                  SSA
+                </Checkbox>
+                <Checkbox
+                  isChecked={keepPhis}
+                  onChange={(e) =>
+                    setSettings((state: SettingsState) => {
+                      state.optim.keepPhis = e.target.checked;
+                    })
+                  }>
+                  KeepPhis
+                </Checkbox>
+                <Checkbox
+                  isChecked={doLVN}
+                  onChange={(e) =>
+                    setSettings((state: SettingsState) => {
+                      state.optim.doLVN = e.target.checked;
+                    })
+                  }>
+                  LVN
+                </Checkbox>
+                <Checkbox
+                  isChecked={doGVN}
+                  onChange={(e) =>
+                    setSettings((state: SettingsState) => {
+                      state.optim.doGVN = e.target.checked;
+                      if (e.target.checked) {
+                        state.optim.isSSA = true;
+                        state.optim.keepPhis = true;
+                        state.bril.isSSA = true;
+                        state.optim.doLVN = false;
+                      }
+                    })
+                  }>
+                  GVN
+                </Checkbox>
+                <Checkbox
+                  isChecked={doDCE}
+                  onChange={(e) =>
+                    setSettings((state: SettingsState) => {
+                      state.optim.doDCE = e.target.checked;
+                    })
+                  }>
+                  DCE
+                </Checkbox>
+              </VStack>
+            </AccordionPanel>
+          </AccordionItem>
+
+          <AccordionItem>
+            <h2>
+              <AccordionButton>
+                <Box flex="1" textAlign="left">
+                  Interpreter
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+            </h2>
+            <AccordionPanel pb={4}>
+              <VStack alignItems="start">
+                <Checkbox
+                  isChecked={isRunUnoptim}
+                  onChange={(e) =>
+                    setSettings((state: SettingsState) => {
+                      state.interp.isRunUnoptim = e.target.checked;
+                    })
+                  }>
+                  Run Un-optimised
+                </Checkbox>
+                <Checkbox
+                  isChecked={isRunOptim}
+                  onChange={(e) =>
+                    setSettings((state: SettingsState) => {
+                      state.interp.isRunOptim = e.target.checked;
+                    })
+                  }>
+                  Run Optimised
+                </Checkbox>
+                <Checkbox
+                  isChecked={isRunAuto}
+                  onChange={(e) =>
+                    setSettings((state: SettingsState) => {
+                      state.interp.isRunAuto = e.target.checked;
+                    })
+                  }>
+                  Auto Run
+                </Checkbox>
+                <Button>Run</Button>
+              </VStack>
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
+      </div>
+    </OverlayScrollbarsComponent>
   );
 };

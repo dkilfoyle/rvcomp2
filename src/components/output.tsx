@@ -4,7 +4,7 @@ import { Console, Hook } from "console-feed";
 import "overlayscrollbars/overlayscrollbars.css";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { Flex, Grid } from "@chakra-ui/react";
-import { useParseStore, ParseState } from "../store/zustore";
+import { useParseStore, ParseState, useSettingsStore, SettingsState } from "../store/zustore";
 import { runInterpretor } from "../languages/bril/interp";
 
 const theme = {
@@ -36,6 +36,9 @@ const fullHeight = { maxHeight: "100%" };
 export const Output: React.FC = () => {
   const bril = useParseStore((state: ParseState) => state.bril);
   const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
+  const isRunOptim = useSettingsStore((state: SettingsState) => state.interp.isRunOptim);
+  const isRunUnoptim = useSettingsStore((state: SettingsState) => state.interp.isRunUnoptim);
+  const isRunAuto = useSettingsStore((state: SettingsState) => state.interp.isRunAuto);
 
   const [unoptimlogs, setUnoptimLogs] = useState<any[]>([]);
   const [optimlogs, setOptimLogs] = useState<any[]>([]);
@@ -52,13 +55,35 @@ export const Output: React.FC = () => {
   useEffect(() => {
     setOptimLogs([]);
     setUnoptimLogs([]);
-    runInterpretor(bril, [], window.conout1);
-    runInterpretor(brilOptim, [], window.conout2);
+    if (isRunAuto) {
+      if (isRunUnoptim) runInterpretor(bril, [], window.conout1, "un-optimised");
+      if (isRunOptim) runInterpretor(brilOptim, [], window.conout2, "optimised");
+    }
   }, [bril, brilOptim]);
+
+  useEffect(() => {
+    if (optimOutputRef.current && optimOutputRef.current.osInstance()) {
+      const { viewport } = optimOutputRef.current.osInstance()!.elements();
+      const { scrollLeft, scrollTop } = viewport; // get scroll offset
+      const lc = viewport.lastChild as HTMLElement;
+      const lc2 = lc.lastChild as HTMLElement;
+      if (lc2) lc2.scrollIntoView();
+    }
+  }, [optimlogs, optimOutputRef.current]);
+
+  useEffect(() => {
+    if (unoptimOutputRef.current && unoptimOutputRef.current.osInstance()) {
+      const { viewport } = unoptimOutputRef.current.osInstance()!.elements();
+      const { scrollLeft, scrollTop } = viewport; // get scroll offset
+      const lc = viewport.lastChild as HTMLElement;
+      const lc2 = lc.lastChild as HTMLElement;
+      if (lc2) lc2.scrollIntoView();
+    }
+  }, [unoptimlogs, unoptimOutputRef.current]);
 
   return (
     <Grid templateColumns="repeat(2, 1fr)" gap={6} height="100%">
-      <OverlayScrollbarsComponent defer style={fullHeight}>
+      <OverlayScrollbarsComponent style={fullHeight} ref={unoptimOutputRef}>
         <Console
           logs={unoptimlogs}
           variant="light"
@@ -75,7 +100,7 @@ export const Output: React.FC = () => {
           }}></Console>
       </OverlayScrollbarsComponent>
 
-      <OverlayScrollbarsComponent defer style={fullHeight}>
+      <OverlayScrollbarsComponent style={fullHeight} ref={optimOutputRef}>
         <Console
           logs={optimlogs}
           variant="light"
