@@ -79,7 +79,9 @@ const And = createToken({ name: "And", pattern: /&&/, categories: ComparisonOper
 const Or = createToken({ name: "Or", pattern: /\|\|/, categories: ComparisonOperator });
 
 const Equals = createToken({ name: "Equals", pattern: /=/ });
+const PlusPlus = createToken({ name: "PlusPlus", pattern: /\+\+/, categories: AdditionOperator });
 const Plus = createToken({ name: "Plus", pattern: /\+/, categories: AdditionOperator });
+const MinusMinus = createToken({ name: "MinusMinus", pattern: /--/, categories: AdditionOperator });
 const Minus = createToken({ name: "Minus", pattern: /-/, categories: AdditionOperator });
 const Times = createToken({ name: "Times", pattern: /\*/, categories: MultiplicationOperator });
 const Divide = createToken({ name: "Divide", pattern: /\//, categories: MultiplicationOperator });
@@ -122,7 +124,9 @@ export const tokens = {
   And,
   Or,
   Equals,
+  PlusPlus,
   Plus,
+  MinusMinus,
   Minus,
   Times,
   Divide,

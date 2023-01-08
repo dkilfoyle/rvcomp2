@@ -157,9 +157,29 @@ export interface AssignStatementCstNode extends CstNode {
 
 export type AssignStatementCstChildren = {
   identifierExpression: IdentifierExpressionCstNode[];
+  postFixOperation?: PostFixOperationCstNode[];
+  equalsExpression?: EqualsExpressionCstNode[];
+  SemiColon: IToken[];
+};
+
+export interface PostFixOperationCstNode extends CstNode {
+  name: "postFixOperation";
+  children: PostFixOperationCstChildren;
+}
+
+export type PostFixOperationCstChildren = {
+  PlusPlus?: IToken[];
+  MinusMinus?: IToken[];
+};
+
+export interface EqualsExpressionCstNode extends CstNode {
+  name: "equalsExpression";
+  children: EqualsExpressionCstChildren;
+}
+
+export type EqualsExpressionCstChildren = {
   Equals: IToken[];
   additionExpression: AdditionExpressionCstNode[];
-  SemiColon: IToken[];
 };
 
 export interface AdditionExpressionCstNode extends CstNode {
@@ -349,6 +369,8 @@ export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   functionCallStatement(children: FunctionCallStatementCstChildren, param?: IN): OUT;
   returnStatement(children: ReturnStatementCstChildren, param?: IN): OUT;
   assignStatement(children: AssignStatementCstChildren, param?: IN): OUT;
+  postFixOperation(children: PostFixOperationCstChildren, param?: IN): OUT;
+  equalsExpression(children: EqualsExpressionCstChildren, param?: IN): OUT;
   additionExpression(children: AdditionExpressionCstChildren, param?: IN): OUT;
   comparisonExpression(children: ComparisonExpressionCstChildren, param?: IN): OUT;
   multiplicationExpression(children: MultiplicationExpressionCstChildren, param?: IN): OUT;

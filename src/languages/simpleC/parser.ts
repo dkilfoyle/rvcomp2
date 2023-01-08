@@ -204,9 +204,18 @@ class SimpleCParser extends CstParser {
 
   public assignStatement = this.RULE("assignStatement", () => {
     this.SUBRULE(this.identifierExpression);
+    this.OR([{ ALT: () => this.SUBRULE(this.postFixOperation) }, { ALT: () => this.SUBRULE(this.equalsExpression) }]);
+
+    this.CONSUME(tokens.SemiColon);
+  });
+
+  public postFixOperation = this.RULE("postFixOperation", () => {
+    this.OR([{ ALT: () => this.CONSUME(tokens.PlusPlus) }, { ALT: () => this.CONSUME(tokens.MinusMinus) }]);
+  });
+
+  public equalsExpression = this.RULE("equalsExpression", () => {
     this.CONSUME(tokens.Equals);
     this.SUBRULE(this.additionExpression);
-    this.CONSUME(tokens.SemiColon);
   });
 
   // ==========================================================================================================

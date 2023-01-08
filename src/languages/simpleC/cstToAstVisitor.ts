@@ -5,10 +5,12 @@ import parser from "./parser";
 import {
   AdditionExpressionCstChildren,
   ArrayLiteralExpressionCstChildren,
+  AssignStatementCstChildren,
   AtomicExpressionCstChildren,
   BlockStatementCstChildren,
   BoolLiteralExpressionCstChildren,
   ComparisonExpressionCstChildren,
+  EqualsExpressionCstChildren,
   ExpressionListCstChildren,
   FloatLiteralExpressionCstChildren,
   ForStatementCstChildren,
@@ -21,6 +23,7 @@ import {
   LiteralExpressionCstChildren,
   MultiplicationExpressionCstChildren,
   ParenExpressionCstChildren,
+  PostFixOperationCstChildren,
   ProgramCstChildren,
   ProgramCstNode,
   ReturnStatementCstChildren,
@@ -288,12 +291,30 @@ class CstVisitor extends CstBaseVisitor {
     return this.visit(ctx.functionCallExpression);
   }
 
-  assignStatement(ctx: any): IAstAssignStatement {
+  assignStatement(ctx: AssignStatementCstChildren) {
     const lhs = this.visit(ctx.identifierExpression);
-    const rhs = this.visit(ctx.additionExpression);
+    let rhs;
+    if (ctx.equalsExpression) {
+      rhs = this.visit(ctx.equalsExpression[0]);
+    } else if (ctx.postFixOperation) {
+      rhs = {
+        _name: "intBinaryExpression",
+        type: "int",
+        lhs,
+        op: this.visit(ctx.postFixOperation[0]),
+        rhs: { _name: "integerLiteralExpression", value: 1, type: "int" },
+      };
+    }
     this.checkTypesMatch(lhs, rhs);
-
     return { _name: "assignStatement", lhs, rhs };
+  }
+
+  equalsExpression(ctx: EqualsExpressionCstChildren) {
+    return this.visit(ctx.additionExpression);
+  }
+
+  postFixOperation(ctx: PostFixOperationCstChildren) {
+    return ctx.PlusPlus ? "add" : "sub";
   }
 
   // ==========================================================================================================

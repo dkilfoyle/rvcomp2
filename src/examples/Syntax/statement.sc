@@ -40,7 +40,7 @@ void main() {
     print_int(0);
 
   // for loop
-  for (int y = 6; y < 11; y = y + 1;) {
+  for (int y = 6; y < 11; y++;) {
     print_int(y);
   } // expect 6 7 8 9 10
 

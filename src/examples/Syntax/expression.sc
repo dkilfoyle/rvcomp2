@@ -2,7 +2,16 @@ int add(int a, int b) {
   return a + b;
 }
 
-void main() {
+void unarytest() {
+  int i = 10;
+  i++;
+  i++;
+  print_int(i); // expect 12
+  i--;
+  print_int(i); // expect 11
+}
+
+void inttest() {
   int i = 5;
   print_int(i); // 5
 
@@ -17,7 +26,9 @@ void main() {
 
   int n = 3 + add(4,5);
   print_int(n); // 12
+}
 
+void booltest() {
   bool b = (true && true);
   print_bool(b); // true
 
@@ -35,4 +46,10 @@ void main() {
 
   bool d = (2+3) > (1+2);
   print_bool(d); // true
+}
+
+void main() {
+  unarytest();
+  inttest();
+  booltest();
 }
