@@ -31,7 +31,7 @@ export interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
-  filename: "./Screen/mandel.sc",
+  filename: "./Syntax/fmath.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

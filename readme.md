@@ -58,6 +58,12 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
 3. rc-tree
 4. vis.js
 5. monaco-editor
+6. wabt.js
+   - Does not work with import wabt from "wabt". Use these steps instead
+     1. Add <script src="https://unpkg.com/wabt/index.js"></script> to index.html
+     2. Make file wabt.d.ts and move index.d.ts from wabt.js
+     3. To use wabt:
+        - Wabt().then((wabtModule) => wabtModule.parseWat....)
 
 ### Acknowledgements
 
