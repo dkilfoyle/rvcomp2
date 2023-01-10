@@ -6,6 +6,7 @@ import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overl
 import { Flex, Grid } from "@chakra-ui/react";
 import { useParseStore, ParseState, useSettingsStore, SettingsState } from "../store/zustore";
 import { runInterpretor } from "../languages/bril/interp";
+import { emitWasm } from "../languages/wasm/brilToWasm";
 // import wabt from "wabt";
 // const wabt = require("wabt")();
 
@@ -29,6 +30,8 @@ const theme = {
   base0E: "#ae81ff",
   base0F: "#cc6633",
 };
+
+const display = new Uint8Array(10000);
 
 window.conout1 = { ...window.console };
 window.conout2 = { ...window.console };
@@ -58,58 +61,35 @@ export const Output: React.FC = () => {
     setOptimLogs([]);
     setUnoptimLogs([]);
     if (isRunAuto) {
-      // const parseWat = async () => {
-      //   const wabt2 = await wabt();
-      //   const wabt_options = {
-      //     exceptions: false,
-      //     mutable_globals: false,
-      //     sat_float_to_int: false,
-      //     sign_extension: false,
-      //     simd: false,
-      //     threads: false,
-      //     multi_value: false,
-      //     tail_call: false,
-      //     bulk_memory: false,
-      //     reference_types: false,
-      //     annotations: false,
-      //     gc: false,
-      //   };
-      //   const wasmModule = wabt2.parseWat(
-      //     "main.wat",
-      //     `(module
-      //     (func $i (import "imports" "imported_func") (param i32))
-      //     (func (export "exported_func")
-      //       i32.const 42
-      //         call $I))`,
-      //     wabt_options
-      //   );
-      //   return wasmModule;
-      // };
-      // parseWat().then((res) => {
-      //   const importObject = {};
-      //   WebAssembly.instantiate(res.toBinary({}).buffer, importObject).then(function (res) {
-      //     //run functions here
-      //     const myresult = res.instance.exports.AddInt(2, 3);
-      //     console.log("WASM AddInt(2,3) = ", myresult);
-      //   });
-      // });
+      //       WabtModule().then((wabtModule) => {
+      //         const wasmModule = wabtModule.parseWat(
+      //           "main.wat",
+      //           `(module
+      //   (func (result i32)
+      //     (i32.const 42)
+      //   )
+      //   (export "helloWorld" (func 0))
+      // )`
+      //         );
+      //         const importObject = {};
+      //         WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
+      //           //run functions here
+      //           const myresult = res.instance.exports.helloWorld();
+      //           console.log("WASM hellowolrd = ", myresult);
+      //         });
+      //       });
 
-      // const wabt = require("wabt")();
+      const wasmBuffer = emitWasm(brilOptim);
       WabtModule().then((wabtModule) => {
-        const wasmModule = wabtModule.parseWat(
-          "main.wat",
-          `(module
-  (func (result i32)
-    (i32.const 42)
-  )
-  (export "helloWorld" (func 0))
-)`
-        );
-        const importObject = {};
+        const wasmModule = wabtModule.readWasm(wasmBuffer, {});
+        console.log(wasmModule.toText({}));
+        // wasmModule.validate();
+        const memory = new WebAssembly.Memory({ initial: 1 });
+        const importObject = { env: { print_int: (x: number) => console.log("From wasm: ", x), display, memory } };
         WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
           //run functions here
-          const myresult = res.instance.exports.helloWorld();
-          console.log("WASM hellowolrd = ", myresult);
+          const myresult = res.instance.exports.main();
+          console.log("WASM returns = ", myresult);
         });
       });
 

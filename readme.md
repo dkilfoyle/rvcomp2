@@ -68,3 +68,6 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
 ### Acknowledgements
 
 1. Adrian Sampson's self-guided CS6120 https://www.cs.cornell.edu/courses/cs6120/2020fa/
+2. WASM binary structure and code generation
+   1. https://coinexsmartchain.medium.com/wasm-introduction-part-1-binary-format-57895d851580
+   2. https://blog.scottlogic.com/2019/05/17/webassembly-compiler.html

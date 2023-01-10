@@ -31,7 +31,7 @@ export interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
-  filename: "./Syntax/fmath.sc",
+  filename: "./helloint.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
