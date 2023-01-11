@@ -40,6 +40,7 @@ import DockLayout, {
 import "rc-dock/dist/rc-dock.css";
 import { Output } from "../components/output";
 import _ from "lodash";
+import { WasmEditor } from "../components/wasmEditor/WasmEditor";
 
 // const fullHeight = { maxHeight: "100%" };
 // const fullHeight2 = { height: "100%", display: "flex", flexDirection: "column" };
@@ -62,7 +63,7 @@ const defaultlayout: LayoutBase = {
             mode: "vertical",
             children: [
               { id: "codePanel", group: "card", tabs: [{ id: "code" }] },
-              { id: "brilPanel", group: "card", tabs: [{ id: "bril" }] },
+              { id: "brilPanel", group: "card", tabs: [{ id: "bril" }, { id: "wasm" }] },
             ],
           },
           {
@@ -120,6 +121,12 @@ const tabs: Record<string, TabData> = {
     id: "bril",
     title: "Bril",
     content: <BrilEditor></BrilEditor>,
+    cached: true,
+  },
+  wasm: {
+    id: "wasm",
+    title: "Wasm",
+    content: <WasmEditor></WasmEditor>,
     cached: true,
   },
   cfg: {

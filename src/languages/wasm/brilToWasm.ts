@@ -233,7 +233,7 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
 
             const binopcode = binInstrType == "int" ? (`i32_${instr.op}` as IWasmOpCode) : (`f32_${instr.op.slice(1)}` as IWasmOpCode);
             code.push(Opcodes[binopcode]);
-            console.log(`(${binopcode} ${binarg0} ${binarg1})`);
+            console.log(`(${binopcode} (get_local ${binarg0}) (get_local ${binarg1}))`);
 
             const bindest = localIndexForSymbol(instr.dest, binInstrType).index;
             code.push(Opcodes.set_local);
@@ -247,11 +247,10 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
 
             code.push(Opcodes.get_local);
             code.push(...unsignedLEB128(idrhsIndex));
-            console.log(`(get_local ${idrhsIndex})`);
 
             code.push(Opcodes.set_local);
             code.push(...unsignedLEB128(idlhsIndex));
-            console.log(`(set_local ${idlhsIndex})`);
+            console.log(`(set_local ${idlhsIndex} (get_local ${idrhsIndex}))`);
             break;
           // case "whileStatement":
           //   // outer block
@@ -395,6 +394,36 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   // the code section contains vectors of functions
   const codeSection = createSection(Section.code, encodeVector(brilFunctions.map((func) => emitWasmFunction(func, bril))));
 
+  const dataSection = createSection(Section.data, [0]);
+
+  const nameSection = createSection(Section.custom, [
+    ...encodeString("name"),
+    // 0, // modulename
+    // encodeVector([...encodeString("dean")]),
+    1, // function names
+    ...encodeVector([
+      2, // num functions
+      0,
+      ...encodeString("env.print_int"),
+      1,
+      ...encodeString("main"),
+    ]),
+    2, // local names
+    ...encodeVector([
+      2, // num functions
+      0,
+      0,
+      1, // function index main
+      3, // num locals
+      0,
+      ...encodeString("a"),
+      1,
+      ...encodeString("b"),
+      2,
+      ...encodeString("c"),
+    ]),
+  ]);
+
   return Uint8Array.from([
     ...magicModuleHeader,
     ...moduleVersion,
@@ -403,6 +432,7 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
     ...funcSection,
     ...exportSection,
     ...codeSection,
+    ...nameSection,
   ]);
 };
 

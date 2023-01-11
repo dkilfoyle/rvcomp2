@@ -81,8 +81,10 @@ export const Output: React.FC = () => {
 
       const wasmBuffer = emitWasm(brilOptim);
       WabtModule().then((wabtModule) => {
-        const wasmModule = wabtModule.readWasm(wasmBuffer, {});
-        console.log(wasmModule.toText({}));
+        const wasmModule = wabtModule.readWasm(wasmBuffer, { readDebugNames: true });
+        wasmModule.applyNames();
+        // wasmModule.generateNames();
+        console.log(wasmModule.toText({ foldExprs: true }));
         // wasmModule.validate();
         const memory = new WebAssembly.Memory({ initial: 1 });
         const importObject = { env: { print_int: (x: number) => console.log("From wasm: ", x), display, memory } };
