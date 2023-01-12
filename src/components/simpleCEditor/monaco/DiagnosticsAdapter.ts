@@ -6,6 +6,8 @@ import { CstNode } from "chevrotain";
 import { astToBrilVisitor } from "../../../languages/bril/astToBrilVisitor";
 import { IAstProgram, IAstResult } from "../../../languages/simpleC/ast";
 import { ParseState, useParseStore } from "../../../store/zustore";
+import { IBrilProgram } from "../../../languages/bril/BrilInterface";
+import _ from "lodash";
 
 export interface ISimpleCLangError {
   startLineNumber: number;
@@ -49,22 +51,42 @@ export default class DiagnosticsAdapter {
     const { errors, cst, ast } = await worker.doValidation();
 
     const setParse = useParseStore.getState().set;
+    const resetParse = useParseStore.getState().reset;
+
+    setParse((state: ParseState) => {
+      state.errors = errors;
+    });
+
+    if (errors.length > 0) {
+      console.info("Parse errors:");
+      errors.forEach((err, i) => {
+        console.info(i + ": " + err.message);
+      });
+    }
+
+    let bril: IBrilProgram;
 
     if (cst)
       setParse((state: ParseState) => {
         state.cst = cst;
       });
+    else {
+      // parse errors
+      resetParse(true);
+    }
     if (ast) {
       setParse((state: ParseState) => {
         state.ast = ast;
       });
       if (errors.length == 0) {
-        const bril = astToBrilVisitor.visit(ast);
+        bril = astToBrilVisitor.visit(ast);
         setParse((state: ParseState) => {
           state.bril = bril;
         });
       }
     }
+
+    resetParse(_.isUndefined(cst), _.isUndefined(ast), errors.length > 0);
 
     // get the current model(editor or file) which is only one
     const model = monaco.editor.getModel(resource);

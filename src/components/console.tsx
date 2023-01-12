@@ -1,8 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { Console, Hook } from "console-feed";
 import "overlayscrollbars/overlayscrollbars.css";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
+import { Grid, Tag, TagLabel, TagLeftIcon } from "@chakra-ui/react";
+import { CheckCircleIcon, CloseIcon, QuestionIcon, WarningIcon } from "@chakra-ui/icons";
+import { useParseStore, ParseState } from "../store/zustore";
+import { IBrilProgram } from "../languages/bril/BrilInterface";
+import { brilBuilder } from "../languages/bril/BrilBuilder";
 
 const theme = {
   scheme: "monokai",
@@ -30,9 +35,46 @@ const fullHeight2 = { height: "100%", display: "flex", flexDirection: "column" }
 const fullHeightNoMargin = { height: "100%", margin: "0px", padding: "0px" };
 const fullWindow = { height: "100vh", width: "100vw" };
 
+const statusLookup = {
+  good: {
+    color: "green",
+    icon: CheckCircleIcon,
+  },
+  bad: { color: "red", icon: WarningIcon },
+  na: { color: "gray", icon: QuestionIcon },
+};
+
+const makeTag = (item: string, data: string, status: "good" | "bad" | "na") => {
+  return (
+    <Tag size="sm" borderRadius="full" colorScheme={statusLookup[status].color} key={item}>
+      <TagLeftIcon boxSize="12px" as={statusLookup[status].icon}></TagLeftIcon>
+      <TagLabel width="100%">
+        <Grid templateColumns="auto 1fr" width="100%">
+          <span>{item}:</span>
+          <span style={{ textAlign: "right", fontWeight: "bolder" }}>{data}</span>
+        </Grid>
+      </TagLabel>
+    </Tag>
+  );
+};
+const countInstructions = (bril: IBrilProgram) => {
+  return Object.values(bril.functions).reduce((accum, curFn) => (accum += curFn.instrs.length), 0);
+};
+
 export const Consoler: React.FC = () => {
-  // const cst = cstEntity.use();
-  // const ast = astEntity.use();
+  const { cst, ast, bril, brilOptim, errors, wasm } = useParseStore((state: ParseState) => ({
+    cst: state.cst,
+    ast: state.ast,
+    bril: state.bril,
+    brilOptim: state.brilOptim,
+    errors: state.errors,
+    wasm: state.wasm,
+  }));
+  // const ast = useParseStore((state: ParseState) => state.ast);
+  // const bril = useParseStore((state: ParseState) => state.bril);
+  // const wasm = useParseStore((state: ParseState) => state.bril);
+  // const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
+  // const errors = useParseStore((state: ParseState) => state.errors);
   const [logs, setLogs] = useState<any[]>([]);
 
   const consoleScollRef = useRef<OverlayScrollbarsComponentRef>(null);
@@ -42,21 +84,57 @@ export const Consoler: React.FC = () => {
     // return () => Unhook((window as any).console);
   }, []);
 
+  const statusTags = useMemo(() => {
+    const tags = [];
+    if (errors.length == 0) {
+      tags.push(makeTag("Parser", `${ast.functionDeclarations.length} funs`, "good"));
+      if (Object.keys(bril.functions).length > 0) {
+        tags.push(makeTag("Compiler", `${countInstructions(bril)} instr`, "good"));
+        if (Object.keys(brilOptim.functions).length > 0) {
+          tags.push(makeTag("Optimiser", `${countInstructions(brilOptim)} instr`, "good"));
+          if (wasm.length > 0) {
+            tags.push(makeTag("CodeGen", `${wasm.length} bytes`, "good"));
+          } else {
+            tags.push(makeTag("CodeGen", `error(s)`, "bad"));
+          }
+        } else {
+          tags.push(makeTag("Optimiser", `error(s)`, "bad"));
+          tags.push(makeTag("CodeGen", `NA`, "na"));
+        }
+      } else {
+        tags.push(makeTag("Compiler", `${errors.length} instr`, "bad"));
+        tags.push(makeTag("Optimiser", `NA`, "na"));
+        tags.push(makeTag("CodeGen", `NA`, "na"));
+      }
+    } else {
+      tags.push(makeTag("Parser", `${errors.length} errors`, "bad"));
+      tags.push(makeTag("Compiler", `NA`, "na"));
+      tags.push(makeTag("Optimiser", `NA`, "na"));
+      tags.push(makeTag("CodeGen", `NA`, "na"));
+    }
+    return tags;
+  }, [ast, cst, bril, brilOptim, wasm, errors]);
+
   return (
-    <OverlayScrollbarsComponent defer style={fullHeight}>
-      <Console
-        logs={logs}
-        variant="light"
-        filter={["info"]}
-        styles={{
-          BASE_FONT_SIZE: 10,
-          BASE_LINE_HEIGHT: 0.8,
-          LOG_INFO_ICON: "",
-          LOG_ICON_WIDTH: 0,
-          TREENODE_FONT_SIZE: 8,
-          BASE_BACKGROUND_COLOR: "white",
-          LOG_BACKGROUND: "white",
-        }}></Console>
-    </OverlayScrollbarsComponent>
+    <Grid templateColumns="auto 1fr" height="100%" gap={2}>
+      <Grid gap={0.5} p={2} borderRight="1px solid lightgrey" minWidth="180px">
+        {statusTags.map((tag) => tag)}
+      </Grid>
+      <OverlayScrollbarsComponent defer style={{ height: "100%", marginTop: "3px", marginBottom: "3px" }}>
+        <Console
+          logs={logs}
+          variant="light"
+          filter={["info"]}
+          styles={{
+            BASE_FONT_SIZE: 10,
+            BASE_LINE_HEIGHT: 0.8,
+            LOG_INFO_ICON: "",
+            LOG_ICON_WIDTH: 0,
+            TREENODE_FONT_SIZE: 8,
+            BASE_BACKGROUND_COLOR: "white",
+            LOG_BACKGROUND: "white",
+          }}></Console>
+      </OverlayScrollbarsComponent>
+    </Grid>
   );
 };

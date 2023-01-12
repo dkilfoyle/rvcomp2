@@ -26,9 +26,7 @@ export const WasmEditor: VFC = () => {
   const monacoEl = useRef(null);
 
   const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
-  // const setParse = useParseStore((state: ParseState) => state.set);
-
-  const wasmTxt = useMemo(() => {}, [brilOptim]);
+  const setParse = useParseStore((state: ParseState) => state.set);
 
   useEffect(() => {
     if (editor) {
@@ -48,9 +46,17 @@ export const WasmEditor: VFC = () => {
           const txt = wasmModule.toText({ foldExprs: true, inlineExport: true });
           const wasmModel = monaco.editor.createModel(txt, "wasm");
           editor.setModel(wasmModel);
+          setParse((state) => {
+            state.wasm = wasmBuffer;
+          });
         } catch (e) {
+          setParse((state) => {
+            state.wasm = new Uint8Array();
+          });
           const wasmModel = monaco.editor.createModel(e.toString());
           editor.setModel(wasmModel);
+          console.info("Wasm errors:");
+          console.info(e.toString());
         }
       });
     }
