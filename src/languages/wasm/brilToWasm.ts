@@ -1,7 +1,10 @@
 // adapted from https://github.com/ColinEberhardt/chasm
 
+import _ from "lodash";
 import { IBrilFunction, IBrilInstruction, IBrilInstructionOrLabel, IBrilProgram, IBrilType } from "../bril/BrilInterface";
 import { unsignedLEB128, signedLEB128, encodeString, ieee754 } from "./encoding";
+
+let allSymbols: Record<string, string[]> = {};
 
 const convertBrilToWasmType = (type: IBrilType) => {
   switch (type) {
@@ -342,10 +345,14 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
   const localCount = symbols.size;
   const locals = Array.from(symbols).map(([key, value]) => encodeLocal(1, value.type));
 
+  allSymbols[func.name] = Array.from(symbols.keys());
+
   return encodeVector([...encodeVector(locals), ...code, Opcodes.end]);
 };
 
 export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
+  allSymbols = {};
+
   // Function types are vectors of parameters and return types. Currently
   // WebAssembly only supports single return values
   const printFunctionType = [functionType, ...encodeVector([Valtype.i32]), emptyArray];
@@ -396,32 +403,48 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
 
   const dataSection = createSection(Section.data, [0]);
 
+  const encodeFunctionNames = (importedFnNames: string[], wasmFnNames: string[]) => {
+    // structure
+    // 1, size, N, 0, encodeString(name[0]), ..... N-1, encodeString(name[N-1])
+    const res = [
+      1, // function name section
+      ...encodeVector([
+        importedFnNames.length + wasmFnNames.length, // number of wasm functions + imported functions
+        ...flatten(importedFnNames.map((fnName, i) => [i, ...encodeString(fnName)])),
+        ...flatten(wasmFnNames.map((fnName, i) => [importedFnNames.length + i, ...encodeString(fnName)])),
+      ]),
+    ];
+    console.log(res);
+    return res;
+  };
+
+  const encodeLocalNames = (importedFnNames: string[]) => {
+    // structure
+    // 2, size, NumOfFunctions,
+    // for each function:
+    // ... FnIndex, NumOfLocalsInFnIndex, 0, encodeString(local0), 1, encodeString(local1) ....
+    const res = [
+      2,
+      ...encodeVector([
+        Object.keys(allSymbols).length + importedFnNames.length, // number of functions
+        ..._.flattenDeep(importedFnNames.map((_, importedIndex) => [importedIndex, 0])),
+        ..._.flattenDeep(
+          Object.keys(allSymbols).map((fnName, i) => [
+            importedFnNames.length + i, // function index
+            allSymbols[fnName].length, // num of locals
+            ...allSymbols[fnName].map((fnLocal, j) => [j, ...encodeString(fnLocal)]),
+          ])
+        ),
+      ]),
+    ];
+    console.log(res);
+    return res;
+  };
+
   const nameSection = createSection(Section.custom, [
     ...encodeString("name"),
-    // 0, // modulename
-    // encodeVector([...encodeString("dean")]),
-    1, // function names
-    ...encodeVector([
-      2, // num functions
-      0,
-      ...encodeString("env.print_int"),
-      1,
-      ...encodeString("main"),
-    ]),
-    2, // local names
-    ...encodeVector([
-      2, // num functions
-      0,
-      0,
-      1, // function index main
-      3, // num locals
-      0,
-      ...encodeString("a"),
-      1,
-      ...encodeString("b"),
-      2,
-      ...encodeString("c"),
-    ]),
+    ...encodeFunctionNames(["env.print_int"], Object.keys(bril.functions)),
+    ...encodeLocalNames(["env.print_int"]),
   ]);
 
   return Uint8Array.from([
