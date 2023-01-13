@@ -132,7 +132,7 @@ class AstToBrilVisitor {
 
     this.builder.buildLabel(thenLab);
     this.statement(node.then);
-    this.builder.buildEffect("jmp", [], undefined, [endLab]);
+    if (!this.builder.lastInstructionIsRet()) this.builder.buildEffect("jmp", [], undefined, [endLab]);
 
     this.builder.buildLabel(elseLab);
     if (node.else) this.statement(node.else);

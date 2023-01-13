@@ -32,7 +32,7 @@ export interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
-  filename: "./helloint.sc",
+  filename: "./Syntax/if.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

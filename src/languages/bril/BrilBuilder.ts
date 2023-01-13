@@ -216,6 +216,14 @@ export class BrilBuilder {
     let label = { label: name };
     this.insert(label);
   }
+
+  lastInstructionIsRet() {
+    if (this.curFunction && this.curFunction.instrs.length) {
+      const lastInstr = this.curFunction.instrs[this.curFunction.instrs.length - 1];
+      if ("op" in lastInstr) return lastInstr.op == "ret";
+    }
+    return false;
+  }
 }
 
 export const brilBuilder = new BrilBuilder();

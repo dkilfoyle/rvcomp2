@@ -310,13 +310,13 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
           //   code.push(Opcodes.end);
           //   break;
           case "call":
-            if (!instr.funcs) throw Error();
+            if (!instr.funcs) throw new Error(`brilToWasm: instr.funcs missing, badly formed bril`);
             const funcName = instr.funcs[0];
             // TODO: allow for >1 imported function
             const callFuncIndex = funcName == "print_int" ? 0 : Object.keys(program.functions).findIndex((f) => f === funcName) + 1;
             const argIndexes = instr.args?.map((arg) => symbols.get(arg)!.index);
-            argIndexes?.forEach((argIndex) => {
-              if (!argIndex) throw Error();
+            argIndexes?.forEach((argIndex, i) => {
+              if (!argIndex) throw new Error(`brismToWasm: emit call: ${i} argument undefined`);
               code.push(Opcodes.get_local);
               code.push(...unsignedLEB128(argIndex));
             });

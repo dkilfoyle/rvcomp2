@@ -8,6 +8,7 @@ import { setupLanguage } from "./monaco/setup";
 import { useSettingsStore, SettingsState, ParseState, useParseStore } from "../../store/zustore";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { emitWasm } from "../../languages/wasm/brilToWasm";
+import { MultiplicationExpressionCstChildren } from "../../languages/simpleC/simpleC";
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
@@ -30,7 +31,12 @@ export const WasmEditor: VFC = () => {
 
   useEffect(() => {
     if (editor) {
-      const wasmBuffer = emitWasm(brilOptim);
+      let wasmBuffer: Uint8Array;
+      try {
+        wasmBuffer = emitWasm(brilOptim);
+      } catch (e: any) {
+        console.info("Wasm compilation error", e.toString());
+      }
       // var blob = new Blob([wasmBuffer]); // change resultByte to bytes
       // var link = document.createElement("a");
       // link.href = window.URL.createObjectURL(blob);
@@ -49,13 +55,13 @@ export const WasmEditor: VFC = () => {
           setParse((state) => {
             state.wasm = wasmBuffer;
           });
-        } catch (e) {
+        } catch (e: any) {
           setParse((state) => {
             state.wasm = new Uint8Array();
           });
           const wasmModel = monaco.editor.createModel(e.toString());
           editor.setModel(wasmModel);
-          console.info("Wasm errors:");
+          console.info("Wasm parse errors:");
           console.info(e.toString());
         }
       });
