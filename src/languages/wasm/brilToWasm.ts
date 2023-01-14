@@ -23,7 +23,7 @@ const convertBrilToWasmType = (type: IBrilType) => {
     case "bool":
       return "i32";
     case "void":
-      throw new Error();
+      return "void";
     default:
       throw new Error();
   }
@@ -51,7 +51,7 @@ enum Section {
 enum Valtype {
   i32 = 0x7f,
   f32 = 0x7d,
-  void = 0x40,
+  void = 0x0,
 }
 
 // https://webassembly.github.io/spec/core/binary/types.html#binary-blocktype
@@ -289,7 +289,7 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
               code.push(...unsignedLEB128(localIndexForSymbol(brInstr.args[0], "int").index));
 
               code.push(Opcodes.if);
-              code.push(Valtype.void);
+              code.push(Blocktype.void);
 
               blockStatus.push("expectThen"); // the next label should be then.x
             } else if (instr.labels[0].startsWith("whilebody")) {
@@ -377,8 +377,16 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
             // do nothing as block movement is via blockStack
             break;
           case "ret":
+            if (instr.args?.length) {
+              // push return value onto stack
+              code.push(Opcodes.get_local);
+              // args[0] should already exist so type doesnt matter
+              code.push(...unsignedLEB128(localIndexForSymbol(instr.args[0], "int").index));
+            } else {
+              // return 0 by default
+              //code.push(...unsignedLEB128(0));
+            }
             code.push(Opcodes.return);
-            console.log("ret not fully implemented yet");
             break;
           default:
             throw new Error(`emitWasm: instruction ${instr.op} not implemented yet`);
@@ -446,8 +454,9 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   const funcTypes = brilFunctions.map((proc) => [
     functionType,
     ...encodeVector(proc.args.map((arg) => convertBrilToWasmType(arg.type))),
-    emptyArray,
+    ...(proc.type && proc.type != "void" ? [1, Valtype[convertBrilToWasmType(proc.type)]] : [emptyArray]),
   ]);
+  brilFunctions.map((proc) => console.log(proc.type, Valtype[convertBrilToWasmType(proc.type!)]));
 
   // the type section is a vector of function types
   const typeSection = createSection(Section.type, encodeVector([printFunctionType, ...funcTypes]));

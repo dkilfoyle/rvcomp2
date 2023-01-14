@@ -863,6 +863,7 @@ function parseMainArguments(expected: IBrilArgument[], args: string[]): Env {
 function evalProg(prog: IBrilProgram, args: string[]): Value | null {
   let heap = new Heap<Value>();
   let main = prog.functions.main;
+  if (!main) return 0;
   if (main === null) {
     logger.warn(`no main function defined, doing nothing`);
     return 0;
