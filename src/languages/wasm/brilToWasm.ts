@@ -217,7 +217,7 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
             code.push(...(consttype == "f32" ? ieee754(Number(instr.value)) : signedLEB128(Number(instr.value))));
             code.push(Opcodes.set_local);
             code.push(...unsignedLEB128(constdest));
-            console.log(`(set_local ${constdest} (${constopcode} ${instr.value}))`);
+            // console.log(`(set_local ${constdest} (${constopcode} ${instr.value}))`);
             break;
           // integer binary numeric operations
           case "add":
@@ -255,12 +255,12 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
                 ? (`i32_${instr.op}` as IWasmOpCode)
                 : (`f32_${instr.op.slice(1)}` as IWasmOpCode);
             code.push(Opcodes[binopcode]);
-            console.log(`(${binopcode} (get_local ${binarg0}) (get_local ${binarg1}))`);
+            // console.log(`(${binopcode} (get_local ${binarg0}) (get_local ${binarg1}))`);
 
             const bindest = localIndexForSymbol(instr.dest, binInstrType).index;
             code.push(Opcodes.set_local);
             code.push(...unsignedLEB128(bindest));
-            console.log(`(set_local ${bindest})`);
+            // console.log(`(set_local ${bindest})`);
             break;
           case "id":
             const idinstrtype = instr.type;
@@ -272,7 +272,7 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
 
             code.push(Opcodes.set_local);
             code.push(...unsignedLEB128(idlhsIndex));
-            console.log(`(set_local ${idlhsIndex} (get_local ${idrhsIndex}))`);
+            // console.log(`(set_local ${idlhsIndex} (get_local ${idrhsIndex}))`);
             break;
           case "br":
             // br could be start of if/then/else or start of loop
@@ -294,6 +294,9 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
               blockStatus.push("expectThen"); // the next label should be then.x
             } else if (instr.labels[0].startsWith("whilebody")) {
               // while loop
+              // instr is br args[0] whilebody whileexit
+              // we should already have processed whiletest and should be expecting whilebody
+              if (_.last(blockStatus) != "expectWhileBody") throw new Error(`Hit .whilebody but expecting ${_.last(blockStatus)}`);
               // load test bool var onto top of stack
               code.push(Opcodes.get_local);
               code.push(...unsignedLEB128(localIndexForSymbol(brInstr.args[0], "int").index));
@@ -302,16 +305,6 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
               code.push(Opcodes.br_if);
               code.push(...signedLEB128(1));
               // the nested logic will now follow until we hit the whileend label
-              blockStatus[blockStatus.length - 1] = "expectWhileEnd";
-              emitStatements(statement.statements);
-              // br $label1
-              code.push(Opcodes.br);
-              code.push(...signedLEB128(0));
-              // end loop
-              code.push(Opcodes.end);
-              // end block
-              code.push(Opcodes.end);
-              break;
             } else if (instr.labels[0].startsWith("forloop")) {
               // for branch ? treat same as while
               throw new Error("For loops not implemented in wasm compiler yet");
@@ -373,13 +366,15 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
           //   code.push(Opcodes.end);
           //   break;
           case "call":
-            if (!instr.funcs) throw new Error(`brilToWasm: instr.funcs missing, badly formed bril`);
+            if (!instr.funcs) throw new Error(`Instr.funcs missing, badly formed bril`);
             const funcName = instr.funcs[0];
             // TODO: allow for >1 imported function
             const callFuncIndex = funcName == "print_int" ? 0 : Object.keys(program.functions).findIndex((f) => f === funcName) + 1;
             const argIndexes = instr.args?.map((arg) => symbols.get(arg)!.index);
             argIndexes?.forEach((argIndex, i) => {
-              if (!argIndex) throw new Error(`brismToWasm: emit call: ${i} argument undefined`);
+              if (_.isUndefined(argIndex)) {
+                throw new Error(`Emit call: argument[${i}] undefined`);
+              }
               code.push(Opcodes.get_local);
               code.push(...unsignedLEB128(argIndex));
             });
@@ -387,10 +382,10 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
             code.push(...unsignedLEB128(callFuncIndex));
 
             const argIndexesString = argIndexes?.map((i) => `(get_local ${i})`);
-            console.log(`(call ${callFuncIndex} ${argIndexesString})`);
+            // console.log(`(call ${callFuncIndex} ${argIndexesString})`);
             break;
           case "jmp":
-            console.log("ignoreing jmp", instr.labels);
+            // console.log("ignoring jmp", instr.labels);
             // do nothing as block movement is via blockStack
             break;
           case "ret":
@@ -413,7 +408,7 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
         const lblInstr = instr as IBrilLabel;
 
         if (instr.label.startsWith("whiletest")) {
-          // while looe
+          // while lope
           // outer block
           code.push(Opcodes.block);
           code.push(Blocktype.void);
@@ -443,6 +438,19 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
                 // pop the if/then/else block off the stack
                 blockStatus.pop();
               } else throw new Error("Wasm was expected a 'endif' label");
+              break;
+            case "expectWhileBody":
+              blockStatus[blockStatus.length - 1] = "expectWhileEnd";
+              break;
+            case "expectWhileEnd":
+              // br $label1
+              code.push(Opcodes.br);
+              code.push(...signedLEB128(0));
+              // end loop
+              code.push(Opcodes.end);
+              // end block
+              code.push(Opcodes.end);
+              blockStatus.pop();
               break;
             case "root":
               if (lblInstr.label !== func.name)
@@ -484,7 +492,6 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
     ...encodeVector(proc.args.map((arg) => convertBrilToWasmType(arg.type))),
     ...(proc.type && proc.type != "void" ? [1, Valtype[convertBrilToWasmType(proc.type)]] : [emptyArray]),
   ]);
-  brilFunctions.map((proc) => console.log(proc.type, Valtype[convertBrilToWasmType(proc.type!)]));
 
   // the type section is a vector of function types
   const typeSection = createSection(Section.type, encodeVector([printFunctionType, ...funcTypes]));
@@ -535,7 +542,6 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
         ...flatten(wasmFnNames.map((fnName, i) => [importedFnNames.length + i, ...encodeString(fnName)])),
       ]),
     ];
-    console.log(res);
     return res;
   };
 
@@ -558,7 +564,6 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
         ),
       ]),
     ];
-    console.log(res);
     return res;
   };
 

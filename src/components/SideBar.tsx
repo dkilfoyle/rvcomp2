@@ -3,7 +3,9 @@ import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 import { examples } from "../examples/examples";
 import { useSettingsStore, SettingsState } from "../store/zustore";
+import shallow from "zustand/shallow";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import { useStore } from "zustand";
 
 // const fileTreeData = [
 //   {
@@ -92,9 +94,13 @@ Object.keys(examples).forEach((key) => {
 const fullHeight = { maxHeight: "100%", height: "100%" };
 
 export const Sidebar = () => {
-  const filename = useSettingsStore((state: SettingsState) => state.filename);
-  const keepPhis = useSettingsStore((state: SettingsState) => state.optim.keepPhis);
-  const isSSA = useSettingsStore((state: SettingsState) => state.optim.isSSA);
+  // const filename = useSettingsStore((state: SettingsState) => state.filename);
+  // const keepPhis = useSettingsStore((state: SettingsState) => state.optim.keepPhis);
+  // const isSSA = useSettingsStore((state: SettingsState) => state.optim.isSSA);
+  const [filename, keepPhis, isSSA, isFoldExprs] = useSettingsStore(
+    (state: SettingsState) => [state.filename, state.optim.keepPhis, state.optim.isSSA, state.wasm.foldExprs],
+    shallow
+  );
   const brilKeepPhis = useSettingsStore((state: SettingsState) => state.bril.keepPhis);
   const brilIsSSA = useSettingsStore((state: SettingsState) => state.bril.isSSA);
   const doLVN = useSettingsStore((state: SettingsState) => state.optim.doLVN);
@@ -284,6 +290,30 @@ export const Sidebar = () => {
                   Auto Run
                 </Checkbox>
                 <Button>Run</Button>
+              </VStack>
+            </AccordionPanel>
+          </AccordionItem>
+
+          <AccordionItem>
+            <h2>
+              <AccordionButton>
+                <Box flex="1" textAlign="left">
+                  Wasm
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+            </h2>
+            <AccordionPanel pb={4}>
+              <VStack alignItems="start">
+                <Checkbox
+                  isChecked={isFoldExprs}
+                  onChange={(e) =>
+                    setSettings((state: SettingsState) => {
+                      state.wasm.foldExprs = e.target.checked;
+                    })
+                  }>
+                  Fold Expressions
+                </Checkbox>
               </VStack>
             </AccordionPanel>
           </AccordionItem>

@@ -23,6 +23,9 @@ export interface SettingsState {
     keepPhis: boolean;
     isSSA: boolean;
   };
+  wasm: {
+    foldExprs: boolean;
+  };
   interp: {
     isRunUnoptim: boolean;
     isRunOptim: boolean;
@@ -32,7 +35,7 @@ export interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
-  filename: "./Syntax/if.sc",
+  filename: "./Syntax/while.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
@@ -47,6 +50,9 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   bril: {
     keepPhis: true,
     isSSA: false,
+  },
+  wasm: {
+    foldExprs: true,
   },
   interp: {
     isRunUnoptim: true,
