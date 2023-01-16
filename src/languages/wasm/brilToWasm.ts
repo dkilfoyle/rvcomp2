@@ -305,66 +305,8 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
               code.push(Opcodes.br_if);
               code.push(...signedLEB128(1));
               // the nested logic will now follow until we hit the whileend label
-            } else if (instr.labels[0].startsWith("forloop")) {
-              // for branch ? treat same as while
-              throw new Error("For loops not implemented in wasm compiler yet");
             } else throw new Error("Unknown branch type");
             break;
-
-          // case "whileStatement":
-          //   // outer block
-          //   code.push(Opcodes.block);
-          //   code.push(Blocktype.void);
-          //   // inner loop
-          //   code.push(Opcodes.loop);
-          //   code.push(Blocktype.void);
-          //   // compute the while expression
-          //   emitExpression(statement.expression);
-          //   code.push(Opcodes.i32_eqz);
-          //   // br_if $label0
-          //   code.push(Opcodes.br_if);
-          //   code.push(...signedLEB128(1));
-          //   // the nested logic
-          //   emitStatements(statement.statements);
-          //   // br $label1
-          //   code.push(Opcodes.br);
-          //   code.push(...signedLEB128(0));
-          //   // end loop
-          //   code.push(Opcodes.end);
-          //   // end block
-          //   code.push(Opcodes.end);
-          //   break;
-          // case "ifStatement":
-          //   // if block
-          //   code.push(Opcodes.block);
-          //   code.push(Blocktype.void);
-          //   // compute the if expression
-          //   emitExpression(statement.expression);
-          //   code.push(Opcodes.i32_eqz);
-          //   // br_if $label0
-          //   code.push(Opcodes.br_if);
-          //   code.push(...signedLEB128(0));
-          //   // the nested logic
-          //   emitStatements(statement.consequent);
-          //   // end block
-          //   code.push(Opcodes.end);
-
-          //   // else block
-          //   code.push(Opcodes.block);
-          //   code.push(Blocktype.void);
-          //   // compute the if expression
-          //   emitExpression(statement.expression);
-          //   code.push(Opcodes.i32_const);
-          //   code.push(...signedLEB128(1));
-          //   code.push(Opcodes.i32_eq);
-          //   // br_if $label0
-          //   code.push(Opcodes.br_if);
-          //   code.push(...signedLEB128(0));
-          //   // the nested logic
-          //   emitStatements(statement.alternate);
-          //   // end block
-          //   code.push(Opcodes.end);
-          //   break;
           case "call":
             if (!instr.funcs) throw new Error(`Instr.funcs missing, badly formed bril`);
             const funcName = instr.funcs[0];

@@ -141,12 +141,14 @@ class AstToBrilVisitor {
   }
 
   forStatement(node: IAstForStatement) {
+    // for loop is just a while loop with a preceeding initiator and a per-loop statement at end of each cycle
+
     this.statement(node.init);
 
     let sfx = this.builder.freshSuffix();
-    let fortestLab = "fortest" + sfx;
-    let forloopLab = "forloop" + sfx;
-    let endforLab = "endfor" + sfx;
+    let fortestLab = "whiletest" + sfx;
+    let forloopLab = "whilebody" + sfx;
+    let endforLab = "endwhile" + sfx;
 
     this.builder.buildLabel(fortestLab);
     const test = this.comparisonExpression(node.test);
