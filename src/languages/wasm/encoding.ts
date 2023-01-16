@@ -1,7 +1,12 @@
+import protobuf from "protobufjs";
+
 export const ieee754 = (n: number) => {
-  const buf = Buffer.allocUnsafe(4);
-  buf.writeFloatLE(n, 0);
-  return Uint8Array.from(buf);
+  // const buf = Buffer.allocUnsafe(4);
+  // buf.writeFloatLE(n, 0);
+  // return Uint8Array.from(buf);
+  const buf = new Uint8Array(4);
+  protobuf.util.float.writeFloatLE(n, buf, 0);
+  return buf;
 };
 
 export const encodeString = (str: string) => [str.length, ...str.split("").map((s) => s.charCodeAt(0))];
