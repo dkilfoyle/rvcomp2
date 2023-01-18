@@ -1,7 +1,9 @@
 // adapted from https://github.com/ColinEberhardt/chasm
 
 import _ from "lodash";
+import { type } from "os";
 import {
+  IBrilArgument,
   IBrilEffectOperation,
   IBrilFunction,
   IBrilInstruction,
@@ -190,6 +192,58 @@ const createSection = (sectionType: Section, data: any[]) => [sectionType, ...en
 
 // ===========================================================================
 
+const emitSetPixelFunction = () => {
+  const code: number[] = [];
+  const args: IBrilArgument[] = [
+    { name: "x", type: "float" },
+    { name: "y", type: "float" },
+    { name: "c", type: "float" },
+  ];
+
+  const symbols = new Map<string, { index: number; type: Valtype }>(
+    args.map((arg, index) => [arg.name, { index, type: Valtype[convertBrilToWasmType(arg.type)] }])
+  );
+
+  const localIndexForSymbol = (name: string, type: IBrilType) => {
+    if (!symbols.has(name)) {
+      symbols.set(name, { index: symbols.size, type: Valtype[convertBrilToWasmType(type)] });
+    }
+    return symbols.get(name)!;
+  };
+
+  // emit instructions
+
+  // compute the offset (y * 100) + x
+  code.push(Opcodes.get_local);
+  code.push(...unsignedLEB128(localIndexForSymbol("y", "float").index));
+  code.push(Opcodes.f32_const);
+  code.push(...ieee754(100));
+  code.push(Opcodes.f32_mul);
+
+  code.push(Opcodes.get_local);
+  code.push(...unsignedLEB128(localIndexForSymbol("x", "float").index));
+  code.push(Opcodes.f32_add);
+
+  // convert to an integer
+  code.push(Opcodes.i32_trunc_f32_s);
+
+  // fetch the color
+  code.push(Opcodes.get_local);
+  code.push(...unsignedLEB128(localIndexForSymbol("c", "float").index));
+  code.push(Opcodes.i32_trunc_f32_s);
+
+  // write
+  code.push(Opcodes.i32_store_8);
+  code.push(...[0x00, 0x00]); // align and offset
+
+  const localCount = symbols.size;
+  const locals = Array.from(symbols).map(([key, value]) => encodeLocal(1, value.type));
+
+  allSymbols["set_pixel"] = Array.from(symbols.keys());
+
+  return encodeVector([...encodeVector(locals), ...code, Opcodes.end]);
+};
+
 const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
   const code: number[] = [];
 
@@ -230,6 +284,8 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
           case "gt":
           case "ge":
           case "eq":
+          case "and":
+          case "or":
           // float binary numeric operations
           case "fadd":
           case "fsub":
@@ -242,18 +298,19 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
           case "fge":
           case "feq":
             const binInstrType = instr.type;
-            const binarg0 = localIndexForSymbol(instr.args[0], binInstrType).index;
+            const binarg0 = localIndexForSymbol(instr.args[0], binInstrType);
             code.push(Opcodes.get_local);
-            code.push(...unsignedLEB128(binarg0));
+            code.push(...unsignedLEB128(binarg0.index));
 
-            const binarg1 = localIndexForSymbol(instr.args[1], binInstrType).index;
+            const binarg1 = localIndexForSymbol(instr.args[1], binInstrType);
             code.push(Opcodes.get_local);
-            code.push(...unsignedLEB128(binarg1));
+            code.push(...unsignedLEB128(binarg1.index));
 
-            const binopcode =
-              binInstrType == "int" || binInstrType == "bool"
-                ? (`i32_${instr.op}` as IWasmOpCode)
-                : (`f32_${instr.op.slice(1)}` as IWasmOpCode);
+            if (binarg0.type != binarg1.type) throw new Error(`Binary operands must be of same type: ${binarg0.type} != ${binarg1.type}`);
+            if (instr.op.startsWith("f") && binarg0.type !== Valtype.f32)
+              throw new Error(`Binary float operation ${instr.op} expects float operands, got ${binarg0.type}`);
+
+            const binopcode = binarg0.type == Valtype.i32 ? (`i32_${instr.op}` as IWasmOpCode) : (`f32_${instr.op.slice(1)}` as IWasmOpCode);
             code.push(Opcodes[binopcode]);
             // console.log(`(${binopcode} (get_local ${binarg0}) (get_local ${binarg1}))`);
 
@@ -311,7 +368,18 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
             if (!instr.funcs) throw new Error(`Instr.funcs missing, badly formed bril`);
             const funcName = instr.funcs[0];
             // TODO: allow for >1 imported function
-            const callFuncIndex = funcName == "print_int" ? 0 : Object.keys(program.functions).findIndex((f) => f === funcName) + 1;
+            let callFuncIndex: number;
+            switch (funcName) {
+              case "print_int":
+                callFuncIndex = 0;
+                break;
+              case "set_pixel":
+                callFuncIndex = Object.keys(program.functions).length + 1;
+                break;
+              default:
+                callFuncIndex = Object.keys(program.functions).findIndex((f) => f === funcName) + 1;
+                break;
+            }
             const argIndexes = instr.args?.map((arg) => symbols.get(arg)!.index);
             argIndexes?.forEach((argIndex, i) => {
               if (_.isUndefined(argIndex)) {
@@ -425,7 +493,8 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
 
   // Function types are vectors of parameters and return types. Currently
   // WebAssembly only supports single return values
-  const printFunctionType = [functionType, ...encodeVector([Valtype.i32]), emptyArray];
+  const printFunctionType = [functionType, ...encodeVector([Valtype.i32]), emptyArray]; // void print_int(int x);
+  const setPixelFunctionType = [functionType, ...encodeVector([Valtype.f32, Valtype.f32, Valtype.f32]), emptyArray]; // void setPixel(float x, float y, float c)
 
   // TODO: optimise - some of the procs might have the same type signature
   const brilFunctions = Object.values(bril.functions);
@@ -436,11 +505,14 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   ]);
 
   // the type section is a vector of function types
-  const typeSection = createSection(Section.type, encodeVector([printFunctionType, ...funcTypes]));
+  const typeSection = createSection(Section.type, encodeVector([printFunctionType, ...funcTypes, setPixelFunctionType]));
 
   // the function section is a vector of type indices that indicate the type of each function
   // in the code section
-  const funcSection = createSection(Section.func, encodeVector(brilFunctions.map((_, index) => index + 1 /* type index */)));
+  const funcSection = createSection(
+    Section.func,
+    encodeVector([...brilFunctions.map((_, index) => index + 1 /* type index */), brilFunctions.length + 1 /* setPixel */])
+  );
 
   // the import section is a vector of imported functions
   const printFunctionImport = [
@@ -469,7 +541,10 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   );
 
   // the code section contains vectors of functions
-  const codeSection = createSection(Section.code, encodeVector(brilFunctions.map((func) => emitWasmFunction(func, bril))));
+  const codeSection = createSection(
+    Section.code,
+    encodeVector([...brilFunctions.map((func) => emitWasmFunction(func, bril)), emitSetPixelFunction()])
+  );
 
   const dataSection = createSection(Section.data, [0]);
 

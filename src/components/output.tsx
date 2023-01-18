@@ -41,9 +41,12 @@ const fullHeight = { maxHeight: "100%" };
 export const Output: React.FC = () => {
   const bril = useParseStore((state: ParseState) => state.bril);
   const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
-  const isRunOptim = useSettingsStore((state: SettingsState) => state.interp.isRunOptim);
-  const isRunUnoptim = useSettingsStore((state: SettingsState) => state.interp.isRunUnoptim);
-  const isRunAuto = useSettingsStore((state: SettingsState) => state.interp.isRunAuto);
+  const [isRunOptim, isRunUnoptim, isRunWasm, isRunAuto] = useSettingsStore((state: SettingsState) => [
+    state.interp.isRunOptim,
+    state.interp.isRunUnoptim,
+    state.interp.isRunWasm,
+    state.interp.isRunAuto,
+  ]);
 
   const [unoptimlogs, setUnoptimLogs] = useState<any[]>([]);
   const [optimlogs, setOptimLogs] = useState<any[]>([]);
@@ -61,39 +64,41 @@ export const Output: React.FC = () => {
     setOptimLogs([]);
     setUnoptimLogs([]);
     if (isRunAuto) {
-      //       WabtModule().then((wabtModule) => {
-      //         const wasmModule = wabtModule.parseWat(
-      //           "main.wat",
-      //           `(module
-      //   (func (result i32)
-      //     (i32.const 42)
-      //   )
-      //   (export "helloWorld" (func 0))
-      // )`
-      //         );
-      //         const importObject = {};
-      //         WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
-      //           //run functions here
-      //           const myresult = res.instance.exports.helloWorld();
-      //           console.log("WASM hellowolrd = ", myresult);
-      //         });
-      //       });
+      if (isRunWasm && Object.keys(brilOptim.functions).length) {
+        const wasmBuffer = emitWasm(brilOptim);
+        WabtModule().then((wabtModule) => {
+          const wasmModule = wabtModule.readWasm(wasmBuffer, { readDebugNames: true });
+          wasmModule.applyNames();
+          // wasmModule.generateNames();
+          // console.log(wasmModule.toText({ foldExprs: true }));
+          // wasmModule.validate();
+          const memory = new WebAssembly.Memory({ initial: 1 });
+          const importObject = { env: { print_int: (x: number) => console.log("From wasm: ", x), memory } };
+          WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
+            //run functions here
+            console.info(`Running Wasm`);
+            const startTime = performance.now();
+            const myresult = res.instance.exports.main();
+            const endTime = performance.now();
+            if (myresult != null) console.info(`Returned ${myresult}`);
+            console.info(`Completed in ${(endTime - startTime).toFixed(1)}ms`);
 
-      const wasmBuffer = emitWasm(brilOptim);
-      WabtModule().then((wabtModule) => {
-        const wasmModule = wabtModule.readWasm(wasmBuffer, { readDebugNames: true });
-        wasmModule.applyNames();
-        // wasmModule.generateNames();
-        console.log(wasmModule.toText({ foldExprs: true }));
-        // wasmModule.validate();
-        const memory = new WebAssembly.Memory({ initial: 1 });
-        const importObject = { env: { print_int: (x: number) => console.log("From wasm: ", x), display, memory } };
-        WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
-          //run functions here
-          const myresult = res.instance.exports.main();
-          console.log("WASM returns = ", myresult);
+            display.set(new Uint8Array(memory.buffer, 0, 10000));
+
+            const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+            const context = canvas.getContext("2d");
+            const imgData = context!.createImageData(100, 100);
+            for (let i = 0; i < 100 * 100; i++) {
+              imgData.data[i * 4] = display[i];
+              imgData.data[i * 4 + 1] = display[i];
+              imgData.data[i * 4 + 2] = display[i];
+              imgData.data[i * 4 + 3] = 255;
+            }
+            // const data = scaleImageData(imgData, 3, context);
+            context!.putImageData(imgData, 0, 0);
+          });
         });
-      });
+      }
 
       if (isRunUnoptim) runInterpretor(bril, [], window.conout1, "un-optimised");
       if (isRunOptim) {

@@ -86,7 +86,7 @@ export default class DiagnosticsAdapter {
       }
     }
 
-    resetParse(_.isUndefined(cst), _.isUndefined(ast), errors.length > 0);
+    resetParse(_.isUndefined(cst), _.isUndefined(ast), errors.length > 0, errors.length > 0);
 
     // get the current model(editor or file) which is only one
     const model = monaco.editor.getModel(resource);

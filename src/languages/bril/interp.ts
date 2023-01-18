@@ -324,7 +324,7 @@ function evalCall(instr: IBrilOperation, state: State): Action {
     return NEXT;
   }
 
-  if (funcName == "setpixel") {
+  if (funcName == "set_pixel") {
     let args = instr.args || [];
     if (args.length !== 3) {
       throw error(`function expected 3 arguments, got ${args.length}`);

@@ -108,6 +108,7 @@ export const Sidebar = () => {
   const doDCE = useSettingsStore((state: SettingsState) => state.optim.doDCE);
   const isRunOptim = useSettingsStore((state: SettingsState) => state.interp.isRunOptim);
   const isRunUnoptim = useSettingsStore((state: SettingsState) => state.interp.isRunUnoptim);
+  const isRunWasm = useSettingsStore((state: SettingsState) => state.interp.isRunWasm);
   const isRunAuto = useSettingsStore((state: SettingsState) => state.interp.isRunAuto);
   const setSettings = useSettingsStore((state: SettingsState) => state.set);
 
@@ -139,7 +140,7 @@ export const Sidebar = () => {
                   if (!info.node.children && keys.length)
                     setSettings((state: SettingsState) => {
                       // state.filename = keys[0].toString();
-                      console.log(info.node);
+                      // console.log(info.node);
                       state.filename = info.node.key as string;
                     });
                 }}></Tree>
@@ -279,6 +280,15 @@ export const Sidebar = () => {
                     })
                   }>
                   Run Optimised
+                </Checkbox>
+                <Checkbox
+                  isChecked={isRunWasm}
+                  onChange={(e) =>
+                    setSettings((state: SettingsState) => {
+                      state.interp.isRunWasm = e.target.checked;
+                    })
+                  }>
+                  Run Wasm
                 </Checkbox>
                 <Checkbox
                   isChecked={isRunAuto}

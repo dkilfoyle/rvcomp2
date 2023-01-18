@@ -287,7 +287,6 @@ export const UI: React.FC = () => {
 
   const onLayoutChange = useCallback((newLayout: LayoutData, currentTabId?: string, direction?: DropDirection) => {
     // control DockLayout from state
-    console.log(currentTabId, newLayout, direction);
     const graphPanel = findInLayout("graphPanel", newLayout) as PanelBase;
     if (!graphPanel || _.isUndefined(graphPanel.size)) throw new Error();
 

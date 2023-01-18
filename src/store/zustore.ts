@@ -29,13 +29,15 @@ export interface SettingsState {
   interp: {
     isRunUnoptim: boolean;
     isRunOptim: boolean;
+    isRunWasm: boolean;
     isRunAuto: boolean;
   };
   set: (fn: (state: SettingsState) => void) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
-  filename: "./Syntax/while.sc",
+  // filename: "./Screen/setpixel.sc",
+  filename: "./helloint.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
@@ -55,8 +57,9 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
     foldExprs: true,
   },
   interp: {
-    isRunUnoptim: true,
-    isRunOptim: true,
+    isRunUnoptim: false,
+    isRunOptim: false,
+    isRunWasm: true,
     isRunAuto: true,
   },
   set: (fn: (state: SettingsState) => void) => set(produce(fn)),
