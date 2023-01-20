@@ -6,6 +6,9 @@ import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overl
 import { Flex, Grid } from "@chakra-ui/react";
 import { useParseStore, ParseState, useSettingsStore, SettingsState } from "../store/zustore";
 import { runInterpretor } from "../languages/bril/interp";
+import { emitWasm } from "../languages/wasm/brilToWasm";
+// import wabt from "wabt";
+// const wabt = require("wabt")();
 
 const theme = {
   scheme: "monokai",
@@ -28,6 +31,8 @@ const theme = {
   base0F: "#cc6633",
 };
 
+const display = new Uint8Array(10000);
+
 window.conout1 = { ...window.console };
 window.conout2 = { ...window.console };
 
@@ -36,9 +41,12 @@ const fullHeight = { maxHeight: "100%" };
 export const Output: React.FC = () => {
   const bril = useParseStore((state: ParseState) => state.bril);
   const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
-  const isRunOptim = useSettingsStore((state: SettingsState) => state.interp.isRunOptim);
-  const isRunUnoptim = useSettingsStore((state: SettingsState) => state.interp.isRunUnoptim);
-  const isRunAuto = useSettingsStore((state: SettingsState) => state.interp.isRunAuto);
+  const [isRunOptim, isRunUnoptim, isRunWasm, isRunAuto] = useSettingsStore((state: SettingsState) => [
+    state.interp.isRunOptim,
+    state.interp.isRunUnoptim,
+    state.interp.isRunWasm,
+    state.interp.isRunAuto,
+  ]);
 
   const [unoptimlogs, setUnoptimLogs] = useState<any[]>([]);
   const [optimlogs, setOptimLogs] = useState<any[]>([]);
@@ -56,6 +64,42 @@ export const Output: React.FC = () => {
     setOptimLogs([]);
     setUnoptimLogs([]);
     if (isRunAuto) {
+      if (isRunWasm && Object.keys(brilOptim.functions).length) {
+        const wasmBuffer = emitWasm(brilOptim);
+        WabtModule().then((wabtModule) => {
+          const wasmModule = wabtModule.readWasm(wasmBuffer, { readDebugNames: true });
+          wasmModule.applyNames();
+          // wasmModule.generateNames();
+          // console.log(wasmModule.toText({ foldExprs: true }));
+          // wasmModule.validate();
+          const memory = new WebAssembly.Memory({ initial: 1 });
+          const importObject = { env: { print_int: (x: number) => console.log("From wasm: ", x), memory } };
+          WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
+            //run functions here
+            console.info(`Running Wasm`);
+            const startTime = performance.now();
+            const myresult = res.instance.exports.main();
+            const endTime = performance.now();
+            if (myresult != null) console.info(`Returned ${myresult}`);
+            console.info(`Completed in ${(endTime - startTime).toFixed(1)}ms`);
+
+            display.set(new Uint8Array(memory.buffer, 0, 10000));
+
+            const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+            const context = canvas.getContext("2d");
+            const imgData = context!.createImageData(100, 100);
+            for (let i = 0; i < 100 * 100; i++) {
+              imgData.data[i * 4] = display[i];
+              imgData.data[i * 4 + 1] = display[i];
+              imgData.data[i * 4 + 2] = display[i];
+              imgData.data[i * 4 + 3] = 255;
+            }
+            // const data = scaleImageData(imgData, 3, context);
+            context!.putImageData(imgData, 0, 0);
+          });
+        });
+      }
+
       if (isRunUnoptim) runInterpretor(bril, [], window.conout1, "un-optimised");
       if (isRunOptim) {
         const display = runInterpretor(brilOptim, [], window.conout2, "optimised");

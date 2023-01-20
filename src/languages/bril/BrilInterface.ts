@@ -80,7 +80,7 @@ export interface IBrilArgument {
 
 export interface IBrilFunction extends IBrilNode {
   name: string;
-  args?: IBrilArgument[];
+  args: IBrilArgument[];
   type?: IBrilType;
   instrs: (IBrilInstruction | IBrilLabel)[];
   pos?: IPos;

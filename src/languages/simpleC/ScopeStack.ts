@@ -41,7 +41,7 @@ export class ScopeStack {
       signatures: [
         {
           _name: "functionDeclaration",
-          id: "setpixel",
+          id: "set_pixel",
           type: "void",
           block: { _name: "block", statements: [], heapVars: [] },
           params: [

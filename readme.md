@@ -58,7 +58,16 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
 3. rc-tree
 4. vis.js
 5. monaco-editor
+6. wabt.js
+   - Does not work with import wabt from "wabt". Use these steps instead
+     1. Add <script src="https://unpkg.com/wabt/index.js"></script> to index.html
+     2. Make file wabt.d.ts and move index.d.ts from wabt.js
+     3. To use wabt:
+        - Wabt().then((wabtModule) => wabtModule.parseWat....)
 
 ### Acknowledgements
 
 1. Adrian Sampson's self-guided CS6120 https://www.cs.cornell.edu/courses/cs6120/2020fa/
+2. WASM binary structure and code generation
+   1. https://coinexsmartchain.medium.com/wasm-introduction-part-1-binary-format-57895d851580
+   2. https://blog.scottlogic.com/2019/05/17/webassembly-compiler.html

@@ -3,14 +3,14 @@ import React, { useMemo } from "react";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 
-import { Icon } from "@chakra-ui/react";
+import { Box, Icon } from "@chakra-ui/react";
 import { VscSymbolClass } from "react-icons/vsc";
 
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import "overlayscrollbars/overlayscrollbars.css";
 import { useParseStore, ParseState } from "../store/zustore";
 
-const fullHeight = { maxHeight: "100%" };
+const fullHeight = { height: "100%" };
 
 export const AstView: React.FC = () => {
   const ast = useParseStore((state: ParseState) => state.ast);
@@ -110,9 +110,11 @@ export const AstView: React.FC = () => {
   }, [ast]);
 
   return (
-    <OverlayScrollbarsComponent defer style={fullHeight}>
-      <Tree treeData={[astTreeData]} defaultExpandParent defaultExpandedKeys={[1]}></Tree>
-      {/* <JSONTree data={ast} theme={theme} invertTheme></JSONTree> */}
-    </OverlayScrollbarsComponent>
+    <Box height="100%">
+      <OverlayScrollbarsComponent defer style={fullHeight}>
+        <Tree treeData={[astTreeData]} defaultExpandParent defaultExpandedKeys={[1]}></Tree>
+        {/* <JSONTree data={ast} theme={theme} invertTheme></JSONTree> */}
+      </OverlayScrollbarsComponent>
+    </Box>
   );
 };

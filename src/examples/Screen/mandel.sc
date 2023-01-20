@@ -1,5 +1,5 @@
 void main() {
-  float y  = 0f;
+  float y = 0f;
   while (y < 100f) {
     y = y + 1f;
     float x  = 0f;
@@ -22,7 +22,7 @@ void main() {
         b = j;
         c = c + 1f;
       }
-      setpixel(x, y, c);
+      set_pixel(x, y, c);
     }
   }
 }

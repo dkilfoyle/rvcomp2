@@ -4,6 +4,7 @@ import create from "zustand";
 import { IBrilProgram } from "../languages/bril/BrilInterface";
 import { ICFG } from "../languages/bril/cfgBuilder";
 import { IAstProgram } from "../languages/simpleC/ast";
+import { ISimpleCLangError } from "../components/simpleCEditor/monaco/DiagnosticsAdapter";
 
 export interface SettingsState {
   filename: string;
@@ -22,16 +23,21 @@ export interface SettingsState {
     keepPhis: boolean;
     isSSA: boolean;
   };
+  wasm: {
+    foldExprs: boolean;
+  };
   interp: {
     isRunUnoptim: boolean;
     isRunOptim: boolean;
+    isRunWasm: boolean;
     isRunAuto: boolean;
   };
   set: (fn: (state: SettingsState) => void) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
-  filename: "./Screen/mandel.sc",
+  // filename: "./Screen/setpixel.sc",
+  filename: "./helloint.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
@@ -47,9 +53,13 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
     keepPhis: true,
     isSSA: false,
   },
+  wasm: {
+    foldExprs: true,
+  },
   interp: {
-    isRunUnoptim: true,
-    isRunOptim: true,
+    isRunUnoptim: false,
+    isRunOptim: false,
+    isRunWasm: true,
     isRunAuto: true,
   },
   set: (fn: (state: SettingsState) => void) => set(produce(fn)),
@@ -61,7 +71,10 @@ export interface ParseState {
   bril: IBrilProgram;
   brilOptim: IBrilProgram;
   cfg: ICFG;
+  errors: ISimpleCLangError[];
+  wasm: Uint8Array;
   set: (fn: (state: ParseState) => void) => void;
+  reset: (rcst: boolean, rast?: boolean, rbril?: boolean, rbrilOptim?: boolean, rcfg?: boolean) => void;
 }
 
 export const useParseStore = create<ParseState>()((set) => ({
@@ -70,5 +83,18 @@ export const useParseStore = create<ParseState>()((set) => ({
   bril: { functions: {} },
   brilOptim: { functions: {} },
   cfg: {},
+  errors: [],
+  wasm: new Uint8Array(),
   set: (fn: (state: ParseState) => void) => set(produce(fn)),
+  reset: (rcst: boolean, rast: boolean = true, rbril: boolean = true, rbrilOptim: boolean = true, rcfg: boolean = true) =>
+    set(
+      produce((state) => {
+        if (rcst) state.cst = { name: "root", children: {} };
+        if (rast) state.ast = { _name: "root", functionDeclarations: [] };
+        if (rbril) state.bril = { functions: {} };
+        if (rbrilOptim) state.brilOptim = { functions: {} };
+        if (rcfg) state.cfg = {};
+        state.wasm = [];
+      })
+    ),
 }));
