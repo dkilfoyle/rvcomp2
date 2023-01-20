@@ -115,6 +115,11 @@ export interface IAstFunctionCallExpression extends IAstExpression {
 export interface IAstUnaryExpression extends IAstExpression {}
 
 export interface IAstLiteralExpression extends IAstExpression {
+  value: number | boolean | string;
+  type: "int" | "bool" | "float" | "string";
+}
+
+export interface IAstNonStringLiteralExpression extends IAstExpression {
   value: number | boolean;
   type: "int" | "bool" | "float";
 }
@@ -129,6 +134,12 @@ export interface IAstBoolLiteralExpression extends IAstLiteralExpression {
   _name: "boolLiteralExpression";
   value: boolean;
   type: "bool";
+}
+
+export interface IAstStringLiteralExpression extends IAstLiteralExpression {
+  _name: "boolLiteralExpression";
+  value: string;
+  type: "string";
 }
 
 export interface IAstArrayLiteralExpression extends IAstExpression {

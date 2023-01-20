@@ -37,7 +37,7 @@ export interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Screen/setpixel.sc",
-  filename: "./helloint.sc",
+  filename: "./Syntax/strings.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

@@ -159,7 +159,7 @@ function typeCheck(val: Value, typ: IBrilType): boolean {
 }
 
 function typeCmp(lhs: IBrilType, rhs: IBrilType): boolean {
-  if (lhs === "int" || lhs == "bool" || lhs == "float" || lhs == "void") {
+  if (lhs === "int" || lhs == "bool" || lhs == "float" || lhs == "void" || lhs == "string") {
     return lhs == rhs;
   } else {
     if (typeof rhs === "object" && rhs.hasOwnProperty("ptr")) {
@@ -449,9 +449,9 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
       if (typeof instr.value === "number") {
         if (instr.type === "float") value = instr.value;
         else value = BigInt(Math.floor(instr.value));
-      } else {
-        value = instr.value;
-      }
+      } else if (typeof instr.value == "string") {
+        throw new Error("String consts not implemented yet");
+      } else value = instr.value;
 
       state.env.set(instr.dest, value);
       return NEXT;

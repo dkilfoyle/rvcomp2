@@ -11,6 +11,7 @@ import {
   IBrilLabel,
   IBrilProgram,
   IBrilType,
+  IBrilValueType,
 } from "../bril/BrilInterface";
 import { unsignedLEB128, signedLEB128, encodeString, ieee754 } from "./encoding";
 
@@ -26,8 +27,10 @@ const convertBrilToWasmType = (type: IBrilType) => {
       return "i32";
     case "void":
       return "void";
+    case "string":
+      return "i32"; // memory offset
     default:
-      throw new Error();
+      throw new Error(`Unsupported variable type ${type}`);
   }
 };
 
@@ -192,6 +195,13 @@ const createSection = (sectionType: Section, data: any[]) => [sectionType, ...en
 
 // ===========================================================================
 
+const datasymbols = new Map<string, { offset: number; size: number; bytes: Uint8Array }>();
+const includeLibFunctions = {
+  set_pixel: false,
+};
+
+// ===========================================================================
+
 const emitSetPixelFunction = () => {
   const code: number[] = [];
   const args: IBrilArgument[] = [
@@ -247,15 +257,26 @@ const emitSetPixelFunction = () => {
 const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
   const code: number[] = [];
 
-  const symbols = new Map<string, { index: number; type: Valtype }>(
+  const localsymbols = new Map<string, { index: number; type: Valtype }>(
     func.args.map((arg, index) => [arg.name, { index, type: Valtype[convertBrilToWasmType(arg.type)] }])
   );
 
   const localIndexForSymbol = (name: string, type: IBrilType) => {
-    if (!symbols.has(name)) {
-      symbols.set(name, { index: symbols.size, type: Valtype[convertBrilToWasmType(type)] });
+    if (!localsymbols.has(name)) {
+      localsymbols.set(name, { index: localsymbols.size, type: Valtype[convertBrilToWasmType(type)] });
     }
-    return symbols.get(name)!;
+    return localsymbols.get(name)!;
+  };
+
+  const dataOffsetForValue = (type: IBrilType, value: IBrilValueType) => {
+    if (type !== "string") throw new Error("Only string data supported");
+    const stringvalue = value.toString();
+    if (!datasymbols.has(stringvalue)) {
+      const lastentry = datasymbols.size ? Array.from(datasymbols)[datasymbols.size - 1][1] : { offset: 0, size: 0 };
+      const bytes = new TextEncoder().encode(stringvalue + "\0");
+      datasymbols.set(stringvalue, { offset: lastentry.offset + lastentry.size, size: bytes.length, bytes });
+    }
+    return datasymbols.get(stringvalue)!;
   };
 
   const emitInstructions = (instructions: IBrilInstructionOrLabel[]) => {
@@ -264,14 +285,23 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
       if ("op" in instr)
         switch (instr.op) {
           case "const":
-            const consttype = convertBrilToWasmType(instr.type);
-            const constopcode = `${consttype}_const` as IWasmOpCode;
-            const constdest = localIndexForSymbol(instr.dest, instr.type).index;
-            code.push(Opcodes[constopcode]);
-            code.push(...(consttype == "f32" ? ieee754(Number(instr.value)) : signedLEB128(Number(instr.value))));
-            code.push(Opcodes.set_local);
-            code.push(...unsignedLEB128(constdest));
-            // console.log(`(set_local ${constdest} (${constopcode} ${instr.value}))`);
+            if (instr.type == "string") {
+              const constdest = localIndexForSymbol(instr.dest, instr.type).index;
+              const datasymbol = dataOffsetForValue(instr.type, instr.value);
+              code.push(Opcodes.i32_const);
+              code.push(...unsignedLEB128(datasymbol.offset));
+              code.push(Opcodes.set_local);
+              code.push(...unsignedLEB128(constdest));
+            } else {
+              const consttype = convertBrilToWasmType(instr.type);
+              const constopcode = `${consttype}_const` as IWasmOpCode;
+              const constdest = localIndexForSymbol(instr.dest, instr.type).index;
+              code.push(Opcodes[constopcode]);
+              code.push(...(consttype == "f32" ? ieee754(Number(instr.value)) : signedLEB128(Number(instr.value))));
+              code.push(Opcodes.set_local);
+              code.push(...unsignedLEB128(constdest));
+              // console.log(`(set_local ${constdest} (${constopcode} ${instr.value}))`);
+            }
             break;
           // integer binary numeric operations
           case "add":
@@ -375,12 +405,13 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
                 break;
               case "set_pixel":
                 callFuncIndex = Object.keys(program.functions).length + 1;
+                includeLibFunctions.set_pixel = true;
                 break;
               default:
                 callFuncIndex = Object.keys(program.functions).findIndex((f) => f === funcName) + 1;
                 break;
             }
-            const argIndexes = instr.args?.map((arg) => symbols.get(arg)!.index);
+            const argIndexes = instr.args?.map((arg) => localsymbols.get(arg)!.index);
             argIndexes?.forEach((argIndex, i) => {
               if (_.isUndefined(argIndex)) {
                 throw new Error(`Emit call: argument[${i}] undefined`);
@@ -480,16 +511,18 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
 
   emitInstructions(func.instrs);
 
-  const localCount = symbols.size;
-  const locals = Array.from(symbols).map(([key, value]) => encodeLocal(1, value.type));
+  const localCount = localsymbols.size;
+  const locals = Array.from(localsymbols).map(([key, value]) => encodeLocal(1, value.type));
 
-  allSymbols[func.name] = Array.from(symbols.keys());
+  allSymbols[func.name] = Array.from(localsymbols.keys());
 
   return encodeVector([...encodeVector(locals), ...code, Opcodes.end]);
 };
 
 export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   allSymbols = {};
+  datasymbols.clear();
+  includeLibFunctions.set_pixel = false;
 
   // Function types are vectors of parameters and return types. Currently
   // WebAssembly only supports single return values
@@ -505,14 +538,15 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   ]);
 
   // the type section is a vector of function types
-  const typeSection = createSection(Section.type, encodeVector([printFunctionType, ...funcTypes, setPixelFunctionType]));
+  const functionTypes = [printFunctionType, ...funcTypes];
+  if (includeLibFunctions.set_pixel) functionTypes.push(setPixelFunctionType);
+  const typeSection = createSection(Section.type, encodeVector(functionTypes));
 
   // the function section is a vector of type indices that indicate the type of each function
   // in the code section
-  const funcSection = createSection(
-    Section.func,
-    encodeVector([...brilFunctions.map((_, index) => index + 1 /* type index */), brilFunctions.length + 1 /* setPixel */])
-  );
+  const nonImportFunctionTypeIndexes = brilFunctions.map((_, index) => index + 1); // + 1 because imported print_int is type 0
+  if (includeLibFunctions.set_pixel) nonImportFunctionTypeIndexes.push(brilFunctions.length + 1); // set pixel type is after coded functions
+  const funcSection = createSection(Section.func, encodeVector(nonImportFunctionTypeIndexes));
 
   // the import section is a vector of imported functions
   const printFunctionImport = [
@@ -541,11 +575,12 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   );
 
   // the code section contains vectors of functions
-  const codeSection = createSection(
-    Section.code,
-    encodeVector([...brilFunctions.map((func) => emitWasmFunction(func, bril)), emitSetPixelFunction()])
-  );
+  const functionBodies = brilFunctions.map((func) => emitWasmFunction(func, bril));
+  if (includeLibFunctions.set_pixel) functionBodies.push(emitSetPixelFunction());
+  const codeSection = createSection(Section.code, encodeVector(functionBodies));
 
+  // todo: encode data section
+  console.log(datasymbols);
   const dataSection = createSection(Section.data, [0]);
 
   const encodeFunctionNames = (importedFnNames: string[], wasmFnNames: string[]) => {

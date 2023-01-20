@@ -1,7 +1,7 @@
 import { IPos } from "../simpleC/ast";
 
-export type IBrilValueType = number | boolean;
-export type IBrilPrimType = "int" | "bool" | "float";
+export type IBrilValueType = number | boolean | string;
+export type IBrilPrimType = "int" | "bool" | "float" | "string";
 export type IBrilParamType = { ptr: IBrilType };
 export type IBrilType = IBrilPrimType | IBrilParamType | "void";
 

@@ -36,7 +36,7 @@ class BrilPrinter {
   printInstruction(ins: IBrilInstruction | IBrilLabel) {
     if ((<IBrilInstruction>ins).op) {
       ins = ins as IBrilInstruction;
-      if (ins.op === "const") this.line(`  ${ins.dest}: ${ins.type} = const ${ins.value};`, ins.key || -99);
+      if (ins.op === "const") this.line(`  ${ins.dest}: ${this.formatType(ins.type)} = const ${ins.value};`, ins.key || -99);
       else {
         let rhs = `${ins.op}`;
         if (ins.funcs?.length) rhs += ` ${ins.funcs.join(" @")}`;

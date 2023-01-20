@@ -14,9 +14,11 @@ import {
   IAstIfStatement,
   IAstIntegerLiteralExpression,
   IAstLiteralExpression,
+  IAstNonStringLiteralExpression,
   IAstProgram,
   IAstReturnStatement,
   IAstStatement,
+  IAstStringLiteralExpression,
   IAstVariableDeclaration,
   IAstWhileStatement,
   IPos,
@@ -216,7 +218,8 @@ class AstToBrilVisitor {
       case "integerLiteralExpression":
       case "floatLiteralExpression":
       case "boolLiteralExpression":
-        n = node as IAstLiteralExpression;
+      case "stringLiteralExpression":
+        n = node as IAstNonStringLiteralExpression;
         return this.builder.buildConst(n.value, n.type, assignIDExpr);
       case "arrayLiteralExpression":
         n = node as IAstArrayLiteralExpression;
