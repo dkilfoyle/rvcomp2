@@ -3,10 +3,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { Console, Hook } from "console-feed";
 import "overlayscrollbars/overlayscrollbars.css";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import { Flex, Grid } from "@chakra-ui/react";
+import { Flex, Grid, Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
 import { useParseStore, ParseState, useSettingsStore, SettingsState } from "../store/zustore";
 import { runInterpretor } from "../languages/bril/interp";
 import { emitWasm } from "../languages/wasm/brilToWasm";
+import { MemView } from "./memView";
 // import wabt from "wabt";
 // const wabt = require("wabt")();
 
@@ -31,10 +32,11 @@ const theme = {
   base0F: "#cc6633",
 };
 
-const display = new Uint8Array(10000);
+let display = new Uint8Array(10000);
 
 window.conout1 = { ...window.console };
 window.conout2 = { ...window.console };
+window.conout3 = { ...window.console };
 
 const fullHeight = { maxHeight: "100%" };
 
@@ -50,13 +52,16 @@ export const Output: React.FC = () => {
 
   const [unoptimlogs, setUnoptimLogs] = useState<any[]>([]);
   const [optimlogs, setOptimLogs] = useState<any[]>([]);
+  const [wasmlogs, setWasmLogs] = useState<any[]>([]);
 
   const unoptimOutputRef = useRef<OverlayScrollbarsComponentRef>(null);
   const optimOutputRef = useRef<OverlayScrollbarsComponentRef>(null);
+  const wasmOutputRef = useRef<OverlayScrollbarsComponentRef>(null);
 
   useEffect(() => {
     Hook((window as any).conout1, (log) => setUnoptimLogs((currLogs) => [...currLogs, log]), false);
     Hook((window as any).conout2, (log) => setOptimLogs((currLogs) => [...currLogs, log]), false);
+    Hook((window as any).conout3, (log) => setWasmLogs((currLogs) => [...currLogs, log]), false);
     // return () => Unhook((window as any).console);
   }, []);
 
@@ -80,10 +85,13 @@ export const Output: React.FC = () => {
             const startTime = performance.now();
             const myresult = res.instance.exports.main();
             const endTime = performance.now();
-            if (myresult != null) console.info(`Returned ${myresult}`);
+            // if (myresult != null)
+            conout3.info(`Returned ${myresult}`);
             console.info(`Completed in ${(endTime - startTime).toFixed(1)}ms`);
 
-            display.set(new Uint8Array(memory.buffer, 0, 10000));
+            // display.set(new Uint8Array(memory.buffer, 0, 10000));
+            display = new Uint8Array(memory.buffer, 0, 10000);
+            console.log(display.slice(0, 20));
 
             const canvas = document.getElementById("canvas") as HTMLCanvasElement;
             const context = canvas.getContext("2d");
@@ -139,43 +147,41 @@ export const Output: React.FC = () => {
   }, [unoptimlogs, unoptimOutputRef.current]);
 
   return (
-    <Grid templateColumns="1fr 1fr 120px" gap={6} height="100%">
-      <OverlayScrollbarsComponent style={fullHeight} ref={unoptimOutputRef}>
-        <Console
-          logs={unoptimlogs}
-          variant="light"
-          // filter={["info"]}
-          styles={{
-            BASE_FONT_SIZE: 10,
-            BASE_LINE_HEIGHT: 0.8,
-            LOG_INFO_ICON: "",
-            // LOG_ICON_WIDTH: "8px",
-            // LOG_ICON_HEIGHT: "8px",
-            TREENODE_FONT_SIZE: 8,
-            BASE_BACKGROUND_COLOR: "white",
-            LOG_BACKGROUND: "white",
-          }}></Console>
-      </OverlayScrollbarsComponent>
+    <Tabs size="sm" orientation="vertical" variant="soft-rounded" align="start" padding="4px" height="100%" overflow="hidden">
+      <TabList justifyContent="start" backgroundColor="blue.50" padding="5px">
+        <Tab>Bril</Tab>
+        <Tab>Optimised</Tab>
+        <Tab>Wasm</Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel></TabPanel>
+        <TabPanel></TabPanel>
+        <TabPanel height="100%" padding="4px">
+          <Grid templateColumns="1fr auto 120px" gap={6} height="100%">
+            <OverlayScrollbarsComponent style={fullHeight} ref={unoptimOutputRef}>
+              <Console
+                logs={wasmlogs}
+                variant="light"
+                // filter={["info"]}
+                styles={{
+                  BASE_FONT_SIZE: 10,
+                  BASE_LINE_HEIGHT: 0.8,
+                  LOG_INFO_ICON: "",
+                  // LOG_ICON_WIDTH: "8px",
+                  // LOG_ICON_HEIGHT: "8px",
+                  TREENODE_FONT_SIZE: 8,
+                  BASE_BACKGROUND_COLOR: "white",
+                  LOG_BACKGROUND: "white",
+                }}></Console>
+            </OverlayScrollbarsComponent>
+            <MemView mem={display} style={{ maxHeight: "100%" }}></MemView>
 
-      <OverlayScrollbarsComponent style={fullHeight} ref={optimOutputRef}>
-        <Console
-          logs={optimlogs}
-          variant="light"
-          // filter={["info"]}
-          styles={{
-            BASE_FONT_SIZE: 10,
-            BASE_LINE_HEIGHT: 0.8,
-            LOG_INFO_ICON: "",
-            // LOG_ICON_WIDTH: 2,
-            // LOG_ICON_HEIGHT: 2,
-            TREENODE_FONT_SIZE: 8,
-            BASE_BACKGROUND_COLOR: "white",
-            LOG_BACKGROUND: "white",
-          }}></Console>
-      </OverlayScrollbarsComponent>
-      <Grid borderLeft="1px solid lightgrey">
-        <canvas id="canvas" width="100" height="100" style={{ margin: "auto" }}></canvas>
-      </Grid>
-    </Grid>
+            <Grid borderLeft="1px solid lightgrey">
+              <canvas id="canvas" width="100" height="100" style={{ margin: "auto" }}></canvas>
+            </Grid>
+          </Grid>
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
   );
 };
