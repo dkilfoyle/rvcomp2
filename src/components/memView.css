@@ -16,3 +16,7 @@
   width: 8px;
   display: inline-block;
 }
+
+.MemViewHover {
+  background-color: lightgreen;
+}

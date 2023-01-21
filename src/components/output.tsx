@@ -78,7 +78,7 @@ export const Output: React.FC = () => {
           // console.log(wasmModule.toText({ foldExprs: true }));
           // wasmModule.validate();
           const memory = new WebAssembly.Memory({ initial: 1 });
-          const importObject = { env: { print_int: (x: number) => console.log("From wasm: ", x), memory } };
+          const importObject = { env: { print_int: (x: number) => window.conout3.info("From wasm: ", x), memory } };
           WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
             //run functions here
             console.info(`Running Wasm`);
@@ -86,7 +86,7 @@ export const Output: React.FC = () => {
             const myresult = res.instance.exports.main();
             const endTime = performance.now();
             // if (myresult != null)
-            conout3.info(`Returned ${myresult}`);
+            window.conout3.info(`Returned ${myresult}`);
             console.info(`Completed in ${(endTime - startTime).toFixed(1)}ms`);
 
             // display.set(new Uint8Array(memory.buffer, 0, 10000));
@@ -146,6 +146,16 @@ export const Output: React.FC = () => {
     }
   }, [unoptimlogs, unoptimOutputRef.current]);
 
+  useEffect(() => {
+    if (wasmOutputRef.current && wasmOutputRef.current.osInstance()) {
+      const { viewport } = wasmOutputRef.current.osInstance()!.elements();
+      const { scrollLeft, scrollTop } = viewport; // get scroll offset
+      const lc = viewport.lastChild as HTMLElement;
+      const lc2 = lc.lastChild as HTMLElement;
+      if (lc2) lc2.scrollIntoView();
+    }
+  }, [wasmlogs, wasmOutputRef.current]);
+
   return (
     <Tabs size="sm" orientation="vertical" variant="soft-rounded" align="start" padding="4px" height="100%" overflow="hidden">
       <TabList justifyContent="start" backgroundColor="blue.50" padding="5px">
@@ -153,12 +163,50 @@ export const Output: React.FC = () => {
         <Tab>Optimised</Tab>
         <Tab>Wasm</Tab>
       </TabList>
-      <TabPanels>
-        <TabPanel></TabPanel>
-        <TabPanel></TabPanel>
-        <TabPanel height="100%" padding="4px">
+      <TabPanels height="100%">
+        <TabPanel height="100%">
           <Grid templateColumns="1fr auto 120px" gap={6} height="100%">
             <OverlayScrollbarsComponent style={fullHeight} ref={unoptimOutputRef}>
+              <Console
+                logs={unoptimlogs}
+                variant="light"
+                // filter={["info"]}
+                styles={{
+                  BASE_FONT_SIZE: 10,
+                  BASE_LINE_HEIGHT: 0.8,
+                  LOG_INFO_ICON: "",
+                  // LOG_ICON_WIDTH: "8px",
+                  // LOG_ICON_HEIGHT: "8px",
+                  TREENODE_FONT_SIZE: 8,
+                  BASE_BACKGROUND_COLOR: "white",
+                  LOG_BACKGROUND: "white",
+                }}></Console>
+            </OverlayScrollbarsComponent>
+          </Grid>
+        </TabPanel>
+        <TabPanel>
+          <Grid templateColumns="1fr auto 120px" gap={6} height="100%">
+            <OverlayScrollbarsComponent style={fullHeight} ref={optimOutputRef}>
+              <Console
+                logs={optimlogs}
+                variant="light"
+                // filter={["info"]}
+                styles={{
+                  BASE_FONT_SIZE: 10,
+                  BASE_LINE_HEIGHT: 0.8,
+                  LOG_INFO_ICON: "",
+                  // LOG_ICON_WIDTH: "8px",
+                  // LOG_ICON_HEIGHT: "8px",
+                  TREENODE_FONT_SIZE: 8,
+                  BASE_BACKGROUND_COLOR: "white",
+                  LOG_BACKGROUND: "white",
+                }}></Console>
+            </OverlayScrollbarsComponent>
+          </Grid>
+        </TabPanel>
+        <TabPanel height="100%" padding="4px">
+          <Grid templateColumns="1fr auto 120px" gap={6} height="100%">
+            <OverlayScrollbarsComponent style={fullHeight} ref={wasmOutputRef}>
               <Console
                 logs={wasmlogs}
                 variant="light"
@@ -174,8 +222,7 @@ export const Output: React.FC = () => {
                   LOG_BACKGROUND: "white",
                 }}></Console>
             </OverlayScrollbarsComponent>
-            <MemView mem={display} style={{ maxHeight: "100%" }}></MemView>
-
+            <MemView mem={display}></MemView>
             <Grid borderLeft="1px solid lightgrey">
               <canvas id="canvas" width="100" height="100" style={{ margin: "auto" }}></canvas>
             </Grid>
