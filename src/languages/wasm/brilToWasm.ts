@@ -1,5 +1,7 @@
 // adapted from https://github.com/ColinEberhardt/chasm
+// information on sections https://coinexsmartchain.medium.com/wasm-introduction-part-1-binary-format-57895d851580
 
+import { NumberInputProps } from "@chakra-ui/react";
 import _ from "lodash";
 import { type } from "os";
 import {
@@ -579,9 +581,19 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   if (includeLibFunctions.set_pixel) functionBodies.push(emitSetPixelFunction());
   const codeSection = createSection(Section.code, encodeVector(functionBodies));
 
-  // todo: encode data section
-  console.log(datasymbols);
-  const dataSection = createSection(Section.data, [0]);
+  let dataSection: number[];
+  if (datasymbols.size) {
+    dataSection = createSection(Section.data, [
+      ...unsignedLEB128(datasymbols.size),
+      ...flatten(
+        Array.from(datasymbols).map(([symbolvalue, symboldata]) => {
+          // each data segment is 0, offset instruction, encodeVector(bytes)
+          // offset instruction is constopcode(41), unsignedLEB(offset), end(0b)
+          return [0, 0x41, ...unsignedLEB128(symboldata.offset), 0x0b, symboldata.bytes.length, ...symboldata.bytes];
+        })
+      ),
+    ]);
+  } else dataSection = createSection(Section.data, [0]);
 
   const encodeFunctionNames = (importedFnNames: string[], wasmFnNames: string[]) => {
     // structure
@@ -633,6 +645,7 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
     ...funcSection,
     ...exportSection,
     ...codeSection,
+    ...dataSection,
     ...nameSection,
   ]);
 };
