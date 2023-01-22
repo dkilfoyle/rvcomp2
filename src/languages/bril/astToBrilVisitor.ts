@@ -99,7 +99,7 @@ class AstToBrilVisitor {
   variableDeclarationStatement(node: IAstVariableDeclaration) {
     if (node.size && _.isUndefined(node.initExpr)) {
       // array declaration without init, eg int[4] x;
-      if (node.type == "int" || node.type == "bool") {
+      if (node.type == "int" || node.type == "bool" || node.type == "char") {
         this.builder.buildArray(node.id, node.type, node.size);
       } else debugger;
       return;
@@ -218,9 +218,11 @@ class AstToBrilVisitor {
       case "integerLiteralExpression":
       case "floatLiteralExpression":
       case "boolLiteralExpression":
-      case "stringLiteralExpression":
         n = node as IAstNonStringLiteralExpression;
         return this.builder.buildConst(n.value, n.type, assignIDExpr);
+      case "stringLiteralExpression":
+        n = node as IAstStringLiteralExpression;
+        return this.builder.buildString(n.value, assignIDExpr);
       case "arrayLiteralExpression":
         n = node as IAstArrayLiteralExpression;
         if (assignIDExpr) {

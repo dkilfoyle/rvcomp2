@@ -1,4 +1,4 @@
 void main() {
-  string x = "hello";
-  // print_string(x);
+  char[5] x = "hello";
+  print_string(x);
 }

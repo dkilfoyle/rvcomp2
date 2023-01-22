@@ -80,8 +80,8 @@ export interface ParseState {
 export const useParseStore = create<ParseState>()((set) => ({
   cst: { name: "root", children: {} },
   ast: { _name: "root", functionDeclarations: [] },
-  bril: { functions: {} },
-  brilOptim: { functions: {} },
+  bril: { functions: {}, data: new Map() },
+  brilOptim: { functions: {}, data: new Map() },
   cfg: {},
   errors: [],
   wasm: new Uint8Array(),
@@ -91,8 +91,8 @@ export const useParseStore = create<ParseState>()((set) => ({
       produce((state) => {
         if (rcst) state.cst = { name: "root", children: {} };
         if (rast) state.ast = { _name: "root", functionDeclarations: [] };
-        if (rbril) state.bril = { functions: {} };
-        if (rbrilOptim) state.brilOptim = { functions: {} };
+        if (rbril) state.bril = { functions: {}, data: new Map() };
+        if (rbrilOptim) state.brilOptim = { functions: {}, data: new Map() };
         if (rcfg) state.cfg = {};
         state.wasm = [];
       })

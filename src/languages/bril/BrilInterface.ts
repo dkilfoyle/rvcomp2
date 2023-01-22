@@ -1,7 +1,7 @@
 import { IPos } from "../simpleC/ast";
 
 export type IBrilValueType = number | boolean | string;
-export type IBrilPrimType = "int" | "bool" | "float" | "string";
+export type IBrilPrimType = "int" | "bool" | "float" | "char";
 export type IBrilParamType = { ptr: IBrilType };
 export type IBrilType = IBrilPrimType | IBrilParamType | "void";
 
@@ -90,6 +90,9 @@ export interface IBrilNode {
   key?: number;
 }
 
+export type IBrilDataSegment = Map<string, { offset: number; size: number; bytes: Uint8Array }>;
+
 export interface IBrilProgram extends IBrilNode {
   functions: Record<string, IBrilFunction>;
+  data: IBrilDataSegment;
 }

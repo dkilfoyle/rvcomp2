@@ -6,11 +6,13 @@ import _ from "lodash";
 import { type } from "os";
 import {
   IBrilArgument,
+  IBrilConst,
   IBrilEffectOperation,
   IBrilFunction,
   IBrilInstruction,
   IBrilInstructionOrLabel,
   IBrilLabel,
+  IBrilParamType,
   IBrilProgram,
   IBrilType,
   IBrilValueType,
@@ -20,6 +22,7 @@ import { unsignedLEB128, signedLEB128, encodeString, ieee754 } from "./encoding"
 let allSymbols: Record<string, string[]> = {};
 
 const convertBrilToWasmType = (type: IBrilType) => {
+  if (typeof type == "object" && "ptr" in type) return "i32";
   switch (type) {
     case "int":
       return "i32";
@@ -29,9 +32,8 @@ const convertBrilToWasmType = (type: IBrilType) => {
       return "i32";
     case "void":
       return "void";
-    case "string":
-      return "i32"; // memory offset
     default:
+      debugger;
       throw new Error(`Unsupported variable type ${type}`);
   }
 };
@@ -197,7 +199,6 @@ const createSection = (sectionType: Section, data: any[]) => [sectionType, ...en
 
 // ===========================================================================
 
-const datasymbols = new Map<string, { offset: number; size: number; bytes: Uint8Array }>();
 const includeLibFunctions = {
   set_pixel: false,
 };
@@ -270,28 +271,18 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
     return localsymbols.get(name)!;
   };
 
-  const dataOffsetForValue = (type: IBrilType, value: IBrilValueType) => {
-    if (type !== "string") throw new Error("Only string data supported");
-    const stringvalue = value.toString();
-    if (!datasymbols.has(stringvalue)) {
-      const lastentry = datasymbols.size ? Array.from(datasymbols)[datasymbols.size - 1][1] : { offset: 0, size: 0 };
-      const bytes = new TextEncoder().encode(stringvalue + "\0");
-      datasymbols.set(stringvalue, { offset: lastentry.offset + lastentry.size, size: bytes.length, bytes });
-    }
-    return datasymbols.get(stringvalue)!;
-  };
-
   const emitInstructions = (instructions: IBrilInstructionOrLabel[]) => {
     const blockStatus: string[] = ["root"];
     instructions.forEach((instr) => {
       if ("op" in instr)
         switch (instr.op) {
           case "const":
-            if (instr.type == "string") {
+            const constInstr = instr as IBrilConst;
+            if (typeof constInstr.type == "object" && "ptr" in constInstr.type && (instr.type as IBrilParamType).ptr == "char") {
+              if (typeof constInstr.value != "number") throw new Error("ptr<char> should be number");
               const constdest = localIndexForSymbol(instr.dest, instr.type).index;
-              const datasymbol = dataOffsetForValue(instr.type, instr.value);
               code.push(Opcodes.i32_const);
-              code.push(...unsignedLEB128(datasymbol.offset));
+              code.push(...unsignedLEB128(constInstr.value));
               code.push(Opcodes.set_local);
               code.push(...unsignedLEB128(constdest));
             } else {
@@ -405,13 +396,17 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
               case "print_int":
                 callFuncIndex = 0;
                 break;
+              case "print_string":
+                callFuncIndex = 1;
+                break;
               case "set_pixel":
-                callFuncIndex = Object.keys(program.functions).length + 1;
+                callFuncIndex = Object.keys(program.functions).length + 2;
                 includeLibFunctions.set_pixel = true;
                 break;
               default:
-                callFuncIndex = Object.keys(program.functions).findIndex((f) => f === funcName) + 1;
-                break;
+                callFuncIndex = Object.keys(program.functions).findIndex((f) => f === funcName);
+                if (callFuncIndex == -1) throw new Error(`calling unknown function ${funcName}`);
+                return callFuncIndex + 2;
             }
             const argIndexes = instr.args?.map((arg) => localsymbols.get(arg)!.index);
             argIndexes?.forEach((argIndex, i) => {
@@ -523,40 +518,49 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
 
 export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   allSymbols = {};
-  datasymbols.clear();
   includeLibFunctions.set_pixel = false;
+
+  const importedFunctions = [
+    { name: "print_int", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
+    { name: "print_string", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
+  ];
+
+  const libraryFunctions = [
+    { name: "set_pixel", signature: [functionType, ...encodeVector([Valtype.f32, Valtype.f32, Valtype.f32]), emptyArray] },
+  ];
 
   // Function types are vectors of parameters and return types. Currently
   // WebAssembly only supports single return values
-  const printFunctionType = [functionType, ...encodeVector([Valtype.i32]), emptyArray]; // void print_int(int x);
-  const setPixelFunctionType = [functionType, ...encodeVector([Valtype.f32, Valtype.f32, Valtype.f32]), emptyArray]; // void setPixel(float x, float y, float c)
+  // const printIntFunctionType = [functionType, ...encodeVector([Valtype.i32]), emptyArray]; // void print_int(int x);
+  // const printStringFunctionType = [functionType, ...encodeVector([Valtype.i32]), emptyArray]; // void print_int(int x);
+  // const setPixelFunctionType = [functionType, ...encodeVector([Valtype.f32, Valtype.f32, Valtype.f32]), emptyArray]; // void setPixel(float x, float y, float c)
 
   // TODO: optimise - some of the procs might have the same type signature
   const brilFunctions = Object.values(bril.functions);
-  const funcTypes = brilFunctions.map((proc) => [
+  const codeFunctions = brilFunctions.map((proc) => [
     functionType,
     ...encodeVector(proc.args.map((arg) => convertBrilToWasmType(arg.type))),
     ...(proc.type && proc.type != "void" ? [1, Valtype[convertBrilToWasmType(proc.type)]] : [emptyArray]),
   ]);
 
   // the type section is a vector of function types
-  const functionTypes = [printFunctionType, ...funcTypes];
-  if (includeLibFunctions.set_pixel) functionTypes.push(setPixelFunctionType);
+  const functionTypes = [...importedFunctions.map((impfun) => impfun.signature), ...codeFunctions];
+  if (includeLibFunctions.set_pixel) functionTypes.push(libraryFunctions[0].signature);
   const typeSection = createSection(Section.type, encodeVector(functionTypes));
 
   // the function section is a vector of type indices that indicate the type of each function
   // in the code section
-  const nonImportFunctionTypeIndexes = brilFunctions.map((_, index) => index + 1); // + 1 because imported print_int is type 0
-  if (includeLibFunctions.set_pixel) nonImportFunctionTypeIndexes.push(brilFunctions.length + 1); // set pixel type is after coded functions
+  const nonImportFunctionTypeIndexes = brilFunctions.map((_, index) => index + importedFunctions.length); // + 1 because imported print_int is type 0
+  if (includeLibFunctions.set_pixel) nonImportFunctionTypeIndexes.push(brilFunctions.length + importedFunctions.length); // set pixel type is after coded functions
   const funcSection = createSection(Section.func, encodeVector(nonImportFunctionTypeIndexes));
 
   // the import section is a vector of imported functions
-  const printFunctionImport = [
-    ...encodeString("env"),
-    ...encodeString("print_int"),
-    ExportType.func,
-    0x00, // type index
-  ];
+  // const printFunctionImport = [
+  //   ...encodeString("env"),
+  //   ...encodeString("print_int"),
+  //   ExportType.func,
+  //   0x00, // type index
+  // ];
 
   const memoryImport = [
     ...encodeString("env"),
@@ -568,12 +572,18 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
     0x01,
   ];
 
-  const importSection = createSection(Section.import, encodeVector([printFunctionImport, memoryImport]));
+  const importSection = createSection(
+    Section.import,
+    encodeVector([
+      ...importedFunctions.map((impfn, i) => [...encodeString("env"), ...encodeString(impfn.name), ExportType.func, i]),
+      memoryImport,
+    ])
+  );
 
   // the export section is a vector of exported functions
   const exportSection = createSection(
     Section.export,
-    encodeVector(brilFunctions.map((func, i) => [...encodeString(func.name), ExportType.func, i + 1]))
+    encodeVector(brilFunctions.map((func, i) => [...encodeString(func.name), ExportType.func, i + 2]))
   );
 
   // the code section contains vectors of functions
@@ -582,11 +592,11 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   const codeSection = createSection(Section.code, encodeVector(functionBodies));
 
   let dataSection: number[];
-  if (datasymbols.size) {
+  if (bril.data.size) {
     dataSection = createSection(Section.data, [
-      ...unsignedLEB128(datasymbols.size),
+      ...unsignedLEB128(bril.data.size),
       ...flatten(
-        Array.from(datasymbols).map(([symbolvalue, symboldata]) => {
+        Array.from(bril.data).map(([symbolvalue, symboldata]) => {
           // each data segment is 0, offset instruction, encodeVector(bytes)
           // offset instruction is constopcode(41), unsignedLEB(offset), end(0b)
           return [0, 0x41, ...unsignedLEB128(symboldata.offset), 0x0b, symboldata.bytes.length, ...symboldata.bytes];
@@ -633,8 +643,8 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
 
   const nameSection = createSection(Section.custom, [
     ...encodeString("name"),
-    ...encodeFunctionNames(["env.print_int"], Object.keys(bril.functions)),
-    ...encodeLocalNames(["env.print_int"]),
+    ...encodeFunctionNames(["env.print_int", "env.print_string"], Object.keys(bril.functions)),
+    ...encodeLocalNames(["env.print_int", "env.print_string"]),
   ]);
 
   return Uint8Array.from([

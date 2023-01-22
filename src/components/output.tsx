@@ -8,6 +8,7 @@ import { useParseStore, ParseState, useSettingsStore, SettingsState } from "../s
 import { runInterpretor } from "../languages/bril/interp";
 import { emitWasm } from "../languages/wasm/brilToWasm";
 import { MemView } from "./memView";
+import { runWasm } from "../languages/wasm/runWasm";
 // import wabt from "wabt";
 // const wabt = require("wabt")();
 
@@ -70,41 +71,18 @@ export const Output: React.FC = () => {
     setUnoptimLogs([]);
     if (isRunAuto) {
       if (isRunWasm && Object.keys(brilOptim.functions).length) {
-        const wasmBuffer = emitWasm(brilOptim);
-        WabtModule().then((wabtModule) => {
-          const wasmModule = wabtModule.readWasm(wasmBuffer, { readDebugNames: true });
-          wasmModule.applyNames();
-          // wasmModule.generateNames();
-          // console.log(wasmModule.toText({ foldExprs: true }));
-          // wasmModule.validate();
-          const memory = new WebAssembly.Memory({ initial: 1 });
-          const importObject = { env: { print_int: (x: number) => window.conout3.info("From wasm: ", x), memory } };
-          WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
-            //run functions here
-            console.info(`Running Wasm`);
-            const startTime = performance.now();
-            const myresult = res.instance.exports.main();
-            const endTime = performance.now();
-            // if (myresult != null)
-            window.conout3.info(`Returned ${myresult}`);
-            console.info(`Completed in ${(endTime - startTime).toFixed(1)}ms`);
-
-            // display.set(new Uint8Array(memory.buffer, 0, 10000));
-            display = new Uint8Array(memory.buffer, 0, 10000);
-            console.log(display.slice(0, 20));
-
-            const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-            const context = canvas.getContext("2d");
-            const imgData = context!.createImageData(100, 100);
-            for (let i = 0; i < 100 * 100; i++) {
-              imgData.data[i * 4] = display[i];
-              imgData.data[i * 4 + 1] = display[i];
-              imgData.data[i * 4 + 2] = display[i];
-              imgData.data[i * 4 + 3] = 255;
-            }
-            // const data = scaleImageData(imgData, 3, context);
-            context!.putImageData(imgData, 0, 0);
-          });
+        runWasm(bril).then((res) => {
+          const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+          const context = canvas.getContext("2d");
+          const imgData = context!.createImageData(100, 100);
+          for (let i = 0; i < 100 * 100; i++) {
+            imgData.data[i * 4] = res.screen[i];
+            imgData.data[i * 4 + 1] = res.screen[i];
+            imgData.data[i * 4 + 2] = res.screen[i];
+            imgData.data[i * 4 + 3] = 255;
+          }
+          // const data = scaleImageData(imgData, 3, context);
+          context!.putImageData(imgData, 0, 0);
         });
       }
 

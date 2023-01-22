@@ -159,7 +159,7 @@ class CstVisitor extends CstBaseVisitor {
   pushError(message: string, pos: IPos) {
     this.errors.push({
       ...pos,
-      code: "Linter",
+      code: "Parser",
       message,
     });
     return false;
@@ -273,7 +273,7 @@ class CstVisitor extends CstBaseVisitor {
 
   blockStatement(ctx: BlockStatementCstChildren) {
     const statements = ctx.statement?.map((s) => this.visit(s)) || [];
-    const heapVars = this.scopeStack.getArrays();
+    const heapVars = this.scopeStack.getAllocArrays();
     return { _name: "blockStatement", statements, heapVars };
   }
 
@@ -497,7 +497,7 @@ class CstVisitor extends CstBaseVisitor {
   stringLiteralExpression(ctx: StringLiteralExpressionCstChildren) {
     let value: string = ctx.StringLiteral[0].image.substring(1);
     value = value.substring(0, value.length - 1);
-    return { _name: "stringLiteralExpression", value, type: "string", pos: this.getTokenPos(ctx.StringLiteral[0]) };
+    return { _name: "stringLiteralExpression", value, type: "char", size: value.length, pos: this.getTokenPos(ctx.StringLiteral[0]) };
   }
 
   boolLiteralExpression(ctx: BoolLiteralExpressionCstChildren): IAstBoolLiteralExpression {
@@ -534,8 +534,9 @@ class CstVisitor extends CstBaseVisitor {
     if (ctx.Int) t = "int";
     else if (ctx.Void) t = "void";
     else if (ctx.Bool) t = "bool";
-    else if (ctx.String) t = "string";
+    // else if (ctx.String) t = "string";
     else if (ctx.Float) t = "float";
+    else if (ctx.Char) t = "char";
     else throw new Error();
 
     return { _name: "typeSpecifier", type: t };

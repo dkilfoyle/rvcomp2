@@ -14,6 +14,13 @@ class BrilPrinter {
     this.irkeys = {};
     this.lineNum = 0;
     Object.values(bril.functions).forEach((fn) => this.printFunction(fn));
+    if (bril.data.size) {
+      this.hr += "\n/* Data Segment\n";
+      bril.data.forEach((d) => {
+        this.hr += `[${d.offset}-${d.offset + d.size - 1}]: ${d.bytes.toString()}\n`;
+      });
+      this.hr += "*/ end Data Segment";
+    }
     return this.hr;
   }
   formatArgument(arg: IBrilArgument) {
