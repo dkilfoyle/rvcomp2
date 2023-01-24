@@ -95,4 +95,5 @@ export type IBrilDataSegment = Map<string, { offset: number; size: number; bytes
 export interface IBrilProgram extends IBrilNode {
   functions: Record<string, IBrilFunction>;
   data: IBrilDataSegment;
+  dataSize: number;
 }

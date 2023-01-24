@@ -43,6 +43,7 @@ class AstToBrilVisitor {
     for (let fd of node.functionDeclarations) {
       this.functionDeclaration(fd);
     }
+    this.builder.calcDataSize();
     return this.builder.program;
   }
 

@@ -18,7 +18,12 @@ import {
 } from "./BrilInterface";
 
 export class BrilBuilder {
-  public program: IBrilProgram = { functions: {}, key: 0, data: new Map<string, { offset: number; size: number; bytes: Uint8Array }>() };
+  public program: IBrilProgram = {
+    functions: {},
+    key: 0,
+    data: new Map<string, { offset: number; size: number; bytes: Uint8Array }>(),
+    dataSize: 0,
+  };
   public curFunction?: IBrilFunction;
   public nextFresh: number = 0;
   public keyIndex: number = 1;
@@ -26,7 +31,7 @@ export class BrilBuilder {
   constructor() {}
 
   reset() {
-    this.program = { functions: {}, key: 0, data: new Map<string, { offset: number; size: number; bytes: Uint8Array }>() };
+    this.program = { functions: {}, key: 0, data: new Map<string, { offset: number; size: number; bytes: Uint8Array }>(), dataSize: 0 };
     this.curFunction = undefined;
     this.nextFresh = 0;
     this.keyIndex = 1;
@@ -245,6 +250,10 @@ export class BrilBuilder {
       this.program.data.set(stringvalue, { offset: lastentry.offset + lastentry.size, size: bytes.length, bytes });
     }
     return this.program.data.get(stringvalue)!;
+  };
+
+  calcDataSize = () => {
+    this.program.dataSize = Array.from(this.program.data).reduce((accum, cur) => (accum += cur[1].size), 0);
   };
 }
 

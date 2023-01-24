@@ -20,3 +20,16 @@
 .MemViewHover {
   background-color: lightgreen;
 }
+
+.offsetButton {
+  height: 15px !important;
+  font-size: 8pt !important;
+}
+
+.Data {
+  background-color: darkorange;
+}
+
+.Heap {
+  background-color: #00bcd4;
+}

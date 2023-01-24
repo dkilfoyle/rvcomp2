@@ -1,6 +1,11 @@
 import { IBrilProgram } from "../bril/BrilInterface";
 import { emitWasm } from "./brilToWasm";
 
+interface IWasmExports {
+  main: () => void;
+  heap_pointer: number;
+}
+
 export const runWasm = (bril: IBrilProgram) => {
   const wasmBuffer = emitWasm(bril);
   return WabtModule().then((wabtModule) => {
@@ -11,13 +16,13 @@ export const runWasm = (bril: IBrilProgram) => {
     const memory = new WebAssembly.Memory({ initial: 1 });
 
     const getStringFromMemory = (offset: number) => {
-      const buffer = new Uint8Array(memory.buffer, 0, 1024);
-      let i = offset;
+      const buffer = new Uint8Array(memory.buffer, offset, 100);
+      let i = 0;
       let s = "";
       while (buffer[i] != 0) {
         s += String.fromCharCode(buffer[i]);
         i++;
-        if (i > 100) throw new Error("End of string not found after 100 chars");
+        if (i == 100) throw new Error("End of string not found after 100 chars");
       }
       return s;
     };
@@ -36,12 +41,13 @@ export const runWasm = (bril: IBrilProgram) => {
       const myresult = res.instance.exports.main();
       const endTime = performance.now();
       // if (myresult != null)
-      window.conout3.info(`Returned ${myresult}`);
+      window.conout3.info(`Returned ${myresult}, heap_pointer = ${res.instance.exports.heap_pointer.value}`);
       console.info(`Completed in ${(endTime - startTime).toFixed(1)}ms`);
-      const data = new Uint8Array(memory.buffer, 0, 1024);
-      const screen = new Uint8Array(memory.buffer, 1024, 100 * 100);
-      const heap = new Uint8Array(memory.buffer, 1024 + 100 * 100, 1024 + 100 * 100 + 1024);
-      return { data, screen, heap };
+      // const data = new Uint8Array(memory.buffer, 0, 1024);
+      // const screen = new Uint8ClampedArray(memory.buffer, 1024, 100 * 100);
+      // const heap = new Uint8Array(memory.buffer, 1024 + 100 * 100, 1024 + 100 * 100 + 1024);
+      // console.log(data.slice(0, 30));
+      return { memory, heap_pointer: res.instance.exports.heap_pointer.value };
     });
   });
 };

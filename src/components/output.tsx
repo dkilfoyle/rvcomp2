@@ -33,13 +33,25 @@ const theme = {
   base0F: "#cc6633",
 };
 
-let display = new Uint8Array(10000);
+let screen = new Uint8Array(100 * 100);
+let memory = new Uint8Array();
+let heapSize = 0;
 
 window.conout1 = { ...window.console };
 window.conout2 = { ...window.console };
 window.conout3 = { ...window.console };
 
 const fullHeight = { maxHeight: "100%" };
+
+const segments = [
+  {
+    name: "Screen",
+    start: 0,
+    end: 100 * 100 - 1,
+  },
+  { name: "Data", start: 10240, end: 10240 },
+  { name: "Heap", start: 10240, end: 10240 },
+];
 
 export const Output: React.FC = () => {
   const bril = useParseStore((state: ParseState) => state.bril);
@@ -69,19 +81,27 @@ export const Output: React.FC = () => {
   useEffect(() => {
     setOptimLogs([]);
     setUnoptimLogs([]);
+
     if (isRunAuto) {
       if (isRunWasm && Object.keys(brilOptim.functions).length) {
-        runWasm(bril).then((res) => {
+        runWasm(brilOptim).then((res) => {
           const canvas = document.getElementById("canvas") as HTMLCanvasElement;
           const context = canvas.getContext("2d");
           const imgData = context!.createImageData(100, 100);
+          memory = new Uint8Array(res.memory.buffer, 0, 10240 + res.heap_pointer);
+          console.log(memory.slice(10240, 10250));
+          segments[1].end = 10240 + Math.max(0, brilOptim.dataSize - 1);
+          segments[2].start = 10240 + brilOptim.dataSize;
+          segments[2].end = res.heap_pointer - 1;
+
           for (let i = 0; i < 100 * 100; i++) {
-            imgData.data[i * 4] = res.screen[i];
-            imgData.data[i * 4 + 1] = res.screen[i];
-            imgData.data[i * 4 + 2] = res.screen[i];
+            imgData.data[i * 4] = memory[i];
+            imgData.data[i * 4 + 1] = memory[i];
+            imgData.data[i * 4 + 2] = memory[i];
             imgData.data[i * 4 + 3] = 255;
           }
           // const data = scaleImageData(imgData, 3, context);
+          // const imgData = new ImageData(res.screen, 100, 100); // cant do this because res.scren is greyscale
           context!.putImageData(imgData, 0, 0);
         });
       }
@@ -200,7 +220,9 @@ export const Output: React.FC = () => {
                   LOG_BACKGROUND: "white",
                 }}></Console>
             </OverlayScrollbarsComponent>
-            <MemView mem={display}></MemView>
+
+            <MemView mem={memory} segments={segments}></MemView>
+
             <Grid borderLeft="1px solid lightgrey">
               <canvas id="canvas" width="100" height="100" style={{ margin: "auto" }}></canvas>
             </Grid>

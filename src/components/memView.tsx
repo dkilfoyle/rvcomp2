@@ -1,3 +1,4 @@
+import { Button, Grid, HStack } from "@chakra-ui/react";
 import _ from "lodash";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useCallback, useMemo, useState, MouseEvent } from "react";
@@ -8,16 +9,17 @@ const zeroTo15 = _.range(0, 16);
 
 interface MemViewProps {
   mem: Uint8Array;
+  segments: { name: string; start: number; end: number }[];
 }
 
 let hoverLine = -1;
 let hoverByte = -1;
 
-export const MemView = ({ mem }: MemViewProps) => {
-  // const [hoverLine, setHoverLine] = useState<number>(-1);
-  // const [hoverByte, setHoverByte] = useState<number>(-1);
+export const MemView = ({ mem, segments }: MemViewProps) => {
+  const [startOffset, setStartOffset] = useState<number>(segments[0].start);
+  const [endOffset, setEndOffset] = useState<number>(segments[0].end);
 
-  console.log("render");
+  console.log("MemView", segments);
 
   const onHover = useCallback((e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -28,26 +30,37 @@ export const MemView = ({ mem }: MemViewProps) => {
     document.getElementById(`mvb_${line}_${byte}`)?.classList.add("MemViewHover");
     document.getElementById(`mvc_${line}_${byte}`)?.classList.add("MemViewHover");
 
-    // setHoverLine(parseInt(line));
-    // setHoverByte(parseInt(byte));
     hoverLine = parseInt(line);
     hoverByte = parseInt(byte);
   }, []);
 
   const rows = useMemo(() => {
-    const start = 0;
-    const end = 64; //64*16=1024bytes = 1k
-    return _.range(start, end).map((lineOffset) => {
+    const startLine = startOffset / 16;
+    const endLine = endOffset / 16; //64*16=1024bytes = 1k
+
+    return _.range(startLine, endLine).map((lineOffset) => {
       return (
         <div className="MemViewRow" key={"MemViewRow" + lineOffset}>
           <span className="MemViewAddress">{(lineOffset * 16).toString(16).padStart(4, "0")}</span>
-          {zeroTo15.map((byteOffset) => (
-            <span className="MemViewByte" key={`mvb_${lineOffset}_${byteOffset}`} id={`mvb_${lineOffset}_${byteOffset}`} onMouseOver={onHover}>
-              {mem[lineOffset * 15 + byteOffset].toString(16).padStart(2, "0")}
-            </span>
-          ))}
           {zeroTo15.map((byteOffset) => {
-            const mybyte = mem[lineOffset * 15 + byteOffset];
+            const calculatedOffset = lineOffset * 16 + byteOffset;
+            let curSegment = "";
+            if (calculatedOffset >= segments[1].start && calculatedOffset <= segments[1].end) curSegment = "Data";
+            else if (calculatedOffset >= segments[2].start && calculatedOffset <= segments[2].end) curSegment = "Heap";
+
+            return (
+              <span
+                className={"MemViewByte " + curSegment}
+                key={`mvb_${lineOffset}_${byteOffset}`}
+                id={`mvb_${lineOffset}_${byteOffset}`}
+                onMouseOver={onHover}>
+                {calculatedOffset < mem.length ? mem[calculatedOffset].toString(16).padStart(2, "0") : "__"}
+              </span>
+            );
+          })}
+          {zeroTo15.map((byteOffset) => {
+            const calculatedOffset = lineOffset * 16 + byteOffset;
+            const mybyte = calculatedOffset < mem.length ? mem[calculatedOffset] : 0;
             const mybytestr = mybyte >= 32 && mybyte <= 126 ? String.fromCharCode(mybyte) : ".";
             return (
               <span className="MemViewChar" key={`mvc_${lineOffset}_${byteOffset}`} id={`mvc_${lineOffset}_${byteOffset}`}>
@@ -58,7 +71,49 @@ export const MemView = ({ mem }: MemViewProps) => {
         </div>
       );
     });
-  }, [mem]);
+  }, [mem, startOffset, endOffset, segments]);
 
-  return <OverlayScrollbarsComponent>{rows}</OverlayScrollbarsComponent>;
+  return (
+    <Grid templateRows="auto 1fr" gap="4px" overflow="hidden">
+      <HStack>
+        <Button
+          size="xs"
+          className="offsetButton"
+          onClick={() => {
+            setStartOffset(segments[0].start);
+            setEndOffset(segments[0].end);
+          }}>
+          Screen
+        </Button>
+        <Button
+          size="xs"
+          className="offsetButton"
+          onClick={() => {
+            setStartOffset(segments[1].start);
+            setEndOffset(segments[1].end);
+          }}>
+          Data ({segments[1].end - segments[1].start}b)
+        </Button>
+        <Button
+          size="xs"
+          className="offsetButton"
+          onClick={() => {
+            setStartOffset(segments[2].start);
+            setEndOffset(segments[2].end);
+          }}>
+          Heap ({segments[2].end - segments[2].start}b)
+        </Button>
+        <Button
+          size="xs"
+          className="offsetButton"
+          onClick={() => {
+            setStartOffset(segments[1].start);
+            setEndOffset(segments[2].end);
+          }}>
+          Data+Heap
+        </Button>
+      </HStack>
+      <OverlayScrollbarsComponent height="100%">{rows}</OverlayScrollbarsComponent>
+    </Grid>
+  );
 };

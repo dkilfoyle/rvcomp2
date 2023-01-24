@@ -17,7 +17,7 @@ export const optimiseBril = (
   log = false
 ) => {
   const getYN = (t: boolean) => (t ? "Y" : "N");
-  const outBril: IBrilProgram = { functions: {}, data: new Map() };
+  const outBril: IBrilProgram = { functions: {}, data: new Map(), dataSize: 0 };
   const outCfg: ICFG = {};
   // if (log && Object.keys(bril.functions).length > 0) console.info(`Optimising: SSA:${doSSA}, LVN:${doLVN}, DCE:${doDCE}`);
   Object.values(bril.functions).forEach((func) => {
@@ -54,6 +54,7 @@ export const optimiseBril = (
       instrs,
     };
     outBril.data = new Map(bril.data);
+    outBril.dataSize = bril.dataSize;
     outCfg[func.name] = Object.values(blockMap);
   });
   return { optimBril: outBril, optimCfg: outCfg };

@@ -2,6 +2,7 @@
 // information on sections https://coinexsmartchain.medium.com/wasm-introduction-part-1-binary-format-57895d851580
 
 import { NumberInputProps } from "@chakra-ui/react";
+import { sign } from "crypto";
 import _ from "lodash";
 import { type } from "os";
 import {
@@ -63,6 +64,11 @@ enum Valtype {
   void = 0x0,
 }
 
+enum Mutable {
+  no = 0,
+  yes = 1,
+}
+
 // https://webassembly.github.io/spec/core/binary/types.html#binary-blocktype
 enum Blocktype {
   void = 0x40,
@@ -80,7 +86,10 @@ type IWasmOpCode =
   | "call"
   | "get_local"
   | "set_local"
+  | "get_global"
+  | "set_global"
   | "i32_store_8"
+  | "i32_store"
   | "i32_const"
   | "f32_const"
   | "i32_eqz"
@@ -120,7 +129,10 @@ const Opcodes: Record<IWasmOpCode, number> = {
   // locals
   get_local: 0x20,
   set_local: 0x21,
+  get_global: 0x23,
+  set_global: 0x24,
   i32_store_8: 0x3a,
+  i32_store: 0x36,
   // numeric
   i32_const: 0x41,
   f32_const: 0x43,
@@ -199,6 +211,18 @@ const createSection = (sectionType: Section, data: any[]) => [sectionType, ...en
 
 // ===========================================================================
 
+enum Offsets {
+  screen = 0,
+  data = 10240,
+}
+
+const encodeConstI32_Signed = (i32: number) => {
+  return [Opcodes.i32_const, ...signedLEB128(i32), Opcodes.end];
+};
+const encodeConstI32_UnSigned = (i32: number) => {
+  return [Opcodes.i32_const, ...unsignedLEB128(i32), Opcodes.end];
+};
+
 const includeLibFunctions = {
   set_pixel: false,
 };
@@ -257,7 +281,7 @@ const emitSetPixelFunction = () => {
   return encodeVector([...encodeVector(locals), ...code, Opcodes.end]);
 };
 
-const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
+const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: Record<string, { index: number; bytes: number[] }>) => {
   const code: number[] = [];
 
   const localsymbols = new Map<string, { index: number; type: Valtype }>(
@@ -438,6 +462,32 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram) => {
             }
             code.push(Opcodes.return);
             break;
+          case "alloc":
+            // store the array length at heap_pointer + 0
+            // array length is already stored in local instr.args[0]
+            const allocLengthVar = localIndexForSymbol(instr.args[0], "int").index;
+            code.push(Opcodes.get_global, ...unsignedLEB128(globals.heap_pointer.index)); // (get_global $heap_pointer)
+            code.push(Opcodes.get_local, ...unsignedLEB128(allocLengthVar));
+            code.push(Opcodes.i32_store, 2, 0); // (i32.store (get_global $heap_pointer) (get_local $lengthconst))
+
+            // // calculate new heap_pointer = heap_pointer + arraylength*4 + 4
+            // // (4 bytes per i32)
+
+            // // arraylength * 4
+            code.push(Opcodes.get_local, ...unsignedLEB128(allocLengthVar));
+            code.push(Opcodes.i32_const, ...signedLEB128(4));
+            code.push(Opcodes.i32_mul);
+
+            // // + heap_pointer
+            code.push(Opcodes.get_global, ...unsignedLEB128(globals.heap_pointer.index)); // (get_global $heap_pointer)
+            code.push(Opcodes.i32_add);
+
+            // // + 4
+            code.push(Opcodes.i32_const, ...signedLEB128(4));
+            code.push(Opcodes.i32_add);
+
+            code.push(Opcodes.set_global, ...unsignedLEB128(globals.heap_pointer.index));
+            break;
           default:
             throw new Error(`emitWasm: instruction ${instr.op} not implemented yet`);
         }
@@ -529,6 +579,31 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
     { name: "set_pixel", signature: [functionType, ...encodeVector([Valtype.f32, Valtype.f32, Valtype.f32]), emptyArray] },
   ];
 
+  let dataSection: number[];
+  if (bril.data.size) {
+    dataSection = createSection(Section.data, [
+      ...unsignedLEB128(bril.data.size),
+      ...flatten(
+        Array.from(bril.data).map(([symbolvalue, symboldata]) => {
+          // each data segment is 0, offset instruction, encodeVector(bytes)
+          // offset instruction is constopcode(41), unsignedLEB(offset), end(0b)
+          return [0, ...encodeConstI32_Signed(Offsets.data + symboldata.offset), ...encodeVector(Array.from(symboldata.bytes))];
+        })
+      ),
+    ]);
+  } else dataSection = []; //createSection(Section.data, [0]);
+  const dataSegmentSize = Array.from(bril.data).reduce((accum, cur) => (accum += cur[1].size), 0);
+
+  // memory structure
+  // 0--10239 = frame buffer
+  // 10240-data.size = data section
+  // 10240+data.size = heap_base
+  const globals = {
+    data_start: { index: 0, bytes: [Valtype.i32, Mutable.no, ...encodeConstI32_Signed(Offsets.data)] },
+    heap_base: { index: 1, bytes: [Valtype.i32, Mutable.no, ...encodeConstI32_Signed(Offsets.data + dataSegmentSize)] },
+    heap_pointer: { index: 2, bytes: [Valtype.i32, Mutable.yes, ...encodeConstI32_Signed(Offsets.data + dataSegmentSize)] },
+  };
+
   // Function types are vectors of parameters and return types. Currently
   // WebAssembly only supports single return values
   // const printIntFunctionType = [functionType, ...encodeVector([Valtype.i32]), emptyArray]; // void print_int(int x);
@@ -583,27 +658,19 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   // the export section is a vector of exported functions
   const exportSection = createSection(
     Section.export,
-    encodeVector(brilFunctions.map((func, i) => [...encodeString(func.name), ExportType.func, i + 2]))
+    encodeVector([
+      ...brilFunctions.map((func, i) => [...encodeString(func.name), ExportType.func, i + 2]),
+      [...encodeString("heap_pointer"), ExportType.global, 2],
+    ])
   );
 
   // the code section contains vectors of functions
-  const functionBodies = brilFunctions.map((func) => emitWasmFunction(func, bril));
+  const functionBodies = brilFunctions.map((func) => emitWasmFunction(func, bril, globals));
   if (includeLibFunctions.set_pixel) functionBodies.push(emitSetPixelFunction());
   const codeSection = createSection(Section.code, encodeVector(functionBodies));
 
-  let dataSection: number[];
-  if (bril.data.size) {
-    dataSection = createSection(Section.data, [
-      ...unsignedLEB128(bril.data.size),
-      ...flatten(
-        Array.from(bril.data).map(([symbolvalue, symboldata]) => {
-          // each data segment is 0, offset instruction, encodeVector(bytes)
-          // offset instruction is constopcode(41), unsignedLEB(offset), end(0b)
-          return [0, 0x41, ...unsignedLEB128(symboldata.offset), 0x0b, symboldata.bytes.length, ...symboldata.bytes];
-        })
-      ),
-    ]);
-  } else dataSection = createSection(Section.data, [0]);
+  const globalsArray = Object.values(globals);
+  const globalSection = createSection(Section.global, [...unsignedLEB128(globalsArray.length), ...flatten(globalsArray.map((g) => g.bytes))]);
 
   const encodeFunctionNames = (importedFnNames: string[], wasmFnNames: string[]) => {
     // structure
@@ -653,6 +720,7 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
     ...typeSection,
     ...importSection,
     ...funcSection,
+    ...globalSection,
     ...exportSection,
     ...codeSection,
     ...dataSection,
