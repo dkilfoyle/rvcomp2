@@ -90,6 +90,7 @@ type IWasmOpCode =
   | "set_global"
   | "i32_store_8"
   | "i32_store"
+  | "f32_store"
   | "i32_const"
   | "f32_const"
   | "i32_eqz"
@@ -133,6 +134,7 @@ const Opcodes: Record<IWasmOpCode, number> = {
   set_global: 0x24,
   i32_store_8: 0x3a,
   i32_store: 0x36,
+  f32_store: 0x38,
   // numeric
   i32_const: 0x41,
   f32_const: 0x43,
@@ -288,8 +290,9 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
     func.args.map((arg, index) => [arg.name, { index, type: Valtype[convertBrilToWasmType(arg.type)] }])
   );
 
-  const localIndexForSymbol = (name: string, type: IBrilType) => {
+  const localIndexForSymbol = (name: string, type?: IBrilType) => {
     if (!localsymbols.has(name)) {
+      if (!type) throw new Error("Need type for local symbol initiation");
       localsymbols.set(name, { index: localsymbols.size, type: Valtype[convertBrilToWasmType(type)] });
     }
     return localsymbols.get(name)!;
@@ -449,6 +452,21 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
           case "jmp":
             // console.log("ignoring jmp", instr.labels);
             // do nothing as block movement is via blockStack
+            break;
+          case "ptradd":
+            throw new Error("TODO: ptr add");
+          case "store":
+            const storeinstr = instr as IBrilEffectOperation;
+            if (!instr.args) throw new Error("Store instruction has no args");
+            const offsetVarIndex = localIndexForSymbol(instr.args[0]).index;
+            const valueVar = localIndexForSymbol(instr.args[1]);
+            code.push(...unsignedLEB128(offsetVarIndex));
+            code.push(Opcodes.get_local, ...unsignedLEB128(offsetVarIndex));
+            if (valueVar.type == Valtype.i32) {
+              code.push(Opcodes.i32_store, 2, 0);
+            } else {
+              code.push(Opcodes.f32_store, 2, 0);
+            }
             break;
           case "ret":
             if (instr.args?.length) {
