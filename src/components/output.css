@@ -1,0 +1,23 @@
+.outputTabs {
+  font-size: 10pt !important;
+}
+
+.verticalButton {
+  display: table-cell;
+  width: 20px;
+  height: 100%;
+  background: whitesmoke;
+  border: 1px solid lightgray;
+}
+
+.verticalButton span {
+  transform: rotate(90deg);
+  right: -20px;
+  font-size: 10pt;
+  margin-top: -10px;
+  position: absolute;
+  text-align: center;
+  top: 50%;
+  width: 78px;
+  z-index: 9999;
+}

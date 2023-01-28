@@ -292,7 +292,10 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
 
   const localIndexForSymbol = (name: string, type?: IBrilType) => {
     if (!localsymbols.has(name)) {
-      if (!type) throw new Error("Need type for local symbol initiation");
+      if (!type) {
+        debugger;
+        throw new Error("Need type for local symbol initiation");
+      }
       localsymbols.set(name, { index: localsymbols.size, type: Valtype[convertBrilToWasmType(type)] });
     }
     return localsymbols.get(name)!;
@@ -347,20 +350,25 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
           case "fgt":
           case "fge":
           case "feq":
+          // ptr numeric
+          case "ptradd":
             const binInstrType = instr.type;
             const binarg0 = localIndexForSymbol(instr.args[0], binInstrType);
-            code.push(Opcodes.get_local);
-            code.push(...unsignedLEB128(binarg0.index));
+            code.push(Opcodes.get_local, ...unsignedLEB128(binarg0.index));
 
             const binarg1 = localIndexForSymbol(instr.args[1], binInstrType);
-            code.push(Opcodes.get_local);
-            code.push(...unsignedLEB128(binarg1.index));
+            code.push(Opcodes.get_local, ...unsignedLEB128(binarg1.index));
 
+            if (instr.op == "ptradd") {
+              code.push(Opcodes.i32_const, ...signedLEB128(4));
+              code.push(Opcodes.i32_mul);
+            }
             if (binarg0.type != binarg1.type) throw new Error(`Binary operands must be of same type: ${binarg0.type} != ${binarg1.type}`);
             if (instr.op.startsWith("f") && binarg0.type !== Valtype.f32)
               throw new Error(`Binary float operation ${instr.op} expects float operands, got ${binarg0.type}`);
 
-            const binopcode = binarg0.type == Valtype.i32 ? (`i32_${instr.op}` as IWasmOpCode) : (`f32_${instr.op.slice(1)}` as IWasmOpCode);
+            const instrop = instr.op == "ptradd" ? "add" : instr.op;
+            const binopcode = binarg0.type == Valtype.i32 ? (`i32_${instrop}` as IWasmOpCode) : (`f32_${instrop.slice(1)}` as IWasmOpCode);
             code.push(Opcodes[binopcode]);
             // console.log(`(${binopcode} (get_local ${binarg0}) (get_local ${binarg1}))`);
 
@@ -453,15 +461,13 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
             // console.log("ignoring jmp", instr.labels);
             // do nothing as block movement is via blockStack
             break;
-          case "ptradd":
-            throw new Error("TODO: ptr add");
           case "store":
             const storeinstr = instr as IBrilEffectOperation;
             if (!instr.args) throw new Error("Store instruction has no args");
             const offsetVarIndex = localIndexForSymbol(instr.args[0]).index;
             const valueVar = localIndexForSymbol(instr.args[1]);
-            code.push(...unsignedLEB128(offsetVarIndex));
             code.push(Opcodes.get_local, ...unsignedLEB128(offsetVarIndex));
+            code.push(Opcodes.get_local, ...unsignedLEB128(valueVar.index));
             if (valueVar.type == Valtype.i32) {
               code.push(Opcodes.i32_store, 2, 0);
             } else {
@@ -481,12 +487,17 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
             code.push(Opcodes.return);
             break;
           case "alloc":
-            // store the array length at heap_pointer + 0
+            // set dest to current heap_pointer
+            code.push(Opcodes.get_global, ...unsignedLEB128(globals.heap_pointer.index));
+            code.push(Opcodes.set_local, ...unsignedLEB128(localIndexForSymbol(instr.dest, instr.type).index));
+
             // array length is already stored in local instr.args[0]
             const allocLengthVar = localIndexForSymbol(instr.args[0], "int").index;
-            code.push(Opcodes.get_global, ...unsignedLEB128(globals.heap_pointer.index)); // (get_global $heap_pointer)
-            code.push(Opcodes.get_local, ...unsignedLEB128(allocLengthVar));
-            code.push(Opcodes.i32_store, 2, 0); // (i32.store (get_global $heap_pointer) (get_local $lengthconst))
+
+            // store the array length at heap_pointer + 0
+            // code.push(Opcodes.get_global, ...unsignedLEB128(globals.heap_pointer.index)); // (get_global $heap_pointer)
+            // code.push(Opcodes.get_local, ...unsignedLEB128(allocLengthVar));
+            // code.push(Opcodes.i32_store, 2, 0); // (i32.store (get_global $heap_pointer) (get_local $lengthconst))
 
             // // calculate new heap_pointer = heap_pointer + arraylength*4 + 4
             // // (4 bytes per i32)
@@ -500,11 +511,17 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
             code.push(Opcodes.get_global, ...unsignedLEB128(globals.heap_pointer.index)); // (get_global $heap_pointer)
             code.push(Opcodes.i32_add);
 
-            // // + 4
-            code.push(Opcodes.i32_const, ...signedLEB128(4));
-            code.push(Opcodes.i32_add);
+            // // + 4 for length of array
+            // code.push(Opcodes.i32_const, ...signedLEB128(4));
+            // code.push(Opcodes.i32_add);
 
             code.push(Opcodes.set_global, ...unsignedLEB128(globals.heap_pointer.index));
+
+            break;
+          case "ptradd":
+          case "free":
+            // TODO: implement memory management
+            // For now ignore and let heap always grow
             break;
           default:
             throw new Error(`emitWasm: instruction ${instr.op} not implemented yet`);

@@ -3,14 +3,17 @@ import React, { useEffect, useRef, useState } from "react";
 import { Console, Hook } from "console-feed";
 import "overlayscrollbars/overlayscrollbars.css";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import { Flex, Grid, Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
+import { Button, Divider, Flex, Grid, Icon, Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
 import { useParseStore, ParseState, useSettingsStore, SettingsState } from "../store/zustore";
 import { runInterpretor } from "../languages/bril/interp";
 import { emitWasm } from "../languages/wasm/brilToWasm";
 import { MemView } from "./memView";
 import { runWasm } from "../languages/wasm/runWasm";
-// import wabt from "wabt";
-// const wabt = require("wabt")();
+
+import "./output.css";
+import { GiSlowBlob } from "react-icons/gi";
+import { FaRunning } from "react-icons/fa";
+import { SiWebassembly } from "react-icons/si";
 
 const theme = {
   scheme: "monokai",
@@ -33,8 +36,9 @@ const theme = {
   base0F: "#cc6633",
 };
 
-let screen = new Uint8Array(100 * 100);
-let memory = new Uint8Array();
+let brilMemory = new Uint8Array();
+let optimMemory = new Uint8Array();
+let wasmMemory = new Uint8Array();
 let heapSize = 0;
 
 window.conout1 = { ...window.console };
@@ -53,6 +57,19 @@ const segments = [
   { name: "Heap", start: 10240, end: 10240 },
 ];
 
+const paintScreen = (canvasId: string, mem: Uint8Array) => {
+  const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+  const context = canvas.getContext("2d");
+  const imgData = context!.createImageData(100, 100);
+  for (let i = 0; i < 100 * 100; i++) {
+    imgData.data[i * 4] = mem[i];
+    imgData.data[i * 4 + 1] = mem[i];
+    imgData.data[i * 4 + 2] = mem[i];
+    imgData.data[i * 4 + 3] = 255;
+  }
+  context!.putImageData(imgData, 0, 0);
+};
+
 export const Output: React.FC = () => {
   const bril = useParseStore((state: ParseState) => state.bril);
   const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
@@ -66,6 +83,9 @@ export const Output: React.FC = () => {
   const [unoptimlogs, setUnoptimLogs] = useState<any[]>([]);
   const [optimlogs, setOptimLogs] = useState<any[]>([]);
   const [wasmlogs, setWasmLogs] = useState<any[]>([]);
+
+  const [showScreen, setShowScreen] = useState<boolean>(false);
+  const [showMem, setShowMem] = useState<boolean>(true);
 
   const unoptimOutputRef = useRef<OverlayScrollbarsComponentRef>(null);
   const optimOutputRef = useRef<OverlayScrollbarsComponentRef>(null);
@@ -85,44 +105,29 @@ export const Output: React.FC = () => {
     if (isRunAuto) {
       if (isRunWasm && Object.keys(brilOptim.functions).length) {
         runWasm(brilOptim).then((res) => {
-          const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-          const context = canvas.getContext("2d");
-          const imgData = context!.createImageData(100, 100);
-          memory = new Uint8Array(res.memory.buffer, 0, 10240 + res.heap_pointer);
-          console.log(memory.slice(10240, 10250));
+          wasmMemory = new Uint8Array(res.memory.buffer, 0, 10240 + res.heap_pointer);
           segments[1].end = 10240 + Math.max(0, brilOptim.dataSize - 1);
           segments[2].start = 10240 + brilOptim.dataSize;
           segments[2].end = res.heap_pointer - 1;
-
-          for (let i = 0; i < 100 * 100; i++) {
-            imgData.data[i * 4] = memory[i];
-            imgData.data[i * 4 + 1] = memory[i];
-            imgData.data[i * 4 + 2] = memory[i];
-            imgData.data[i * 4 + 3] = 255;
-          }
-          // const data = scaleImageData(imgData, 3, context);
-          // const imgData = new ImageData(res.screen, 100, 100); // cant do this because res.scren is greyscale
-          context!.putImageData(imgData, 0, 0);
         });
       }
 
-      if (isRunUnoptim) runInterpretor(bril, [], window.conout1, "un-optimised");
-      if (isRunOptim) {
-        const display = runInterpretor(brilOptim, [], window.conout2, "optimised");
-        const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-        const context = canvas.getContext("2d");
-        const imgData = context!.createImageData(100, 100);
-        for (let i = 0; i < 100 * 100; i++) {
-          imgData.data[i * 4] = display[i];
-          imgData.data[i * 4 + 1] = display[i];
-          imgData.data[i * 4 + 2] = display[i];
-          imgData.data[i * 4 + 3] = 255;
-        }
-        // const data = scaleImageData(imgData, 3, context);
-        context!.putImageData(imgData, 0, 0);
-      }
+      if (isRunUnoptim) brilMemory = runInterpretor(bril, [], window.conout1, "un-optimised");
+      if (isRunOptim) optimMemory = runInterpretor(brilOptim, [], window.conout2, "optimised");
     }
   }, [bril, brilOptim]);
+
+  useEffect(() => {
+    if (showScreen) paintScreen("brilCanvas", brilMemory);
+  }, [brilMemory, showScreen]);
+
+  useEffect(() => {
+    if (showScreen) paintScreen("optimCanvas", optimMemory);
+  }, [optimMemory, showScreen]);
+
+  useEffect(() => {
+    if (showScreen) paintScreen("wasmCanvas", wasmMemory);
+  }, [wasmMemory, showScreen]);
 
   useEffect(() => {
     if (optimOutputRef.current && optimOutputRef.current.osInstance()) {
@@ -154,16 +159,34 @@ export const Output: React.FC = () => {
     }
   }, [wasmlogs, wasmOutputRef.current]);
 
+  const screenButton = (
+    <div className="verticalButton">
+      <span onClick={() => setShowScreen(true)}>Screen</span>
+    </div>
+  );
+
+  const memButton = (
+    <div className="verticalButton">
+      <span>Memory</span>
+    </div>
+  );
+
   return (
-    <Tabs size="sm" orientation="vertical" variant="soft-rounded" align="start" padding="4px" height="100%" overflow="hidden">
-      <TabList justifyContent="start" backgroundColor="blue.50" padding="5px">
-        <Tab>Bril</Tab>
-        <Tab>Optimised</Tab>
-        <Tab>Wasm</Tab>
+    <Tabs defaultIndex={2} size="sm" orientation="vertical" padding="4px" height="100%" overflow="hidden" borderColor="whitesmoke">
+      <TabList background="whitesmoke" width="40px">
+        <Tab>
+          <Icon as={GiSlowBlob} />
+        </Tab>
+        <Tab>
+          <Icon as={FaRunning} />
+        </Tab>
+        <Tab>
+          <Icon as={SiWebassembly} />
+        </Tab>
       </TabList>
       <TabPanels height="100%">
         <TabPanel height="100%">
-          <Grid templateColumns="1fr auto 120px" gap={6} height="100%">
+          <Grid templateColumns="1fr auto auto auto auto" gap="2" height="100%">
             <OverlayScrollbarsComponent style={fullHeight} ref={unoptimOutputRef}>
               <Console
                 logs={unoptimlogs}
@@ -180,10 +203,14 @@ export const Output: React.FC = () => {
                   LOG_BACKGROUND: "white",
                 }}></Console>
             </OverlayScrollbarsComponent>
+            <Divider orientation="vertical" size="sm"></Divider>
+            {showMem ? <MemView mem={brilMemory} segments={segments}></MemView> : memButton}
+            <Divider orientation="vertical" size="sm"></Divider>
+            {showScreen ? <canvas id="brilCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
           </Grid>
         </TabPanel>
         <TabPanel>
-          <Grid templateColumns="1fr auto 120px" gap={6} height="100%">
+          <Grid templateColumns="1fr auto auto auto auto" gap="2" height="100%">
             <OverlayScrollbarsComponent style={fullHeight} ref={optimOutputRef}>
               <Console
                 logs={optimlogs}
@@ -200,10 +227,14 @@ export const Output: React.FC = () => {
                   LOG_BACKGROUND: "white",
                 }}></Console>
             </OverlayScrollbarsComponent>
+            <Divider orientation="vertical" size="sm"></Divider>
+            {showMem ? <MemView mem={optimMemory} segments={segments}></MemView> : memButton}
+            <Divider orientation="vertical" size="sm"></Divider>
+            {showScreen ? <canvas id="optimCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
           </Grid>
         </TabPanel>
         <TabPanel height="100%" padding="4px">
-          <Grid templateColumns="1fr auto 120px" gap={6} height="100%">
+          <Grid templateColumns="1fr auto auto auto auto" gap="2" height="100%">
             <OverlayScrollbarsComponent style={fullHeight} ref={wasmOutputRef}>
               <Console
                 logs={wasmlogs}
@@ -221,11 +252,10 @@ export const Output: React.FC = () => {
                 }}></Console>
             </OverlayScrollbarsComponent>
 
-            <MemView mem={memory} segments={segments}></MemView>
-
-            <Grid borderLeft="1px solid lightgrey">
-              <canvas id="canvas" width="100" height="100" style={{ margin: "auto" }}></canvas>
-            </Grid>
+            <Divider orientation="vertical" size="sm"></Divider>
+            {showMem ? <MemView mem={wasmMemory} segments={segments}></MemView> : memButton}
+            <Divider orientation="vertical" size="sm"></Divider>
+            {showScreen ? <canvas id="wasmCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
           </Grid>
         </TabPanel>
       </TabPanels>

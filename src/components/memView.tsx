@@ -16,10 +16,8 @@ let hoverLine = -1;
 let hoverByte = -1;
 
 export const MemView = ({ mem, segments }: MemViewProps) => {
-  const [startOffset, setStartOffset] = useState<number>(segments[0].start);
-  const [endOffset, setEndOffset] = useState<number>(segments[0].end);
-
-  console.log("MemView", segments);
+  const [startOffset, setStartOffset] = useState<number>(-1);
+  const [endOffset, setEndOffset] = useState<number>(-1);
 
   const onHover = useCallback((e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -35,8 +33,8 @@ export const MemView = ({ mem, segments }: MemViewProps) => {
   }, []);
 
   const rows = useMemo(() => {
-    const startLine = startOffset / 16;
-    const endLine = endOffset / 16; //64*16=1024bytes = 1k
+    const startLine = startOffset > -1 ? startOffset / 16 : segments[1].start / 16;
+    const endLine = endOffset > -1 ? endOffset / 16 : segments[2].end / 16;
 
     return _.range(startLine, endLine).map((lineOffset) => {
       return (
