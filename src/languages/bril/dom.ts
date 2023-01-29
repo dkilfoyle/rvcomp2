@@ -105,6 +105,16 @@ export const getDominanceTree = (dominatorMap: stringMap) => {
   return res;
 };
 
+export const getBackEdges = (cfgBlocks: ICFGBlock[], dominatorMap: stringMap, successorMap: stringMap) => {
+  const backEdges: string[][] = [];
+  cfgBlocks.forEach((block) => {
+    dominatorMap[block.name].forEach((dominator) => {
+      if (successorMap[block.name].includes(dominator)) backEdges.push([block.name, dominator]);
+    });
+  });
+  return backEdges;
+};
+
 // def dom_tree(dom):
 //     # Get the blocks strictly dominated by a block strictly dominated by
 //     # a given block.

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Options, Network } from "vis-network";
-import { getDominanceFrontierMap, getDominanceTree, getDominatorMap } from "../languages/bril/dom";
+import { DataSet } from "vis-data";
+import { getBackEdges, getDominanceFrontierMap, getDominanceTree, getDominatorMap } from "../languages/bril/dom";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
 import { getDataFlow } from "../languages/bril/df";
 import { Box, Checkbox, Flex, Grid, Select, Table, Td, Th, Thead, Tooltip, Tr, VStack } from "@chakra-ui/react";
@@ -33,7 +34,8 @@ export const CfgView = () => {
     const dom = getDominatorMap(successorsMap, fn[0].name);
     const frontier = getDominanceFrontierMap(dom, successorsMap);
     const domtree = getDominanceTree(dom);
-    return { blockMap, successorsMap, dom, frontier, domtree, dataFlow };
+    const backEdges = getBackEdges(cfg[functionName], dom, successorsMap);
+    return { blockMap, successorsMap, dom, frontier, domtree, dataFlow, backEdges };
   }, [brilOptim, functionName]);
 
   const cfgVisData = useMemo(() => {
@@ -45,39 +47,57 @@ export const CfgView = () => {
         nodes.push({
           id: node.name,
           label: node.name,
-          color: cfg.dom[nodeName]?.includes(node.name) ? "#FC8181" : cfg.domtree[nodeName]?.includes(node.name) ? "#68D391" : "#97C2FC",
-          borderWidth: node.name == nodeName ? 3 : 1,
-          shapeProperties: cfg.frontier[nodeName]?.includes(node.name) ? { borderDashes: [5, 5] } : {},
+          color: "#97C2FC",
         });
         node.out.forEach((out) => {
-          edges.push({ from: node.name, to: out, physics: false, smooth: { type: "cubicBezier" } });
+          if (
+            cfg.backEdges.find(([tail, head]) => {
+              return tail == node.name && head == out;
+            })
+          )
+            edges.push({
+              from: node.name,
+              to: out,
+              color: "orangered",
+              dashes: true,
+              physics: false,
+              width: 2,
+              smooth: { enabled: true, type: "cubicBezier" },
+            });
+          else
+            edges.push({ from: node.name, to: out, width: 1, color: "grey", physics: false, smooth: { enabled: true, type: "cubicBezier" } });
         });
       });
     } else {
       nodes.push({ id: "cfgerror", label: "Invalid CFG" });
     }
 
-    return { nodes, edges };
-  }, [cfg, nodeName]);
+    return { nodes: new DataSet(nodes), edges: new DataSet(edges) };
+  }, [cfg]);
 
   useEffect(() => {
     const options: Options = {
       autoResize: true,
-      height: "100%",
+      height: "90%",
       width: "100%",
       interaction: { hover: true },
       layout: {
         hierarchical: {
           enabled: true,
-          levelSeparation: 50,
-          sortMethod: "directed",
+          levelSeparation: 110,
+
+          //   levelSeparation: 55,
+          //   edgeMinimization: false,
+          // sortMethod: "directed",
         },
       },
-      physics: {
-        hierarchicalRepulsion: {
-          nodeDistance: 50,
-        },
-      },
+      physics: true,
+      // physics: {
+      //   hierarchicalRepulsion: {
+      //     nodeDistance: 70,
+      //     avoidOverlap: 0.5,
+      //   },
+      // },
       nodes: {
         shape: "box",
       },
@@ -95,6 +115,13 @@ export const CfgView = () => {
         setSettings((state: SettingsState) => {
           state.cfg.nodeName = params.node;
         });
+        // set all nodes back to default color and border
+        if (cfg) cfgVisData.nodes.update(Object.values(cfg.blockMap).map((node) => ({ id: node.name, color: "#97C2FC" })));
+        // color dolminance tree of the hovered node in green
+        if (cfg) cfgVisData.nodes.update(cfg.domtree[params.node].map((dominator) => ({ id: dominator, color: "#68D391" })));
+        // color dominators of the hovered node in red
+        if (cfg) cfgVisData.nodes.update(cfg.dom[params.node].map((dominator) => ({ id: dominator, color: "#FC8181" })));
+
         // dispatch(setCfgNodeName(params.node));
       });
       network?.fit();
@@ -182,6 +209,7 @@ export const CfgView = () => {
       </Box>
 
       <Box ref={visJsRef} overflow="hidden"></Box>
+
       {showTable && (
         <Box p={2} borderTop="1px solid lightgrey" height="250px" width="100%" fontSize="10pt">
           <OverlayScrollbarsComponent defer style={{ marginTop: "0px" }}>
