@@ -55,6 +55,7 @@ const Int = createKeywordToken({ name: "Int", pattern: /int/ });
 const Float = createKeywordToken({ name: "Float", pattern: /float/ });
 const Void = createKeywordToken({ name: "Void", pattern: /void/ });
 const String = createKeywordToken({ name: "String", pattern: /string/ });
+const Char = createKeywordToken({ name: "Char", pattern: /char/ });
 const Bool = createKeywordToken({ name: "Bool", pattern: /bool/ });
 
 const AdditionOperator = createToken({ name: "AdditionOperator", pattern: Lexer.NA });
@@ -108,6 +109,7 @@ export const tokens = {
   Void,
   Bool,
   String,
+  Char,
   // Punc
   LCurly,
   RCurly,

@@ -14,9 +14,11 @@ import {
   IAstIfStatement,
   IAstIntegerLiteralExpression,
   IAstLiteralExpression,
+  IAstNonStringLiteralExpression,
   IAstProgram,
   IAstReturnStatement,
   IAstStatement,
+  IAstStringLiteralExpression,
   IAstVariableDeclaration,
   IAstWhileStatement,
   IPos,
@@ -41,6 +43,7 @@ class AstToBrilVisitor {
     for (let fd of node.functionDeclarations) {
       this.functionDeclaration(fd);
     }
+    this.builder.calcDataSize();
     return this.builder.program;
   }
 
@@ -97,7 +100,7 @@ class AstToBrilVisitor {
   variableDeclarationStatement(node: IAstVariableDeclaration) {
     if (node.size && _.isUndefined(node.initExpr)) {
       // array declaration without init, eg int[4] x;
-      if (node.type == "int" || node.type == "bool") {
+      if (node.type == "int" || node.type == "bool" || node.type == "char") {
         this.builder.buildArray(node.id, node.type, node.size);
       } else debugger;
       return;
@@ -216,8 +219,11 @@ class AstToBrilVisitor {
       case "integerLiteralExpression":
       case "floatLiteralExpression":
       case "boolLiteralExpression":
-        n = node as IAstLiteralExpression;
+        n = node as IAstNonStringLiteralExpression;
         return this.builder.buildConst(n.value, n.type, assignIDExpr);
+      case "stringLiteralExpression":
+        n = node as IAstStringLiteralExpression;
+        return this.builder.buildString(n.value, assignIDExpr);
       case "arrayLiteralExpression":
         n = node as IAstArrayLiteralExpression;
         if (assignIDExpr) {

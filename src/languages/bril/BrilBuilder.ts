@@ -18,7 +18,12 @@ import {
 } from "./BrilInterface";
 
 export class BrilBuilder {
-  public program: IBrilProgram = { functions: {}, key: 0 };
+  public program: IBrilProgram = {
+    functions: {},
+    key: 0,
+    data: new Map<string, { offset: number; size: number; bytes: Uint8Array }>(),
+    dataSize: 0,
+  };
   public curFunction?: IBrilFunction;
   public nextFresh: number = 0;
   public keyIndex: number = 1;
@@ -26,7 +31,7 @@ export class BrilBuilder {
   constructor() {}
 
   reset() {
-    this.program = { functions: {}, key: 0 };
+    this.program = { functions: {}, key: 0, data: new Map<string, { offset: number; size: number; bytes: Uint8Array }>(), dataSize: 0 };
     this.curFunction = undefined;
     this.nextFresh = 0;
     this.keyIndex = 1;
@@ -207,7 +212,18 @@ export class BrilBuilder {
   }
 
   buildConst(value: IBrilValueType, type: IBrilType, assignIDExpr?: IAstIdentifierExpression) {
-    const constInstr = { op: "const", value, dest: `c${value}`, type } as IBrilConst;
+    const constInstr: IBrilConst = { op: "const", value, dest: `c${value}`, type };
+    this.insertValueInstruction(constInstr, assignIDExpr);
+    return constInstr;
+  }
+
+  buildString(strvalue: string, assignIDExpr?: IAstIdentifierExpression) {
+    const constInstr: IBrilConst = {
+      op: "const",
+      value: this.dataOffsetForValue("char", strvalue).offset,
+      dest: this.freshVar("pchar"),
+      type: { ptr: "char" },
+    };
     this.insertValueInstruction(constInstr, assignIDExpr);
     return constInstr;
   }
@@ -224,6 +240,21 @@ export class BrilBuilder {
     }
     return false;
   }
+
+  dataOffsetForValue = (type: IBrilType, value: IBrilValueType) => {
+    if (type !== "char") throw new Error("Only string data supported");
+    const stringvalue = value.toString();
+    if (!this.program.data.has(stringvalue)) {
+      const lastentry = this.program.data.size ? Array.from(this.program.data)[this.program.data.size - 1][1] : { offset: 10240, size: 0 };
+      const bytes = new TextEncoder().encode(stringvalue + "\0");
+      this.program.data.set(stringvalue, { offset: lastentry.offset + lastentry.size, size: bytes.length, bytes });
+    }
+    return this.program.data.get(stringvalue)!;
+  };
+
+  calcDataSize = () => {
+    this.program.dataSize = Array.from(this.program.data).reduce((accum, cur) => (accum += cur[1].size), 0);
+  };
 }
 
 export const brilBuilder = new BrilBuilder();

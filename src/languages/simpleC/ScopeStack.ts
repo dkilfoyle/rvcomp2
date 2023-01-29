@@ -25,10 +25,10 @@ export class ScopeStack {
     this.currentScope = this.stack;
   }
 
-  getArrays() {
-    const arrayDecls = this.currentScope.signatures.filter((sig) => sig._name == "variableDeclaration" && sig.size);
-    if (arrayDecls.length == 0) return [];
-    return arrayDecls.map((sig) => sig.id);
+  getAllocArrays() {
+    return this.currentScope.signatures
+      .filter((sig) => sig._name == "variableDeclaration" && sig.size && sig.initExpr && sig.initExpr._name != "stringLiteralExpression") // string literals are not alloced onto heap, they live in data segments
+      .map((sig) => sig.id);
   }
 
   getGlobalScope(location: CstNodeLocation): IScope {
@@ -59,6 +59,26 @@ export class ScopeStack {
           block: { _name: "block", statements: [], heapVars: [] },
           params: [{ _name: "variableDeclaration", id: "x", type: "int", pos: getLibPos() }],
           docComment: parseDocCommentString("/**\n* @desc Print an integer to console\n* @param [int num] Number to print\n*/"),
+          pos: getLibPos(),
+        },
+        {
+          _name: "functionDeclaration",
+          id: "print_string",
+          type: "void",
+          block: { _name: "block", statements: [], heapVars: [] },
+          params: [{ _name: "variableDeclaration", id: "x", type: "int", pos: getLibPos() }],
+          docComment: parseDocCommentString(
+            "/**\n* @desc Print the string at memory [offset] to console\n* @param [int offset] memory location of string\n*/"
+          ),
+          pos: getLibPos(),
+        },
+        {
+          _name: "functionDeclaration",
+          id: "print_char",
+          type: "void",
+          block: { _name: "block", statements: [], heapVars: [] },
+          params: [{ _name: "variableDeclaration", id: "x", type: "int", pos: getLibPos() }],
+          docComment: parseDocCommentString("/**\n* @desc Print the char to console\n* @param [char c]\n*/"),
           pos: getLibPos(),
         },
         {

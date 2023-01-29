@@ -1,0 +1,35 @@
+.MemViewRow {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 8pt;
+}
+
+.MemViewAddress {
+  margin-right: 4px;
+  background-color: lightgray;
+}
+
+.MemViewByte {
+  margin-right: 4px;
+}
+
+.MemViewChar {
+  width: 8px;
+  display: inline-block;
+}
+
+.MemViewHover {
+  background-color: lightgreen;
+}
+
+.offsetButton {
+  height: 15px !important;
+  font-size: 8pt !important;
+}
+
+.Data {
+  background-color: darkorange;
+}
+
+.Heap {
+  background-color: #00bcd4;
+}

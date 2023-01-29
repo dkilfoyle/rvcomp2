@@ -37,7 +37,7 @@ export interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Screen/setpixel.sc",
-  filename: "./helloint.sc",
+  filename: "./Syntax/memory.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
@@ -80,8 +80,8 @@ export interface ParseState {
 export const useParseStore = create<ParseState>()((set) => ({
   cst: { name: "root", children: {} },
   ast: { _name: "root", functionDeclarations: [] },
-  bril: { functions: {} },
-  brilOptim: { functions: {} },
+  bril: { functions: {}, data: new Map(), dataSize: 0 },
+  brilOptim: { functions: {}, data: new Map(), dataSize: 0 },
   cfg: {},
   errors: [],
   wasm: new Uint8Array(),
@@ -91,10 +91,19 @@ export const useParseStore = create<ParseState>()((set) => ({
       produce((state) => {
         if (rcst) state.cst = { name: "root", children: {} };
         if (rast) state.ast = { _name: "root", functionDeclarations: [] };
-        if (rbril) state.bril = { functions: {} };
-        if (rbrilOptim) state.brilOptim = { functions: {} };
+        if (rbril) state.bril = { functions: {}, data: new Map() };
+        if (rbrilOptim) state.brilOptim = { functions: {}, data: new Map() };
         if (rcfg) state.cfg = {};
         state.wasm = [];
       })
     ),
+}));
+
+export interface RunState {
+  heap_start: number; // memory offset in number of bytes
+}
+
+export const useRunStore = create<RunState>()((set) => ({
+  heap_start: 10240,
+  set: (fn: (state: RunState) => void) => set(produce(fn)),
 }));

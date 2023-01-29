@@ -14,6 +14,13 @@ class BrilPrinter {
     this.irkeys = {};
     this.lineNum = 0;
     Object.values(bril.functions).forEach((fn) => this.printFunction(fn));
+    if (bril.data.size) {
+      this.hr += "\n/* Data Segment\n";
+      bril.data.forEach((d) => {
+        this.hr += `[${d.offset}-${d.offset + d.size - 1}]: ${d.bytes.toString()}\n`;
+      });
+      this.hr += "*/ end Data Segment";
+    }
     return this.hr;
   }
   formatArgument(arg: IBrilArgument) {
@@ -36,7 +43,7 @@ class BrilPrinter {
   printInstruction(ins: IBrilInstruction | IBrilLabel) {
     if ((<IBrilInstruction>ins).op) {
       ins = ins as IBrilInstruction;
-      if (ins.op === "const") this.line(`  ${ins.dest}: ${ins.type} = const ${ins.value};`, ins.key || -99);
+      if (ins.op === "const") this.line(`  ${ins.dest}: ${this.formatType(ins.type)} = const ${ins.value};`, ins.key || -99);
       else {
         let rhs = `${ins.op}`;
         if (ins.funcs?.length) rhs += ` ${ins.funcs.join(" @")}`;

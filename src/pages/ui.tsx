@@ -2,7 +2,7 @@ import { Editor } from "../components/simpleCEditor/Editor";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import "./ui.css";
 import { Sidebar } from "../components/SideBar";
-import { Box, ChakraProvider, HStack, Icon, Tab, TabList, Tabs } from "@chakra-ui/react";
+import { Box, ChakraProvider, extendTheme, HStack, Icon, Tab, TabList, Tabs } from "@chakra-ui/react";
 import "rc-tree/assets/index.css";
 
 import { CstView } from "../components/cstView";
@@ -41,6 +41,11 @@ import "rc-dock/dist/rc-dock.css";
 import { Output } from "../components/output";
 import _ from "lodash";
 import { WasmEditor } from "../components/wasmEditor/WasmEditor";
+import { accordionTheme } from "./theme";
+
+export const theme = extendTheme({
+  components: { Accordion: accordionTheme },
+});
 
 // const fullHeight = { maxHeight: "100%" };
 // const fullHeight2 = { height: "100%", display: "flex", flexDirection: "column" };
@@ -307,7 +312,7 @@ export const UI: React.FC = () => {
   }, []);
 
   return (
-    <ChakraProvider>
+    <ChakraProvider theme={theme}>
       <div style={fullWindow}>
         <DividerBox style={{ position: "absolute", left: 5, top: 5, right: 5, bottom: 5 }}>
           <DividerBox mode="vertical" style={{ width: 150, minWidth: 10, maxWidth: 200, border: "1px solid #ccc" }}>

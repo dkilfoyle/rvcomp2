@@ -351,7 +351,7 @@ export type TypeSpecifierCstChildren = {
   Int?: IToken[];
   Float?: IToken[];
   Void?: IToken[];
-  String?: IToken[];
+  Char?: IToken[];
   Bool?: IToken[];
 };
 

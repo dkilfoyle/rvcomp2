@@ -1,7 +1,7 @@
 import { ISimpleCLangError } from "../../components/simpleCEditor/monaco/DiagnosticsAdapter";
 import { ScopeStack } from "./ScopeStack";
 
-export type IDeclarationType = "int" | "string" | "bool" | "void" | "float";
+export type IDeclarationType = "int" | "string" | "bool" | "void" | "float" | "char";
 export type IDeclarationValue = number | string | boolean | undefined;
 
 export interface IPos {
@@ -115,6 +115,11 @@ export interface IAstFunctionCallExpression extends IAstExpression {
 export interface IAstUnaryExpression extends IAstExpression {}
 
 export interface IAstLiteralExpression extends IAstExpression {
+  value: number | boolean | string;
+  type: "int" | "bool" | "float" | "string";
+}
+
+export interface IAstNonStringLiteralExpression extends IAstExpression {
   value: number | boolean;
   type: "int" | "bool" | "float";
 }
@@ -129,6 +134,12 @@ export interface IAstBoolLiteralExpression extends IAstLiteralExpression {
   _name: "boolLiteralExpression";
   value: boolean;
   type: "bool";
+}
+
+export interface IAstStringLiteralExpression extends IAstLiteralExpression {
+  _name: "stringLiteralExpression";
+  value: string;
+  type: "string";
 }
 
 export interface IAstArrayLiteralExpression extends IAstExpression {

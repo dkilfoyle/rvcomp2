@@ -336,7 +336,8 @@ class SimpleCParser extends CstParser {
       { ALT: () => this.CONSUME(tokens.Int) },
       { ALT: () => this.CONSUME(tokens.Float) },
       { ALT: () => this.CONSUME(tokens.Void) },
-      { ALT: () => this.CONSUME(tokens.String) },
+      // { ALT: () => this.CONSUME(tokens.String) },
+      { ALT: () => this.CONSUME(tokens.Char) },
       { ALT: () => this.CONSUME(tokens.Bool) },
     ]);
   });
