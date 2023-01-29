@@ -12,7 +12,7 @@ import { runWasm } from "../languages/wasm/runWasm";
 
 import "./output.css";
 import { GiSlowBlob } from "react-icons/gi";
-import { FaRunning } from "react-icons/fa";
+import { FaRunning, FaShippingFast } from "react-icons/fa";
 import { SiWebassembly } from "react-icons/si";
 
 const theme = {
@@ -178,7 +178,7 @@ export const Output: React.FC = () => {
           <Icon as={GiSlowBlob} />
         </Tab>
         <Tab>
-          <Icon as={FaRunning} />
+          <Icon as={FaShippingFast} />
         </Tab>
         <Tab>
           <Icon as={SiWebassembly} />

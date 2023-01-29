@@ -42,7 +42,7 @@ export const runWasm = (bril: IBrilProgram) => {
       const myresult = res.instance.exports.main();
       const endTime = performance.now();
       // if (myresult != null)
-      window.conout3.info(`Returned ${myresult}, heap_pointer = ${res.instance.exports.heap_pointer.value}`);
+      window.conout3.info(`Returned ${myresult || "void"}, heap_pointer = ${res.instance.exports.heap_pointer.value}`);
       console.info(`Completed in ${(endTime - startTime).toFixed(1)}ms`);
       // const data = new Uint8Array(memory.buffer, 0, 1024);
       // const screen = new Uint8ClampedArray(memory.buffer, 1024, 100 * 100);
