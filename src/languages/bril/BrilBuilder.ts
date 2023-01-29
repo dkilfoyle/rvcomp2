@@ -245,7 +245,7 @@ export class BrilBuilder {
     if (type !== "char") throw new Error("Only string data supported");
     const stringvalue = value.toString();
     if (!this.program.data.has(stringvalue)) {
-      const lastentry = this.program.data.size ? Array.from(this.program.data)[this.program.data.size - 1][1] : { offset: 0, size: 0 };
+      const lastentry = this.program.data.size ? Array.from(this.program.data)[this.program.data.size - 1][1] : { offset: 10240, size: 0 };
       const bytes = new TextEncoder().encode(stringvalue + "\0");
       this.program.data.set(stringvalue, { offset: lastentry.offset + lastentry.size, size: bytes.length, bytes });
     }

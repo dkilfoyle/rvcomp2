@@ -29,8 +29,9 @@ export const runWasm = (bril: IBrilProgram) => {
 
     const importObject = {
       env: {
-        print_int: (x: number) => window.conout3.info("From wasm: ", x),
-        print_string: (x: number) => window.conout3.info("print_string: ", getStringFromMemory(x)),
+        print_int: (x: number) => window.conout3.info("print_int: ", x),
+        print_string: (x: number) => window.conout3.info(`print_string @ 0x${x.toString(16)}: ${getStringFromMemory(x)}`),
+        print_char: (x: number) => window.conout3.info(`print_char: ${x} = 0x${x.toString(16)} = ${String.fromCharCode(x)}`),
         memory,
       },
     };

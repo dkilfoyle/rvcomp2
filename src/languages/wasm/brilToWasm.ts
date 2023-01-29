@@ -16,6 +16,7 @@ import {
   IBrilParamType,
   IBrilProgram,
   IBrilType,
+  IBrilValueInstruction,
   IBrilValueType,
 } from "../bril/BrilInterface";
 import { unsignedLEB128, signedLEB128, encodeString, ieee754 } from "./encoding";
@@ -26,7 +27,8 @@ const convertBrilToWasmType = (type: IBrilType) => {
   if (typeof type == "object" && "ptr" in type) return "i32";
   switch (type) {
     case "int":
-      return "i32";
+    case "char":
+      return "i32"; // chars are read into a i32
     case "float":
       return "f32";
     case "bool":
@@ -88,6 +90,8 @@ type IWasmOpCode =
   | "set_local"
   | "get_global"
   | "set_global"
+  | "i32_load"
+  | "i32_load8_s"
   | "i32_store_8"
   | "i32_store"
   | "f32_store"
@@ -132,6 +136,10 @@ const Opcodes: Record<IWasmOpCode, number> = {
   set_local: 0x21,
   get_global: 0x23,
   set_global: 0x24,
+
+  // memory
+  i32_load: 0x28,
+  i32_load8_s: 0x2c,
   i32_store_8: 0x3a,
   i32_store: 0x36,
   f32_store: 0x38,
@@ -229,6 +237,16 @@ const includeLibFunctions = {
   set_pixel: false,
 };
 
+const importedFunctions = [
+  { name: "print_int", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
+  { name: "print_string", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
+  { name: "print_char", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
+];
+
+const libraryFunctions = [
+  { name: "set_pixel", signature: [functionType, ...encodeVector([Valtype.f32, Valtype.f32, Valtype.f32]), emptyArray] },
+];
+
 // ===========================================================================
 
 const emitSetPixelFunction = () => {
@@ -312,7 +330,7 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
               if (typeof constInstr.value != "number") throw new Error("ptr<char> should be number");
               const constdest = localIndexForSymbol(instr.dest, instr.type).index;
               code.push(Opcodes.i32_const);
-              code.push(...unsignedLEB128(constInstr.value));
+              code.push(...signedLEB128(constInstr.value));
               code.push(Opcodes.set_local);
               code.push(...unsignedLEB128(constdest));
             } else {
@@ -360,7 +378,9 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
             code.push(Opcodes.get_local, ...unsignedLEB128(binarg1.index));
 
             if (instr.op == "ptradd") {
-              code.push(Opcodes.i32_const, ...signedLEB128(4));
+              if (!(typeof binInstrType == "object" && "ptr" in binInstrType)) throw new Error("ptradd type must be ptr");
+              const ptrVarSize = binInstrType.ptr == "char" ? 1 : 4;
+              code.push(Opcodes.i32_const, ...signedLEB128(ptrVarSize));
               code.push(Opcodes.i32_mul);
             }
             if (binarg0.type != binarg1.type) throw new Error(`Binary operands must be of same type: ${binarg0.type} != ${binarg1.type}`);
@@ -434,8 +454,11 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
               case "print_string":
                 callFuncIndex = 1;
                 break;
+              case "print_char":
+                callFuncIndex = 2;
+                break;
               case "set_pixel":
-                callFuncIndex = Object.keys(program.functions).length + 2;
+                callFuncIndex = Object.keys(program.functions).length + importedFunctions.length;
                 includeLibFunctions.set_pixel = true;
                 break;
               default:
@@ -473,6 +496,27 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
             } else {
               code.push(Opcodes.f32_store, 2, 0);
             }
+            break;
+          case "load":
+            const loadinstr = instr as IBrilValueInstruction;
+            const addressVar = localIndexForSymbol(instr.args[0]);
+
+            // push the address in args[0] to stack
+            code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol(instr.args[0]).index));
+
+            // emit the appropriate load instruction
+            switch (instr.type) {
+              case "int":
+                code.push(Opcodes.i32_load, 2, 0);
+                break;
+              case "char":
+                code.push(Opcodes.i32_load8_s, 0, 0);
+                break;
+              default:
+                throw new Error("Unsupported load ptr type");
+            }
+            // pop the stack to local dest
+            code.push(Opcodes.set_local, ...unsignedLEB128(localIndexForSymbol(instr.dest, instr.type).index));
             break;
           case "ret":
             if (instr.args?.length) {
@@ -605,15 +649,6 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   allSymbols = {};
   includeLibFunctions.set_pixel = false;
 
-  const importedFunctions = [
-    { name: "print_int", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
-    { name: "print_string", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
-  ];
-
-  const libraryFunctions = [
-    { name: "set_pixel", signature: [functionType, ...encodeVector([Valtype.f32, Valtype.f32, Valtype.f32]), emptyArray] },
-  ];
-
   let dataSection: number[];
   if (bril.data.size) {
     dataSection = createSection(Section.data, [
@@ -622,7 +657,7 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
         Array.from(bril.data).map(([symbolvalue, symboldata]) => {
           // each data segment is 0, offset instruction, encodeVector(bytes)
           // offset instruction is constopcode(41), unsignedLEB(offset), end(0b)
-          return [0, ...encodeConstI32_Signed(Offsets.data + symboldata.offset), ...encodeVector(Array.from(symboldata.bytes))];
+          return [0, ...encodeConstI32_Signed(symboldata.offset), ...encodeVector(Array.from(symboldata.bytes))];
         })
       ),
     ]);
@@ -694,7 +729,7 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   const exportSection = createSection(
     Section.export,
     encodeVector([
-      ...brilFunctions.map((func, i) => [...encodeString(func.name), ExportType.func, i + 2]),
+      ...brilFunctions.map((func, i) => [...encodeString(func.name), ExportType.func, i + importedFunctions.length]),
       [...encodeString("heap_pointer"), ExportType.global, 2],
     ])
   );
@@ -745,8 +780,11 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
 
   const nameSection = createSection(Section.custom, [
     ...encodeString("name"),
-    ...encodeFunctionNames(["env.print_int", "env.print_string"], Object.keys(bril.functions)),
-    ...encodeLocalNames(["env.print_int", "env.print_string"]),
+    ...encodeFunctionNames(
+      importedFunctions.map((impfn) => "env." + impfn.name),
+      Object.keys(bril.functions)
+    ),
+    ...encodeLocalNames([...importedFunctions.map((impfn) => "env." + impfn.name)]),
   ]);
 
   return Uint8Array.from([

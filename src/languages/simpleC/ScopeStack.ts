@@ -74,6 +74,15 @@ export class ScopeStack {
         },
         {
           _name: "functionDeclaration",
+          id: "print_char",
+          type: "void",
+          block: { _name: "block", statements: [], heapVars: [] },
+          params: [{ _name: "variableDeclaration", id: "x", type: "int", pos: getLibPos() }],
+          docComment: parseDocCommentString("/**\n* @desc Print the char to console\n* @param [char c]\n*/"),
+          pos: getLibPos(),
+        },
+        {
+          _name: "functionDeclaration",
           id: "print_float",
           type: "void",
           block: { _name: "block", statements: [], heapVars: [] },
