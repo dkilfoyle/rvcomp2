@@ -115,6 +115,24 @@ export const getBackEdges = (cfgBlocks: ICFGBlock[], dominatorMap: stringMap, su
   return backEdges;
 };
 
+export const getNaturalLoops = (backEdges: string[][], predecessorMap: stringMap) => {
+  const recursePredecessors = (tail: string, loop: string[], explored: string[]) => {
+    loop.push(tail);
+    explored.push(tail);
+    predecessorMap[tail].forEach((tailPredecessor) => {
+      if (!explored.includes(tailPredecessor)) recursePredecessors(tailPredecessor, loop, explored);
+    });
+  };
+  const allLoops: string[][] = [];
+  backEdges.forEach(([tail, head]) => {
+    const naturalLoop = [head];
+    const explored = [head];
+    recursePredecessors(tail, naturalLoop, explored);
+    allLoops.push(naturalLoop);
+  });
+  return allLoops;
+};
+
 // def dom_tree(dom):
 //     # Get the blocks strictly dominated by a block strictly dominated by
 //     # a given block.

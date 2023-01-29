@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Options, Network } from "vis-network";
 import { DataSet } from "vis-data";
-import { getBackEdges, getDominanceFrontierMap, getDominanceTree, getDominatorMap } from "../languages/bril/dom";
+import { getBackEdges, getDominanceFrontierMap, getDominanceTree, getDominatorMap, getNaturalLoops } from "../languages/bril/dom";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
 import { getDataFlow } from "../languages/bril/df";
 import { Box, Checkbox, Flex, Grid, Select, Table, Td, Th, Thead, Tooltip, Tr, VStack } from "@chakra-ui/react";
@@ -9,6 +9,11 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import "./cfgView.css";
 import { ParseState, SettingsState, useParseStore, useSettingsStore } from "../store/zustore";
+
+interface ICfgEdge {
+  from: string;
+  to: string;
+}
 
 export const CfgView = () => {
   const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
@@ -35,7 +40,8 @@ export const CfgView = () => {
     const frontier = getDominanceFrontierMap(dom, successorsMap);
     const domtree = getDominanceTree(dom);
     const backEdges = getBackEdges(cfg[functionName], dom, successorsMap);
-    return { blockMap, successorsMap, dom, frontier, domtree, dataFlow, backEdges };
+    const loops = getNaturalLoops(backEdges, predecessorsMap);
+    return { blockMap, successorsMap, dom, frontier, domtree, dataFlow, backEdges, loops };
   }, [brilOptim, functionName]);
 
   const cfgVisData = useMemo(() => {
@@ -65,7 +71,15 @@ export const CfgView = () => {
               smooth: { enabled: true, type: "cubicBezier" },
             });
           else
-            edges.push({ from: node.name, to: out, width: 1, color: "grey", physics: false, smooth: { enabled: true, type: "cubicBezier" } });
+            edges.push({
+              id: `${node.name}_${out}`,
+              from: node.name,
+              to: out,
+              width: 1,
+              color: "grey",
+              physics: false,
+              smooth: { enabled: true, type: "cubicBezier" },
+            });
         });
       });
     } else {
@@ -115,14 +129,32 @@ export const CfgView = () => {
         setSettings((state: SettingsState) => {
           state.cfg.nodeName = params.node;
         });
-        // set all nodes back to default color and border
-        if (cfg) cfgVisData.nodes.update(Object.values(cfg.blockMap).map((node) => ({ id: node.name, color: "#97C2FC" })));
-        // color dolminance tree of the hovered node in green
-        if (cfg) cfgVisData.nodes.update(cfg.domtree[params.node].map((dominator) => ({ id: dominator, color: "#68D391" })));
-        // color dominators of the hovered node in red
-        if (cfg) cfgVisData.nodes.update(cfg.dom[params.node].map((dominator) => ({ id: dominator, color: "#FC8181" })));
-
+        if (cfg) {
+          // set all nodes back to default color and border
+          cfgVisData.nodes.update(Object.values(cfg.blockMap).map((node) => ({ id: node.name, color: "#97C2FC" })));
+          // color dolminance tree of the hovered node in green
+          cfgVisData.nodes.update(cfg.domtree[params.node].map((dominator) => ({ id: dominator, color: "#68D391" })));
+          // color dominators of the hovered node in red
+          cfgVisData.nodes.update(cfg.dom[params.node].map((dominator) => ({ id: dominator, color: "#FC8181" })));
+        }
         // dispatch(setCfgNodeName(params.node));
+      });
+      network.on("hoverEdge", (params) => {
+        if (cfg) {
+          const hoveredEdge = cfgVisData.edges.get(params.edge) as unknown as ICfgEdge;
+          const backEdge = cfg.backEdges.find(([tail, head]) => tail == hoveredEdge.from && head == hoveredEdge.to);
+          if (backEdge) {
+            const loop = cfg.loops.find((loop) => loop.includes(hoveredEdge.from));
+            // set all nodes back to default color and border
+            cfgVisData.nodes.update(Object.values(cfg.blockMap).map((node) => ({ id: node.name, color: "#97C2FC" })));
+            if (loop) cfgVisData.nodes.update(loop.map((node) => ({ id: node, color: "orange" })));
+          }
+        }
+      });
+      network.on("blurEdge", (params) => {
+        if (cfg) {
+          cfgVisData.nodes.update(Object.values(cfg.blockMap).map((node) => ({ id: node.name, color: "#97C2FC" })));
+        }
       });
       network?.fit();
     }
