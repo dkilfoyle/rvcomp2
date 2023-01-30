@@ -32,15 +32,16 @@ export const CfgView = () => {
     if (!fn) return undefined;
 
     let blockMap = getCfgBlockMap(cfg[functionName]);
-    blockMap = addCfgEntry(blockMap);
-    addCfgTerminators(blockMap);
+    // optimised bril already has entry and terminators
+    // blockMap = addCfgEntry(blockMap);
+    // addCfgTerminators(blockMap);
     const dataFlow = getDataFlow(blockMap);
     const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
     const dom = getDominatorMap(successorsMap, fn[0].name);
     const frontier = getDominanceFrontierMap(dom, successorsMap);
     const domtree = getDominanceTree(dom);
-    const backEdges: string[][] = []; //getBackEdges(cfg[functionName], dom, successorsMap);
-    const loops: string[][] = []; //getNaturalLoops(backEdges, predecessorsMap);
+    const backEdges = getBackEdges(cfg[functionName], dom, successorsMap);
+    const loops = getNaturalLoops(backEdges, predecessorsMap);
     return { blockMap, successorsMap, dom, frontier, domtree, dataFlow, backEdges, loops };
   }, [brilOptim, functionName]);
 
@@ -60,7 +61,7 @@ export const CfgView = () => {
             cfg.backEdges.find(([tail, head]) => {
               return tail == node.name && head == out;
             })
-          )
+          ) {
             edges.push({
               from: node.name,
               to: out,
@@ -70,7 +71,7 @@ export const CfgView = () => {
               width: 2,
               smooth: { enabled: true, type: "cubicBezier" },
             });
-          else
+          } else
             edges.push({
               id: `${node.name}_${out}`,
               from: node.name,
