@@ -39,8 +39,8 @@ export const CfgView = () => {
     const dom = getDominatorMap(successorsMap, fn[0].name);
     const frontier = getDominanceFrontierMap(dom, successorsMap);
     const domtree = getDominanceTree(dom);
-    const backEdges = getBackEdges(cfg[functionName], dom, successorsMap);
-    const loops = getNaturalLoops(backEdges, predecessorsMap);
+    const backEdges: string[][] = []; //getBackEdges(cfg[functionName], dom, successorsMap);
+    const loops: string[][] = []; //getNaturalLoops(backEdges, predecessorsMap);
     return { blockMap, successorsMap, dom, frontier, domtree, dataFlow, backEdges, loops };
   }, [brilOptim, functionName]);
 

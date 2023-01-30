@@ -44,7 +44,13 @@ class BrilPrinter {
     if ((<IBrilInstruction>ins).op) {
       ins = ins as IBrilInstruction;
       if (ins.op === "const") this.line(`  ${ins.dest}: ${this.formatType(ins.type)} = const ${ins.value};`, ins.key || -99);
-      else {
+      else if (ins.op === "phi") {
+        let lhs = `${ins.dest}: ${this.formatType(ins.type)}`;
+        if (!ins.labels) throw new Error("Phi instruction is missing labels");
+        let rhs = "phi";
+        for (let i = 0; i < ins.labels?.length; i++) rhs += ` ${ins.labels[i]} ${ins.args[i]}`;
+        this.line(`  ${lhs} = ${rhs};`, ins.key || -99);
+      } else {
         let rhs = `${ins.op}`;
         if (ins.funcs?.length) rhs += ` ${ins.funcs.join(" @")}`;
         if (ins.args?.length) rhs += ` ${ins.args.join(" ")}`;

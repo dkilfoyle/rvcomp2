@@ -6,8 +6,7 @@ interface IWasmExports {
   heap_pointer: number;
 }
 
-export const runWasm = (bril: IBrilProgram) => {
-  const wasmBuffer = emitWasm(bril);
+export const runWasm = (wasmBuffer: Uint8Array) => {
   return WabtModule().then((wabtModule) => {
     const wasmModule = wabtModule.readWasm(wasmBuffer, { readDebugNames: true });
     wasmModule.applyNames();

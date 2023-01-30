@@ -37,14 +37,14 @@ export interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Screen/setpixel.sc",
-  filename: "./Optimisation/loop.sc",
+  filename: "./Optimisation/ssaif.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
   },
   optim: {
     keepPhis: true,
-    isSSA: false,
+    isSSA: true,
     doLVN: false,
     doGVN: false,
     doDCE: false,

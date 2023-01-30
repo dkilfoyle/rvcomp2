@@ -119,6 +119,7 @@ export const getNaturalLoops = (backEdges: string[][], predecessorMap: stringMap
   const recursePredecessors = (tail: string, loop: string[], explored: string[]) => {
     loop.push(tail);
     explored.push(tail);
+    if (!predecessorMap[tail]) debugger;
     predecessorMap[tail].forEach((tailPredecessor) => {
       if (!explored.includes(tailPredecessor)) recursePredecessors(tailPredecessor, loop, explored);
     });

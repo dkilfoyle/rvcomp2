@@ -69,7 +69,7 @@ export const renameVars = (blockMap: ICFGBlockMap, phis: IDictStrings, succs: ID
 
   const _pushFresh = (varName: string) => {
     // first encounter of varName so init dicts
-    if (!counters[varName]) counters[varName] = 0;
+    if (!counters[varName]) counters[varName] = 1;
     if (!stack[varName]) stack[varName] = [];
     const fresh = `${varName}.${counters[varName]}`;
     counters[varName]++;
@@ -108,7 +108,7 @@ export const renameVars = (blockMap: ICFGBlockMap, phis: IDictStrings, succs: ID
     );
 
     // recurse
-    domtree[b].sort().forEach((bb) => _rename(bb));
+    [...domtree[b]].reverse().forEach((bb) => _rename(bb));
 
     // restore stack
     stack = _.cloneDeep(oldStack);
@@ -168,7 +168,12 @@ export const removePhis = (blockMap: ICFGBlockMap) => {
 
 export const runSSA = (blockMap: ICFGBlockMap, func: IBrilFunction) => {
   const edges = getCfgEdges(blockMap);
-  const successors = edges.successorsMap;
+  const successors = Object.keys(edges.successorsMap)
+    .reverse()
+    .reduce((accum, cur) => {
+      accum[cur] = edges.successorsMap[cur];
+      return accum;
+    }, {} as Record<string, string[]>);
   const dom = getDominatorMap(successors, Object.keys(blockMap)[0]);
   const domTree = getDominanceTree(dom);
 

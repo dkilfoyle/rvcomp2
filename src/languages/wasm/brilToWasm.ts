@@ -464,7 +464,7 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
               default:
                 callFuncIndex = Object.keys(program.functions).findIndex((f) => f === funcName);
                 if (callFuncIndex == -1) throw new Error(`calling unknown function ${funcName}`);
-                return callFuncIndex + 2;
+                callFuncIndex += importedFunctions.length;
             }
             const argIndexes = instr.args?.map((arg) => localsymbols.get(arg)!.index);
             argIndexes?.forEach((argIndex, i) => {
@@ -477,7 +477,7 @@ const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: R
             code.push(Opcodes.call);
             code.push(...unsignedLEB128(callFuncIndex));
 
-            const argIndexesString = argIndexes?.map((i) => `(get_local ${i})`);
+            //const argIndexesString = argIndexes?.map((i) => `(get_local ${i})`);
             // console.log(`(call ${callFuncIndex} ${argIndexesString})`);
             break;
           case "jmp":
@@ -684,7 +684,7 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   const brilFunctions = Object.values(bril.functions);
   const codeFunctions = brilFunctions.map((proc) => [
     functionType,
-    ...encodeVector(proc.args.map((arg) => convertBrilToWasmType(arg.type))),
+    ...encodeVector(proc.args.map((arg) => Valtype[convertBrilToWasmType(arg.type)])),
     ...(proc.type && proc.type != "void" ? [1, Valtype[convertBrilToWasmType(proc.type)]] : [emptyArray]),
   ]);
 

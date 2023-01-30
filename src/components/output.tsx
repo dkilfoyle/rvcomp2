@@ -104,7 +104,14 @@ export const Output: React.FC = () => {
 
     if (isRunAuto) {
       if (isRunWasm && Object.keys(brilOptim.functions).length) {
-        runWasm(brilOptim).then((res) => {
+        let wasmByteCode: Uint8Array;
+        try {
+          wasmByteCode = emitWasm(bril);
+        } catch (e) {
+          window.conout3.log(`emitWasm error: ${e}`);
+          return;
+        }
+        runWasm(wasmByteCode).then((res) => {
           wasmMemory = new Uint8Array(res.memory.buffer, 0, 10240 + res.heap_pointer);
           segments[1].end = 10240 + Math.max(0, brilOptim.dataSize - 1);
           segments[2].start = 10240 + brilOptim.dataSize;
