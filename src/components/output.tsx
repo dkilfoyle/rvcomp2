@@ -99,6 +99,7 @@ export const Output: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    console.log(bril);
     setOptimLogs([]);
     setUnoptimLogs([]);
 
@@ -106,7 +107,7 @@ export const Output: React.FC = () => {
       if (isRunWasm && Object.keys(brilOptim.functions).length) {
         let wasmByteCode: Uint8Array;
         try {
-          wasmByteCode = emitWasm(bril);
+          wasmByteCode = emitWasm(brilOptim);
         } catch (e) {
           window.conout3.log(`emitWasm error: ${e}`);
           return;

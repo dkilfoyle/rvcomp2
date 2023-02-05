@@ -37,7 +37,8 @@ export interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Screen/setpixel.sc",
-  filename: "./Optimisation/ssafor.sc",
+  // filename: "./Syntax/while.sc",
+  filename: "./Optimisation/loop.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
@@ -46,12 +47,12 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
     keepPhis: false,
     isSSA: true,
     doLVN: false,
-    doGVN: false,
+    doGVN: true,
     doDCE: true,
   },
   bril: {
     keepPhis: true,
-    isSSA: false,
+    isSSA: true,
   },
   wasm: {
     foldExprs: true,

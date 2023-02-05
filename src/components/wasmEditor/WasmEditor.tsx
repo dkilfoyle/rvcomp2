@@ -32,7 +32,7 @@ export const WasmEditor: VFC = () => {
   const foldExprs = useSettingsStore((state: SettingsState) => state.wasm.foldExprs);
 
   useEffect(() => {
-    if (editor) {
+    if (editor && Object.keys(brilOptim.functions).length > 0) {
       let wasmBuffer: Uint8Array;
       try {
         wasmBuffer = emitWasm(brilOptim);

@@ -1,6 +1,9 @@
 // adapted from https://github.com/ColinEberhardt/chasm
 // information on sections https://coinexsmartchain.medium.com/wasm-introduction-part-1-binary-format-57895d851580
 
+// this version used specific label nameing convention to identify loops and if structures
+// since replaced by new version which uses backedges to identify loops, and any br without a backedge must be an if
+
 import { NumberInputProps } from "@chakra-ui/react";
 import { sign } from "crypto";
 import _ from "lodash";
@@ -19,8 +22,6 @@ import {
   IBrilValueInstruction,
   IBrilValueType,
 } from "../bril/BrilInterface";
-import { cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGBlock } from "../bril/cfgBuilder";
-import { findCommonDescendent, getBackEdges, getDominatorMap, getNaturalLoops } from "../bril/dom";
 import { unsignedLEB128, signedLEB128, encodeString, ieee754 } from "./encoding";
 
 let allSymbols: Record<string, string[]> = {};
@@ -303,26 +304,8 @@ const emitSetPixelFunction = () => {
   return encodeVector([...encodeVector(locals), ...code, Opcodes.end]);
 };
 
-const emitWasmFunction = (
-  func: IBrilFunction,
-  program: IBrilProgram,
-  cfg: ICFG,
-  globals: Record<string, { index: number; bytes: number[] }>
-) => {
+const emitWasmFunction = (func: IBrilFunction, program: IBrilProgram, globals: Record<string, { index: number; bytes: number[] }>) => {
   const code: number[] = [];
-
-  const blockArray = cfg[func.name];
-
-  if (!blockArray) throw new Error(`cfg does not contain function ${func.name}`);
-
-  let blockMap = getCfgBlockMap(blockArray);
-  // optimised bril already has entry and terminators
-  // blockMap = addCfgEntry(blockMap);
-  // addCfgTerminators(blockMap);
-  const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
-  const dom = getDominatorMap(successorsMap, blockArray[0].name);
-  const backEdges = getBackEdges(blockArray, dom, successorsMap);
-  const loops = getNaturalLoops(backEdges, predecessorsMap);
 
   const localsymbols = new Map<string, { index: number; type: Valtype }>(
     func.args.map((arg, index) => [arg.name, { index, type: Valtype[convertBrilToWasmType(arg.type)] }])
@@ -339,60 +322,7 @@ const emitWasmFunction = (
     return localsymbols.get(name)!;
   };
 
-  const emitBlock = (block: ICFGBlock, stopBlock?: string) => {
-    // check if this block is the start of a natural loop
-    const loop = loops.find((loop) => loop[0] == block.name);
-    const backedge = backEdges.find(([tail, head]) => head == block.name);
-    const ifBlock = block.out.length == 2 && !loop;
-    if (loop) {
-      if (!backedge) throw new Error("Loop must have backedge");
-      // start while loop
-      code.push(Opcodes.block, Blocktype.void); // outer block
-      code.push(Opcodes.loop, Blocktype.void); // inner loop
-
-      // emit the instructions for the curren block
-      emitInstructions(block.instructions, true);
-
-      // one of the two child blocks will be the start of the loop
-      const loopBodyChild = block.out.findIndex((childBlockName) => loop.includes(childBlockName));
-      if (loopBodyChild == -1) throw new Error(`${block.name} block is the start of a loop, one of the out edges must be in a loop`);
-      emitBlock(blockMap[block.out[loopBodyChild]], backedge[1]);
-
-      // close the while loop
-      code.push(Opcodes.br, ...signedLEB128(0)); // (br $L1)
-      code.push(Opcodes.end); // end loop
-      code.push(Opcodes.end); // end block
-
-      // visit the loop exit block
-      const loopExitChild = loopBodyChild == 0 ? 1 : 0;
-      emitBlock(blockMap[block.out[loopExitChild]]);
-    } else if (ifBlock) {
-      emitInstructions(block.instructions, false);
-
-      // end if block will be where the if and else paths converge
-      const endIfBlock = findCommonDescendent(successorsMap, backEdges, block.out[0], block.out[1]);
-
-      // traverse then blocks until reach endif
-      emitBlock(blockMap[block.out[0]], endIfBlock);
-
-      // traverse else blocks (if present) until reach endif
-      if (block.out[1] !== endIfBlock) {
-        code.push(Opcodes.else);
-        emitBlock(blockMap[block.out[1]], endIfBlock);
-      }
-
-      // traverse the endIfBlock
-      code.push(Opcodes.end);
-      emitBlock(blockMap[endIfBlock], stopBlock);
-    } else {
-      emitInstructions(block.instructions, false);
-      block.out.forEach((childBlock) => {
-        if (childBlock !== stopBlock) emitBlock(blockMap[childBlock], stopBlock);
-      });
-    }
-  };
-
-  const emitInstructions = (instructions: IBrilInstructionOrLabel[], isLoopHeader: boolean) => {
+  const emitInstructions = (instructions: IBrilInstructionOrLabel[]) => {
     const blockStatus: string[] = ["root"];
     instructions.forEach((instr) => {
       if ("op" in instr)
@@ -483,59 +413,37 @@ const emitWasmFunction = (
             // console.log(`(set_local ${idlhsIndex} (get_local ${idrhsIndex}))`);
             break;
           case "br":
+            // br could be start of if/then/else or start of loop
+            // ideal: examine CFG to determine if loop (loop has a backedge - ie an edge where the head (destination) dominates the tail)
+            // cheat: use the label name prefix as generated by astToBril ie br test then.0 else.0 vs br test whilebody.0 whileend.0
             if (!instr.labels) throw new Error("Instr missing labels - badly formed bril");
             const brInstr = instr as IBrilEffectOperation;
             if (!brInstr.args) throw new Error("Branch instruction missing args - badly formed bril");
-            if (isLoopHeader) {
-              // block is a natural looper header
-              // br will be of form: br cond whileBody whileEnd
-              code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol(brInstr.args[0]).index)); // load the cond local variable
-              // exit loop if !true
-              code.push(Opcodes.i32_eqz);
-              code.push(Opcodes.br_if);
-              code.push(...signedLEB128(1));
-            } else {
-              // if not a loop header then must be a if header
+
+            if (instr.labels[0].startsWith("then")) {
+              // if branch
               // load test bool var onto top of stack
               code.push(Opcodes.get_local);
               code.push(...unsignedLEB128(localIndexForSymbol(brInstr.args[0], "int").index));
 
-              // start the if block
               code.push(Opcodes.if);
               code.push(Blocktype.void);
-            }
 
-            // br could be start of if/then/else or start of loop
-            // ideal: examine CFG to determine if loop (loop has a backedge - ie an edge where the head (destination) dominates the tail)
-            // cheat: use the label name prefix as generated by astToBril ie br test then.0 else.0 vs br test whilebody.0 whileend.0
-            // if (!instr.labels) throw new Error("Instr missing labels - badly formed bril");
-            // const brInstr = instr as IBrilEffectOperation;
-            // if (!brInstr.args) throw new Error("Branch instruction missing args - badly formed bril");
-
-            // if (instr.labels[0].startsWith("then")) {
-            //   // if branch
-            //   // load test bool var onto top of stack
-            //   code.push(Opcodes.get_local);
-            //   code.push(...unsignedLEB128(localIndexForSymbol(brInstr.args[0], "int").index));
-
-            //   code.push(Opcodes.if);
-            //   code.push(Blocktype.void);
-
-            //   blockStatus.push("expectThen"); // the next label should be then.x
-            // } else if (instr.labels[0].startsWith("whilebody")) {
-            //   // while loop
-            //   // instr is br args[0] whilebody whileexit
-            //   // we should already have processed whiletest and should be expecting whilebody
-            //   if (_.last(blockStatus) != "expectWhileBody") throw new Error(`Hit .whilebody but expecting ${_.last(blockStatus)}`);
-            //   // load test bool var onto top of stack
-            //   code.push(Opcodes.get_local);
-            //   code.push(...unsignedLEB128(localIndexForSymbol(brInstr.args[0], "int").index));
-            //   // exit loop if !true
-            //   code.push(Opcodes.i32_eqz);
-            //   code.push(Opcodes.br_if);
-            //   code.push(...signedLEB128(1));
-            //   // the nested logic will now follow until we hit the whileend label
-            // } else throw new Error("Unknown branch type");
+              blockStatus.push("expectThen"); // the next label should be then.x
+            } else if (instr.labels[0].startsWith("whilebody")) {
+              // while loop
+              // instr is br args[0] whilebody whileexit
+              // we should already have processed whiletest and should be expecting whilebody
+              if (_.last(blockStatus) != "expectWhileBody") throw new Error(`Hit .whilebody but expecting ${_.last(blockStatus)}`);
+              // load test bool var onto top of stack
+              code.push(Opcodes.get_local);
+              code.push(...unsignedLEB128(localIndexForSymbol(brInstr.args[0], "int").index));
+              // exit loop if !true
+              code.push(Opcodes.i32_eqz);
+              code.push(Opcodes.br_if);
+              code.push(...signedLEB128(1));
+              // the nested logic will now follow until we hit the whileend label
+            } else throw new Error("Unknown branch type");
             break;
           case "call":
             if (!instr.funcs) throw new Error(`Instr.funcs missing, badly formed bril`);
@@ -668,70 +576,69 @@ const emitWasmFunction = (
       else {
         // label instruction
         const lblInstr = instr as IBrilLabel;
-        // ignore labels
 
-        // if (instr.label.startsWith("whiletest")) {
-        //   // while lope
-        //   // outer block
-        //   code.push(Opcodes.block);
-        //   code.push(Blocktype.void);
-        //   // inner loop
-        //   code.push(Opcodes.loop);
-        //   code.push(Blocktype.void);
-        //   blockStatus.push("expectWhileBody");
-        // } else
-        //   switch (_.last(blockStatus)) {
-        //     case "expectThen":
-        //       if (lblInstr.label.startsWith("then")) {
-        //         // thenBlock
-        //         // the next label in current block stack should be an else
-        //         blockStatus[blockStatus.length - 1] = "expectElse";
-        //       } else throw new Error("Wasm was expecting a 'then' label");
-        //       break;
-        //     case "expectElse":
-        //       if (lblInstr.label.startsWith("else")) {
-        //         code.push(Opcodes.else);
-        //         // the next label in current block stack should be an endif
-        //         blockStatus[blockStatus.length - 1] = "expectEndif";
-        //       } else throw new Error("Wasm was expected a 'else' label");
-        //       break;
-        //     case "expectEndif":
-        //       if (lblInstr.label.startsWith("endif")) {
-        //         code.push(Opcodes.end);
-        //         // pop the if/then/else block off the stack
-        //         blockStatus.pop();
-        //       } else throw new Error("Wasm was expected a 'endif' label");
-        //       break;
-        //     case "expectWhileBody":
-        //       blockStatus[blockStatus.length - 1] = "expectWhileEnd";
-        //       break;
-        //     case "expectWhileEnd":
-        //       // br $label1
-        //       code.push(Opcodes.br);
-        //       code.push(...signedLEB128(0));
-        //       // end loop
-        //       code.push(Opcodes.end);
-        //       // end block
-        //       code.push(Opcodes.end);
-        //       blockStatus.pop();
-        //       break;
-        //     case "root":
-        //       if (lblInstr.label !== func.name)
-        //         // functions start with label :funcName
-        //         throw new Error("Block stack at root level - why are we seeing label " + instr.label);
-        //       break;
-        //     default:
-        //       throw new Error(`Unknown block status ${_.last(blockStatus)} at top of block stack`);
-        //   }
+        if (instr.label.startsWith("whiletest")) {
+          // while lope
+          // outer block
+          code.push(Opcodes.block);
+          code.push(Blocktype.void);
+          // inner loop
+          code.push(Opcodes.loop);
+          code.push(Blocktype.void);
+          blockStatus.push("expectWhileBody");
+        } else
+          switch (_.last(blockStatus)) {
+            case "expectThen":
+              if (lblInstr.label.startsWith("then")) {
+                // thenBlock
+                // the next label in current block stack should be an else
+                blockStatus[blockStatus.length - 1] = "expectElse";
+              } else throw new Error("Wasm was expecting a 'then' label");
+              break;
+            case "expectElse":
+              if (lblInstr.label.startsWith("else")) {
+                code.push(Opcodes.else);
+                // the next label in current block stack should be an endif
+                blockStatus[blockStatus.length - 1] = "expectEndif";
+              } else throw new Error("Wasm was expected a 'else' label");
+              break;
+            case "expectEndif":
+              if (lblInstr.label.startsWith("endif")) {
+                code.push(Opcodes.end);
+                // pop the if/then/else block off the stack
+                blockStatus.pop();
+              } else throw new Error("Wasm was expected a 'endif' label");
+              break;
+            case "expectWhileBody":
+              blockStatus[blockStatus.length - 1] = "expectWhileEnd";
+              break;
+            case "expectWhileEnd":
+              // br $label1
+              code.push(Opcodes.br);
+              code.push(...signedLEB128(0));
+              // end loop
+              code.push(Opcodes.end);
+              // end block
+              code.push(Opcodes.end);
+              blockStatus.pop();
+              break;
+            case "root":
+              if (lblInstr.label !== func.name)
+                // functions start with label :funcName
+                throw new Error("Block stack at root level - why are we seeing label " + instr.label);
+              break;
+            default:
+              throw new Error(`Unknown block status ${_.last(blockStatus)} at top of block stack`);
+          }
         // debugger;
         // throw new Error(`emitWasm: labels not implemented yet`);
       }
     });
-    // const bs = _.last(blockStatus);
-    // if (bs !== "root") throw new Error(`Wasm block stack should be at root, not ${bs}`);
+    const bs = _.last(blockStatus);
+    if (bs !== "root") throw new Error(`Wasm block stack should be at root, not ${bs}`);
   };
 
-  emitBlock(blockArray[0]); // start emitting blocks
+  emitInstructions(func.instrs);
 
   const localCount = localsymbols.size;
   const locals = Array.from(localsymbols).map(([key, value]) => encodeLocal(1, value.type));
@@ -742,11 +649,6 @@ const emitWasmFunction = (
 };
 
 export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
-  if (Object.keys(bril.functions).length == 0) {
-    throw new Error("Empty bril");
-  }
-  const cfg = cfgBuilder.buildProgram(bril);
-
   allSymbols = {};
   includeLibFunctions.set_pixel = false;
 
@@ -836,7 +738,7 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   );
 
   // the code section contains vectors of functions
-  const functionBodies = brilFunctions.map((func) => emitWasmFunction(func, bril, cfg, globals));
+  const functionBodies = brilFunctions.map((func) => emitWasmFunction(func, bril, globals));
   if (includeLibFunctions.set_pixel) functionBodies.push(emitSetPixelFunction());
   const codeSection = createSection(Section.code, encodeVector(functionBodies));
 

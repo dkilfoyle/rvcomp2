@@ -134,6 +134,25 @@ export const getNaturalLoops = (backEdges: string[][], predecessorMap: stringMap
   return allLoops;
 };
 
+export const findCommonDescendent = (successorMap: stringMap, backEdges: string[][], a: string, b: string) => {
+  // a common descdent will be a node reached by both a and b
+  console.log(a, b);
+  if (a == b) return a;
+  for (let bChild of successorMap[b]) {
+    if (!backEdges.find(([tail, head]) => tail == b && head == bChild)) {
+      const match: string = findCommonDescendent(successorMap, backEdges, a, bChild);
+      if (match != "") return match;
+    }
+  }
+  for (let aChild of successorMap[a]) {
+    if (!backEdges.find(([tail, head]) => tail == a && head == aChild)) {
+      const match: string = findCommonDescendent(successorMap, backEdges, aChild, b);
+      if (match != "") return match;
+    }
+  }
+  return "";
+};
+
 // def dom_tree(dom):
 //     # Get the blocks strictly dominated by a block strictly dominated by
 //     # a given block.

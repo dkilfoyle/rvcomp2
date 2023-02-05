@@ -69,7 +69,7 @@ export const renameVars = (blockMap: ICFGBlockMap, phis: IDictStrings, succs: ID
 
   const _pushFresh = (varName: string) => {
     // first encounter of varName so init dicts
-    if (!counters[varName]) counters[varName] = 1;
+    if (!counters[varName]) counters[varName] = 0;
     if (!stack[varName]) stack[varName] = [];
     const fresh = `${varName}.${counters[varName]}`;
     counters[varName]++;

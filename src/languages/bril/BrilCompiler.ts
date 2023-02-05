@@ -24,13 +24,10 @@ export const optimiseBril = (
     const blockMap = getFunctionBlockMap(func);
 
     if (Object.keys(blockMap).length > 0) {
+      if (log) console.info("Optimising...");
       if (doSSA) {
         const statsSSA = runSSA(blockMap, func);
         if (log) console.info(`${func.name}: SSA: `, statsSSA);
-        if (!keepPhis) {
-          const statsPhis = removePhis(blockMap);
-          // if (log) console.info(`${func.name}: Phis: `, statsSSA);
-        }
       }
 
       if (doLVN) {
@@ -41,6 +38,11 @@ export const optimiseBril = (
       if (doGVN) {
         const gvnStats = gvn(func, blockMap);
         if (log) console.info(`${func.name}: LVN: `, gvnStats);
+      }
+
+      if (!keepPhis) {
+        const statsPhis = removePhis(blockMap);
+        // if (log) console.info(`${func.name}: Phis: `, statsSSA);
       }
 
       if (doDCE) {

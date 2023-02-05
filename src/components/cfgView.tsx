@@ -39,6 +39,7 @@ export const CfgView = () => {
     const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
     const dom = getDominatorMap(successorsMap, fn[0].name);
     const frontier = getDominanceFrontierMap(dom, successorsMap);
+    console.log(frontier);
     const domtree = getDominanceTree(dom);
     const backEdges = getBackEdges(cfg[functionName], dom, successorsMap);
     const loops = getNaturalLoops(backEdges, predecessorsMap);

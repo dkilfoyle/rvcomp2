@@ -56,7 +56,7 @@ export class CfgBuilder {
     this.curNameIndex = 0;
     this.startBlock({ name: fn.name });
 
-    fn.instrs.forEach((ins) => {
+    fn.instrs.forEach((ins, i) => {
       if ("op" in ins) {
         // its an instruction
         ins = <IBrilInstruction>ins;
@@ -73,10 +73,13 @@ export class CfgBuilder {
         }
       } else {
         ins = <IBrilLabel>ins;
-        if (this.cur_block.out.length == 0) this.cur_block.out = [ins.label];
-        if (this.cur_block.name != "") this.endBlock();
-        // if (this.cur_block.instructions.length) this.endBlock();
-        this.startBlock({ name: ins.label });
+        if (i != 0) {
+          // if i == 0 then don't create a block as already done
+          if (this.cur_block.out.length == 0) this.cur_block.out = [ins.label];
+          if (this.cur_block.name != "") this.endBlock();
+          // if (this.cur_block.instructions.length) this.endBlock();
+          this.startBlock({ name: ins.label });
+        }
         if (_.isUndefined(ins.key)) debugger;
         else this.cur_block.keyStart = ins.key;
         // this.cur_block.instructions = [ins];
@@ -181,6 +184,7 @@ export const getInstructionSuccessors = (ins?: IBrilInstructionOrLabel) => {
   if ("label" in ins) throw new Error();
   if (["jmp", "br"].includes(ins.op)) return (ins as IBrilEffectOperation).labels;
   if (ins.op == "ret") return [];
+  debugger;
   throw new Error("ins is not a terminator");
 };
 

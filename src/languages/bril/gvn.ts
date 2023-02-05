@@ -269,6 +269,7 @@ const dvn2 = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStri
         } else {
           // new value operation
           // see if it can be folded
+          if (instr.dest == "lt1.2") debugger;
           const constValue = fold(vnTable, instrValue);
           if (typeof constValue !== "undefined") {
             // it can be folded, convert the instruction into a const
