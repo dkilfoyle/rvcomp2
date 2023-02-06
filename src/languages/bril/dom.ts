@@ -105,38 +105,8 @@ export const getDominanceTree = (dominatorMap: stringMap) => {
   return res;
 };
 
-export const getBackEdges = (cfgBlocks: ICFGBlock[], dominatorMap: stringMap, successorMap: stringMap) => {
-  const backEdges: string[][] = [];
-  cfgBlocks.forEach((block) => {
-    dominatorMap[block.name].forEach((dominator) => {
-      if (successorMap[block.name].includes(dominator)) backEdges.push([block.name, dominator]);
-    });
-  });
-  return backEdges;
-};
-
-export const getNaturalLoops = (backEdges: string[][], predecessorMap: stringMap) => {
-  const recursePredecessors = (tail: string, loop: string[], explored: string[]) => {
-    loop.push(tail);
-    explored.push(tail);
-    if (!predecessorMap[tail]) debugger;
-    predecessorMap[tail].forEach((tailPredecessor) => {
-      if (!explored.includes(tailPredecessor)) recursePredecessors(tailPredecessor, loop, explored);
-    });
-  };
-  const allLoops: string[][] = [];
-  backEdges.forEach(([tail, head]) => {
-    const naturalLoop = [head];
-    const explored = [head];
-    recursePredecessors(tail, naturalLoop, explored);
-    allLoops.push(naturalLoop);
-  });
-  return allLoops;
-};
-
 export const findCommonDescendent = (successorMap: stringMap, backEdges: string[][], a: string, b: string) => {
   // a common descdent will be a node reached by both a and b
-  console.log(a, b);
   if (a == b) return a;
   for (let bChild of successorMap[b]) {
     if (!backEdges.find(([tail, head]) => tail == b && head == bChild)) {

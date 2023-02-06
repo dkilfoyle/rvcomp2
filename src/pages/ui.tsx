@@ -337,7 +337,6 @@ export const UI: React.FC = () => {
 
     if (graphPanel.size <= 35) {
       // graphTabs panel is collapsed
-      console.log("collapsed");
       tabs.collapsed = createCollapsedTab(graphPanel.tabs);
       graphPanel.tabs = [{ id: "collapsed" }];
       graphPanel.group = "notabs";

@@ -21,7 +21,7 @@ export default class SimpleCFormattingProvider extends Adapter implements monaco
         .split("\n")
         .map((line) => line.length)
         .sort((a, b) => a - b)[0] + 1;
-    console.log({ endColumn, endLineNumber, formattedCode, code });
+    // console.log({ endColumn, endLineNumber, formattedCode, code });
     return [
       {
         text: formattedCode,

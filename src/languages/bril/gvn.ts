@@ -77,7 +77,7 @@ const dvn = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStrin
 
   const dvnBlock = (blockName: string) => {
     // const pushed: IDictNumber = {};
-    console.log("visiting", blockName);
+    // console.log("visiting", blockName);
     const new_instructions: IBrilInstruction[] = [];
 
     // do a phi removal pass
@@ -196,7 +196,7 @@ const dvn = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStrin
     });
 
     blockMap[blockName].instructions = new_instructions;
-    console.log(blockName, blockMap[blockName].instructions);
+    // console.log(blockName, blockMap[blockName].instructions);
 
     const vnTableSize = vnTable.rows.length;
 
@@ -321,7 +321,7 @@ const dvn2 = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStri
     // replace instructions mapped for replacement (constant folds)
     instrsToReplace.forEach((value, key) => (blockMap[blockName].instructions[key] = value));
 
-    console.log(blockName, blockMap[blockName].instructions);
+    // console.log(blockName, blockMap[blockName].instructions);
     const vnTableSize = vnTable.rows.length;
 
     // reverse post order of the successors of blockName that are in the dominance tree of blockName

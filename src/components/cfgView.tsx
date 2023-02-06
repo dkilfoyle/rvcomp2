@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Options, Network } from "vis-network";
 import { DataSet } from "vis-data";
-import { getBackEdges, getDominanceFrontierMap, getDominanceTree, getDominatorMap, getNaturalLoops } from "../languages/bril/dom";
+import { getDominanceFrontierMap, getDominanceTree, getDominatorMap } from "../languages/bril/dom";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
 import { getDataFlow } from "../languages/bril/df";
 import { Box, Checkbox, Flex, Grid, Select, Table, Td, Th, Thead, Tooltip, Tr, VStack } from "@chakra-ui/react";
@@ -9,6 +9,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import "./cfgView.css";
 import { ParseState, SettingsState, useParseStore, useSettingsStore } from "../store/zustore";
+import { getBackEdges, getNaturalLoops } from "../languages/bril/loops";
 
 interface ICfgEdge {
   from: string;
@@ -36,10 +37,10 @@ export const CfgView = () => {
     // blockMap = addCfgEntry(blockMap);
     // addCfgTerminators(blockMap);
     const dataFlow = getDataFlow(blockMap);
+    console.log("Reaching in: ", dataFlow.reachingIn);
     const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
     const dom = getDominatorMap(successorsMap, fn[0].name);
     const frontier = getDominanceFrontierMap(dom, successorsMap);
-    console.log(frontier);
     const domtree = getDominanceTree(dom);
     const backEdges = getBackEdges(cfg[functionName], dom, successorsMap);
     const loops = getNaturalLoops(backEdges, predecessorsMap);

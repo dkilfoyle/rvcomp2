@@ -75,7 +75,6 @@ export default class SimpleCSignatureHelpProvider extends Adapter implements mon
         signatures,
       },
     };
-    console.log(result);
     return result;
   }
 

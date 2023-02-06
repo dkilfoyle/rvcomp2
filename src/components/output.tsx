@@ -99,7 +99,6 @@ export const Output: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    console.log(bril);
     setOptimLogs([]);
     setUnoptimLogs([]);
 
