@@ -1,14 +1,14 @@
 import _ from "lodash";
 import { IBrilFunction, IBrilValueOperation } from "./BrilInterface";
-import { getCfgEdges, ICFGBlockMap } from "./cfgBuilder";
-import { getDominanceFrontierMap, getDominanceTree, getDominatorMap, stringMap } from "./dom";
+import { getCfgEdges, ICFGBlockMap } from "./cfg";
+import { getDominanceFrontierMap, getDominanceTree, getDominatorMap, IStringsMap } from "./dom";
 import { getBrilFunctionArgs, getBrilFunctionVarTypes, IDictString, IDictStrings } from "./utils";
 
 type IPhiArgs = Record<string, Record<string, [string, string][]>>;
 type IPhiDests = Record<string, Record<string, string | undefined>>;
 
 export const getVariableDefinitionToBlocksMap = (blocks: ICFGBlockMap) => {
-  const out: stringMap = {};
+  const out: IStringsMap = {};
   Object.values(blocks).forEach((b) => {
     b.instructions.forEach((instr) => {
       if ("dest" in instr) {
@@ -21,10 +21,10 @@ export const getVariableDefinitionToBlocksMap = (blocks: ICFGBlockMap) => {
   return out;
 };
 
-export const getBlockToPhiVariablesMap = (blocks: ICFGBlockMap, df: stringMap, defs: stringMap) => {
+export const getBlockToPhiVariablesMap = (blocks: ICFGBlockMap, df: IStringsMap, defs: IStringsMap) => {
   // df = dominance frontier map
   // defs = variable definition to blocks map
-  const phis: stringMap = {};
+  const phis: IStringsMap = {};
   Object.keys(blocks).forEach((b) => (phis[b] = []));
 
   Object.entries(defs).forEach(([v, vdefBlocks]) => {

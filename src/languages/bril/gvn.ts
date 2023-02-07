@@ -1,5 +1,5 @@
 import { IBrilConst, IBrilFunction, IBrilInstruction, IBrilProgram, IBrilValueInstruction, IBrilValueOperation } from "./BrilInterface";
-import { getCfgEdges, ICFGBlockMap } from "./cfgBuilder";
+import { getCfgEdges, ICFGBlockMap } from "./cfg";
 import { getDominanceTree, getDominatorMap } from "./dom";
 import { IDictNumber, IDictNumbers, IDictStrings } from "./utils";
 import { fold, VNTable, VNValue } from "./vn";

@@ -2,7 +2,7 @@ import { CstNode } from "chevrotain";
 import produce from "immer";
 import create from "zustand";
 import { IBrilProgram } from "../languages/bril/BrilInterface";
-import { ICFG } from "../languages/bril/cfgBuilder";
+import { ICFG } from "../languages/bril/cfg";
 import { IAstProgram } from "../languages/simpleC/ast";
 import { ISimpleCLangError } from "../components/simpleCEditor/monaco/DiagnosticsAdapter";
 
@@ -13,14 +13,15 @@ export interface SettingsState {
     functionName: string;
   };
   optim: {
-    keepPhis: boolean;
+    removePhis: boolean;
     isSSA: boolean;
     doLVN: boolean;
     doGVN: boolean;
     doDCE: boolean;
+    doLICM: boolean;
   };
   bril: {
-    keepPhis: boolean;
+    removePhis: boolean;
     isSSA: boolean;
   };
   wasm: {
@@ -44,14 +45,15 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
     functionName: "main",
   },
   optim: {
-    keepPhis: false,
+    removePhis: true,
     isSSA: true,
     doLVN: false,
     doGVN: true,
     doDCE: true,
+    doLICM: true,
   },
   bril: {
-    keepPhis: true,
+    removePhis: false,
     isSSA: true,
   },
   wasm: {

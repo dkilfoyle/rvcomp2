@@ -3,7 +3,7 @@
 
 import _ from "lodash";
 import { IBrilProgram, IBrilValueInstruction } from "./BrilInterface";
-import { addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGBlock, ICFGBlockMap } from "./cfgBuilder";
+import { addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGBlock, ICFGBlockMap } from "./cfg";
 
 interface IDFAnalysis<T> {
   forward: boolean;
@@ -110,7 +110,7 @@ const reaching_merge = (inputs: Record<string, string[]>[]) => {
   return out;
 };
 
-const ANALYSES: Record<string, IDFAnalysis<any>> = {
+export const ANALYSES: Record<string, IDFAnalysis<any>> = {
   reaching: { forward: true, init: {}, merge: reaching_merge, transfer: reaching_transfer } as IDFAnalysis<Record<string, string[]>>,
   defined: { forward: true, init: [], merge: union, transfer: (block, in_) => _.union(in_, generatedVars(block)) } as IDFAnalysis<string[]>,
   live: {

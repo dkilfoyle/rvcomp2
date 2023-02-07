@@ -166,8 +166,14 @@ export const getCfgBlockMap = (blocks: ICFGBlock[]) => {
 export const getCfgEdges = (blockMap: ICFGBlockMap) => {
   const predecessorsMap: Record<string, string[]> = {};
   const successorsMap: Record<string, string[]> = {};
-  Object.entries(blockMap).forEach(([name, block]) => {
-    const succs = getInstructionSuccessors(block.instructions.at(-1));
+  Object.entries(blockMap).forEach(([name, block], iBlock) => {
+    let succs;
+    try {
+      succs = getInstructionSuccessors(block.instructions.at(-1));
+    } catch (e: any) {
+      // no terminator, instead use next block
+      succs = [Object.keys(blockMap)[iBlock + 1]];
+    }
     if (!successorsMap[name]) successorsMap[name] = [];
 
     succs?.forEach((succ) => {
@@ -184,7 +190,6 @@ export const getInstructionSuccessors = (ins?: IBrilInstructionOrLabel) => {
   if ("label" in ins) throw new Error();
   if (["jmp", "br"].includes(ins.op)) return (ins as IBrilEffectOperation).labels;
   if (ins.op == "ret") return [];
-  debugger;
   throw new Error("ins is not a terminator");
 };
 

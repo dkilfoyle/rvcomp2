@@ -19,8 +19,9 @@ import {
   IBrilValueInstruction,
   IBrilValueType,
 } from "../bril/BrilInterface";
-import { cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGBlock } from "../bril/cfgBuilder";
-import { findCommonDescendent, getBackEdges, getDominatorMap, getNaturalLoops } from "../bril/dom";
+import { cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGBlock } from "../bril/cfg";
+import { findCommonDescendent, getDominatorMap } from "../bril/dom";
+import { getBackEdges, getNaturalLoops } from "../bril/loops";
 import { unsignedLEB128, signedLEB128, encodeString, ieee754 } from "./encoding";
 
 let allSymbols: Record<string, string[]> = {};

@@ -2,8 +2,8 @@ import { expect, test } from "vitest";
 import { cstVisitor } from "../simpleC/cstToAstVisitor";
 import { parse } from "../simpleC/parser";
 import { astToBrilVisitor } from "./astToBrilVisitor";
-import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "./cfgBuilder";
-import { getDominatorMap, invertMap, postOrder, stringMap } from "./dom";
+import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "./cfg";
+import { getDominatorMap, invertMap, postOrder, IStringsMap } from "./dom";
 import domCode from "../../examples/dom.sc?raw";
 
 test("invertMap inverts string array maps", () => {
@@ -38,10 +38,10 @@ test("dom works", () => {
   addCfgTerminators(blockMap);
   const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
 
-  const ordered = (inmap: stringMap) =>
+  const ordered = (inmap: IStringsMap) =>
     Object.keys(inmap)
       .sort()
-      .reduce((obj: stringMap, key) => {
+      .reduce((obj: IStringsMap, key) => {
         obj[key] = inmap[key].sort();
         return obj;
       }, {});

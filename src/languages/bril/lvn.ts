@@ -2,7 +2,7 @@
 // Find multiple instances of equivalent expressions and replace them with the first (canonical) occurrence
 
 import { IBrilConst, IBrilInstruction, IBrilInstructionOrLabel, IBrilValueInstruction, IBrilValueOperation } from "./BrilInterface";
-import { ICFGBlockMap } from "./cfgBuilder";
+import { ICFGBlockMap } from "./cfg";
 import { IDictStrings } from "./utils";
 import { fold, VNTable, VNValue } from "./vn";
 

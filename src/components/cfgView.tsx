@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Options, Network } from "vis-network";
 import { DataSet } from "vis-data";
 import { getDominanceFrontierMap, getDominanceTree, getDominatorMap } from "../languages/bril/dom";
-import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
+import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfg";
 import { getDataFlow } from "../languages/bril/df";
 import { Box, Checkbox, Flex, Grid, Select, Table, Td, Th, Thead, Tooltip, Tr, VStack } from "@chakra-ui/react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";

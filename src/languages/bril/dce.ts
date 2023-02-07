@@ -1,5 +1,5 @@
 import { IBrilFunction, IBrilInstructionOrLabel } from "./BrilInterface";
-import { ICFGBlock, ICFGBlockMap } from "./cfgBuilder";
+import { ICFGBlock, ICFGBlockMap } from "./cfg";
 
 let dceRemovedInsCount = 0;
 let dceIterations = 0;
