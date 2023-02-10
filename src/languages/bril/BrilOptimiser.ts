@@ -8,7 +8,7 @@ import { licm } from "./loops";
 
 export type IBrilOptimisations = "doSSA" | "removePhis" | "doLVN" | "doGVN" | "doDCE" | "doLICM";
 
-export const optimiseBril = (bril: IBrilProgram, optimisations: IBrilOptimisations[], log = false) => {
+export const optimiseBril = (bril: IBrilProgram, optimisations: string[], log = false) => {
   const getYN = (t: boolean) => (t ? "Y" : "N");
   const outBril: IBrilProgram = { functions: {}, data: new Map(), dataSize: 0 };
   const outCfg: ICFG = {};
@@ -20,28 +20,30 @@ export const optimiseBril = (bril: IBrilProgram, optimisations: IBrilOptimisatio
       if (log) console.info("Optimising...");
       optimisations.forEach((optim) => {
         switch (optim) {
-          case "doSSA":
+          case "SSA":
             const statsSSA = runSSA(blockMap, func);
             if (log) console.info(`${func.name}: SSA: `, statsSSA);
             break;
-          case "doLICM":
+          case "LICM":
             blockMap = licm(func, blockMap);
             break;
-          case "doLVN":
+          case "LVN":
             const lvnStats = lvn(blockMap);
             if (log) console.info(`${func.name}: LVN: `, lvnStats);
             break;
-          case "doGVN":
+          case "GVN":
             const gvnStats = gvn(func, blockMap);
             if (log) console.info(`${func.name}: LVN: `, gvnStats);
             break;
-          case "removePhis":
+          case "Phis-":
             const statsPhis = removePhis(blockMap);
             break;
-          case "doDCE":
+          case "DCE":
             const statsDCE = runDCE(blockMap, func);
             if (log) console.info(`${func.name}: DCE: removed ${statsDCE.removedInstructions.length}`);
             break;
+          default:
+            throw new Error(`Unknown optimisation  ${optim}`);
         }
       });
     }

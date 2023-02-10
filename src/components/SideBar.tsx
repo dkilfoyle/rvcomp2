@@ -23,6 +23,7 @@ import { GiSlowBlob } from "react-icons/gi";
 import { GoFile, GoFileDirectory } from "react-icons/go";
 import { FaRunning, FaShippingFast } from "react-icons/fa";
 import { SiWebassembly } from "react-icons/si";
+import { OptimList } from "./OptimList";
 
 interface dirTreeNode {
   key: string;
@@ -65,18 +66,9 @@ Object.keys(examples).forEach((key) => {
 const fullHeight = { maxHeight: "100%", height: "100%" };
 
 export const Sidebar = () => {
-  // const filename = useSettingsStore((state: SettingsState) => state.filename);
-  // const keepPhis = useSettingsStore((state: SettingsState) => state.optim.keepPhis);
-  // const isSSA = useSettingsStore((state: SettingsState) => state.optim.isSSA);
-  const [filename, keepPhis, isSSA, isFoldExprs] = useSettingsStore(
-    (state: SettingsState) => [state.filename, state.optim.keepPhis, state.optim.isSSA, state.wasm.foldExprs],
-    shallow
-  );
-  const brilKeepPhis = useSettingsStore((state: SettingsState) => state.bril.keepPhis);
+  const [filename, isFoldExprs] = useSettingsStore((state: SettingsState) => [state.filename, state.wasm.foldExprs], shallow);
+  const brilremovePhis = useSettingsStore((state: SettingsState) => state.bril.removePhis);
   const brilIsSSA = useSettingsStore((state: SettingsState) => state.bril.isSSA);
-  const doLVN = useSettingsStore((state: SettingsState) => state.optim.doLVN);
-  const doGVN = useSettingsStore((state: SettingsState) => state.optim.doGVN);
-  const doDCE = useSettingsStore((state: SettingsState) => state.optim.doDCE);
   const isRunOptim = useSettingsStore((state: SettingsState) => state.interp.isRunOptim);
   const isRunUnoptim = useSettingsStore((state: SettingsState) => state.interp.isRunUnoptim);
   const isRunWasm = useSettingsStore((state: SettingsState) => state.interp.isRunWasm);
@@ -134,10 +126,10 @@ export const Sidebar = () => {
                     setSettings((state: SettingsState) => {
                       state.bril.isSSA = e.target.checked;
                     });
-                    if (e.target.checked)
-                      setSettings((state: SettingsState) => {
-                        state.optim.isSSA = true;
-                      });
+                    // if (e.target.checked)
+                    //   setSettings((state: SettingsState) => {
+                    //     state.optim.isSSA = true;
+                    //   });
                     // dispatch(setBrilIsSSA(e.target.checked));
                     // if (e.target.checked) dispatch(setIsSSA(true));
                   }}>
@@ -145,13 +137,13 @@ export const Sidebar = () => {
                 </Checkbox>
                 <Checkbox
                   size="sm"
-                  isChecked={brilKeepPhis}
+                  isChecked={brilremovePhis}
                   onChange={(e) =>
                     setSettings((state: SettingsState) => {
-                      state.bril.keepPhis = e.target.checked;
+                      state.bril.removePhis = e.target.checked;
                     })
                   }>
-                  KeepPhis
+                  removePhis
                 </Checkbox>
               </VStack>
             </AccordionPanel>
@@ -167,65 +159,9 @@ export const Sidebar = () => {
                 <AccordionIcon />
               </AccordionButton>
             </h2>
+
             <AccordionPanel pb={4}>
-              <VStack alignItems="start">
-                <Checkbox
-                  isChecked={isSSA}
-                  size="sm"
-                  onChange={(e) =>
-                    setSettings((state: SettingsState) => {
-                      state.optim.isSSA = e.target.checked;
-                    })
-                  }>
-                  SSA
-                </Checkbox>
-                <Checkbox
-                  isChecked={keepPhis}
-                  size="sm"
-                  onChange={(e) =>
-                    setSettings((state: SettingsState) => {
-                      state.optim.keepPhis = e.target.checked;
-                    })
-                  }>
-                  KeepPhis
-                </Checkbox>
-                <Checkbox
-                  isChecked={doLVN}
-                  size="sm"
-                  onChange={(e) =>
-                    setSettings((state: SettingsState) => {
-                      state.optim.doLVN = e.target.checked;
-                    })
-                  }>
-                  LVN
-                </Checkbox>
-                <Checkbox
-                  isChecked={doGVN}
-                  size="sm"
-                  onChange={(e) =>
-                    setSettings((state: SettingsState) => {
-                      state.optim.doGVN = e.target.checked;
-                      if (e.target.checked) {
-                        state.optim.isSSA = true;
-                        state.optim.keepPhis = true;
-                        state.bril.isSSA = true;
-                        state.optim.doLVN = false;
-                      }
-                    })
-                  }>
-                  GVN
-                </Checkbox>
-                <Checkbox
-                  isChecked={doDCE}
-                  size="sm"
-                  onChange={(e) =>
-                    setSettings((state: SettingsState) => {
-                      state.optim.doDCE = e.target.checked;
-                    })
-                  }>
-                  DCE
-                </Checkbox>
-              </VStack>
+              <OptimList></OptimList>
             </AccordionPanel>
           </AccordionItem>
 

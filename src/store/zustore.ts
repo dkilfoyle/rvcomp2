@@ -12,14 +12,18 @@ export interface SettingsState {
     nodeName: string;
     functionName: string;
   };
-  optim: {
-    removePhis: boolean;
-    isSSA: boolean;
-    doLVN: boolean;
-    doGVN: boolean;
-    doDCE: boolean;
-    doLICM: boolean;
+  optimisations: {
+    selected: string[];
+    available: string[];
   };
+  // optim: {
+  //   removePhis: boolean;
+  //   isSSA: boolean;
+  //   doLVN: boolean;
+  //   doGVN: boolean;
+  //   doDCE: boolean;
+  //   doLICM: boolean;
+  // };
   bril: {
     removePhis: boolean;
     isSSA: boolean;
@@ -44,14 +48,18 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
     nodeName: "",
     functionName: "main",
   },
-  optim: {
-    removePhis: true,
-    isSSA: true,
-    doLVN: false,
-    doGVN: true,
-    doDCE: true,
-    doLICM: true,
+  optimisations: {
+    selected: ["LICM", "SSA", "Phis-", "DCE"],
+    available: ["LVN", "GVN"],
   },
+  // optim: {
+  //   removePhis: true,
+  //   isSSA: true,
+  //   doLVN: false,
+  //   doGVN: true,
+  //   doDCE: true,
+  //   doLICM: true,
+  // },
   bril: {
     removePhis: false,
     isSSA: true,
