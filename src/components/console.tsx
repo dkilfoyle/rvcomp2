@@ -61,6 +61,8 @@ const countInstructions = (bril: IBrilProgram) => {
   return Object.values(bril.functions).reduce((accum, curFn) => (accum += curFn.instrs.length), 0);
 };
 
+window.conout0 = { ...window.console };
+
 export const Consoler: React.FC = () => {
   const { cst, ast, bril, brilOptim, errors, wasm } = useParseStore((state: ParseState) => ({
     cst: state.cst,
@@ -80,7 +82,7 @@ export const Consoler: React.FC = () => {
   const consoleScollRef = useRef<OverlayScrollbarsComponentRef>(null);
 
   useEffect(() => {
-    Hook((window as any).console, (log) => setLogs((currLogs) => [...currLogs, log]), false);
+    Hook((window as any).conout0, (log) => setLogs((currLogs) => [...currLogs, log]), false);
     // return () => Unhook((window as any).console);
   }, []);
 

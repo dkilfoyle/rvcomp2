@@ -43,7 +43,7 @@ export const BrilEditor: VFC = () => {
   }, [bril, brilIsSSA, brilRemovePhis]);
 
   useEffect(() => {
-    const { optimBril, optimCfg } = optimiseBril(bril, optimisations, true); //, "doLICM", "removePhis", "doDCE"], true);
+    const { optimBril, optimCfg } = optimiseBril(bril, optimisations, window.conout0); //, "doLICM", "removePhis", "doDCE"], true);
     setParse((state: ParseState) => {
       state.brilOptim = optimBril;
     });

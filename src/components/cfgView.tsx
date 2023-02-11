@@ -48,7 +48,6 @@ const calculateLevels = (nodes: ICFGVisNode[], edges: any[], backEdges?: string[
   for (let node of nodes) {
     node.level = calculateMaxNodeLength(nodesMap, reverseEdgesMap, node.id, backEdges);
   }
-  console.log(nodes);
 };
 
 const calculateMaxNodeLength = (
@@ -101,7 +100,6 @@ export const CfgView = () => {
     // blockMap = addCfgEntry(blockMap);
     // addCfgTerminators(blockMap);
     const dataFlow = getDataFlow(blockMap);
-    console.log("Reaching in: ", dataFlow.reachingIn);
     const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
     const dom = getDominatorMap(successorsMap, fn[0].name);
     const frontier = getDominanceFrontierMap(dom, successorsMap);
@@ -269,6 +267,7 @@ export const CfgView = () => {
       cfg.domtree[nodeName]?.length,
       cfg.dataFlow.definedIn[nodeName]?.length,
       cfg.dataFlow.liveOut[nodeName]?.length,
+      Object.keys(cfg.dataFlow.reachingOut[nodeName])?.length,
       0
     );
     const rows: JSX.Element[] = [];
@@ -279,6 +278,9 @@ export const CfgView = () => {
           <td className={"DOMTREElist"}>{i < cfg.domtree[nodeName].length ? cfg.domtree[nodeName][i] : ""}</td>
           <td className={"DEFINEDlist"}>{i < cfg.dataFlow.definedIn[nodeName].length ? cfg.dataFlow.definedIn[nodeName][i] : ""}</td>
           <td className={"ALIVElist"}>{i < cfg.dataFlow.liveOut[nodeName].length ? cfg.dataFlow.liveOut[nodeName][i] : ""}</td>
+          <td className={"REACHlist"}>
+            {i < Object.keys(cfg.dataFlow.reachingIn[nodeName]).length ? Object.keys(cfg.dataFlow.reachingIn[nodeName])[i] : ""}
+          </td>
         </tr>
       );
       rows.push(row);
@@ -322,6 +324,7 @@ export const CfgView = () => {
                   <th>DomTree</th>
                   <th>Defined</th>
                   <th>Alive</th>
+                  <th>Reach</th>
                 </tr>
               </thead>
               <tbody>{renderRows}</tbody>

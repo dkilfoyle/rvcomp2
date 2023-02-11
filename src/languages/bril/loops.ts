@@ -22,12 +22,12 @@ export const getBackEdges = (cfgBlocks: ICFGBlock[], dominatorMap: IStringsMap, 
 
 export const getNaturalLoops = (backEdges: string[][], predecessorMap: IStringsMap) => {
   const recursePredecessors = (tail: string, loop: string[], explored: string[]) => {
-    loop.push(tail);
     explored.push(tail);
     if (!predecessorMap[tail]) debugger;
     predecessorMap[tail].forEach((tailPredecessor) => {
       if (!explored.includes(tailPredecessor)) recursePredecessors(tailPredecessor, loop, explored);
     });
+    loop.push(tail);
   };
   const allLoops: string[][] = [];
   backEdges.forEach(([tail, head]) => {
@@ -118,7 +118,7 @@ const createPreheaders = (blockMap: ICFGBlockMap, loops: string[][], predecessor
   // now connect header predecessors (except the backedge tail) to the preheader instead of the header
   loops.forEach((loop) => {
     const headerName = loop[0];
-    const tailName = loop[1];
+    const tailName = _.last(loop);
     if (!tailName) throw new Error("invalid loop");
     const preheaderName = preHeaderMap[headerName];
     predecessorMap[headerName].forEach((p) => {
@@ -234,6 +234,10 @@ export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   const { newBlocks, preHeaderMap } = createPreheaders(blockMap, loops, predecessorsMap);
   const { codeMotion, licd } = moveLI(newBlocks, preHeaderMap, invariants, loops, dominatorMap, liveOut, exits);
 
+  console.log("backEdges: ", backEdges);
+  console.log("loops: ", loops);
+  console.log("reachingIn: ", reachingIn);
+  console.log("reachingOut: ", reachingOut);
   // console.log("invariants: ", invariants);
   // console.log("preHeaderMap: ", preHeaderMap);
   // console.log("codeMotion", codeMotion);
@@ -261,17 +265,21 @@ const getInductionVars = (
     const [head, tail] = loop;
 
     // for each variable that reaches the loop header
-    Object.keys(reachingDefs[head]).forEach((reachingVar) => {
+    Object.keys(reachingDefs[head]).forEach((varReachingHead) => {
+      const cameViaBlock = reachingDefs[head][varReachingHead];
       // test if it has reached from outside of the loop, if so it is loop invariant and "constant" with respect to the loop
-      if (!reachingDefs[head][reachingVar].includes(head) && !reachingDefs[head][reachingVar].includes(tail))
-        constants[iLoop].push(reachingVar);
+      if (
+        !cameViaBlock.includes(head) && // definition reaching head didn't originate from head itself
+        !cameViaBlock.includes(tail) // definition reaching head didn't come via tail
+      )
+        constants[iLoop].push(varReachingHead);
     });
 
     // for each variable that reaches the loop tail
-    Object.keys(reachingDefs[tail]).forEach((reachingVar) => {
+    Object.keys(reachingDefs[tail]).forEach((varReachingTail) => {
+      const cameViaBlock = reachingDefs[tail][varReachingTail];
       // test if it has reached from outside of the loop, if so it is loop invariant and "constant" with respect to the loop
-      if (!reachingDefs[head][reachingVar].includes(head) && !reachingDefs[head][reachingVar].includes(tail))
-        constants[iLoop].push(reachingVar);
+      if (cameViaBlock.includes(tail) && cameViaBlock.length == 2) constants[iLoop].push(varReachingTail);
     });
   });
 };

@@ -8,7 +8,7 @@ import { licm } from "./loops";
 
 export type IBrilOptimisations = "doSSA" | "removePhis" | "doLVN" | "doGVN" | "doDCE" | "doLICM";
 
-export const optimiseBril = (bril: IBrilProgram, optimisations: string[], log = false) => {
+export const optimiseBril = (bril: IBrilProgram, optimisations: string[], logger?: Console) => {
   const getYN = (t: boolean) => (t ? "Y" : "N");
   const outBril: IBrilProgram = { functions: {}, data: new Map(), dataSize: 0 };
   const outCfg: ICFG = {};
@@ -17,32 +17,32 @@ export const optimiseBril = (bril: IBrilProgram, optimisations: string[], log = 
     let blockMap = getFunctionBlockMap(func);
 
     if (Object.keys(blockMap).length > 0) {
-      if (log) console.info("Optimising...");
+      if (logger) logger.info("Optimising...");
       optimisations.forEach((optim) => {
         switch (optim) {
           case "SSA":
             const statsSSA = runSSA(blockMap, func);
-            if (log) console.info(`${func.name}: SSA: `, statsSSA);
+            if (logger) logger.info(`${func.name}: SSA: `, statsSSA);
             break;
           case "LICM":
             const licmResult = licm(func, blockMap);
             blockMap = licmResult.blockMap;
-            if (log) console.info(`${func.name}: LICM: `, licmResult.stats);
+            if (logger) logger.info(`${func.name}: LICM: `, licmResult.stats);
             break;
           case "LVN":
             const lvnStats = lvn(blockMap);
-            if (log) console.info(`${func.name}: LVN: `, lvnStats);
+            if (logger) logger.info(`${func.name}: LVN: `, lvnStats);
             break;
           case "GVN":
             const gvnStats = gvn(func, blockMap);
-            if (log) console.info(`${func.name}: GVN: `, gvnStats);
+            if (logger) logger.info(`${func.name}: GVN: `, gvnStats);
             break;
           case "Phis-":
             const statsPhis = removePhis(blockMap);
             break;
           case "DCE":
             const dceStats = runDCE(blockMap, func);
-            if (log) console.info(`${func.name}: DCE: `, dceStats);
+            if (logger) logger.info(`${func.name}: DCE: `, dceStats);
             break;
           default:
             throw new Error(`Unknown optimisation  ${optim}`);
