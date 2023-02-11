@@ -80,20 +80,18 @@ export const OptimList = () => {
       return;
     }
 
+    const from = source.droppableId as "selected" | "available";
+    const to = destination.droppableId as "selected" | "available";
+
     if (source.droppableId === destination.droppableId) {
       // reordering within list
-      const items = reorder(optimisations[source.droppableId as "selected" | "available"], source.index, destination.index);
+      const items = reorder(optimisations[from], source.index, destination.index);
       setSettings((state: SettingsState) => {
-        state.optimisations[source.droppableId as "selected" | "available"] = items;
+        state.optimisations[from] = items;
       });
     } else {
       // dragging between lists
-      const result = move(
-        optimisations[source.droppableId as "selected" | "available"],
-        optimisations[destination.droppableId as "selected" | "available"],
-        source,
-        destination
-      );
+      const result = move(optimisations[from], optimisations[to], source, destination);
 
       setSettings((state: SettingsState) => {
         state.optimisations = result;
@@ -114,7 +112,23 @@ export const OptimList = () => {
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
                     style={getItemStyle(snapshot.isDragging, provided.draggableProps.style, true)}>
-                    <Checkbox isChecked> {item}</Checkbox>
+                    <Checkbox
+                      isChecked
+                      onChange={(e) => {
+                        if (!e.target.checked) {
+                          const result = move(
+                            optimisations.selected,
+                            optimisations.available,
+                            { droppableId: "selected", index },
+                            { droppableId: "available", index: 0 }
+                          );
+                          setSettings((state: SettingsState) => {
+                            state.optimisations = result;
+                          });
+                        }
+                      }}>
+                      {item}
+                    </Checkbox>
                   </div>
                 )}
               </Draggable>

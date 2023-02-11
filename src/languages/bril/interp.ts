@@ -154,12 +154,15 @@ function typeCheck(val: Value, typ: IBrilType): boolean {
     return typeof val === "number";
   } else if (typeof typ === "object" && typ.hasOwnProperty("ptr")) {
     return val.hasOwnProperty("loc");
+  } else if (typ == "char") {
+    return typeof val === "bigint";
   }
+  debugger;
   throw error(`unknown type ${typ}`);
 }
 
 function typeCmp(lhs: IBrilType, rhs: IBrilType): boolean {
-  if (lhs === "int" || lhs == "bool" || lhs == "float" || lhs == "void" || lhs == "string") {
+  if (lhs === "int" || lhs == "bool" || lhs == "float" || lhs == "void" || lhs == "char") {
     return lhs == rhs;
   } else {
     if (typeof rhs === "object" && rhs.hasOwnProperty("ptr")) {
@@ -342,6 +345,27 @@ function evalCall(instr: IBrilOperation, state: State): Action {
 
     display[y * 100 + x] = c;
 
+    return NEXT;
+  }
+
+  if (funcName == "print_string") {
+    let args = instr.args || [];
+    if (args.length !== 1) {
+      throw error(`function expected 1 argument, got ${args.length}`);
+    }
+    let value = get(state.env, args[0]);
+    if (!typeCheck(value, "char")) {
+      throw error(`function argument type mismatch - expected bigint`);
+    }
+
+    let str = "";
+    for (let i = 0; i < 100; i++) {
+      const byte = memory[Number(value) + i];
+      if (byte === 0) break;
+      str += String.fromCharCode(byte);
+    }
+
+    logger.info(str);
     return NEXT;
   }
 
@@ -860,13 +884,20 @@ function parseMainArguments(expected: IBrilArgument[], args: string[]): Env {
   return newEnv;
 }
 
-function evalProg(prog: IBrilProgram, args: string[]): Value | null {
+let memory: Uint8Array;
+
+function evalProg(prog: IBrilProgram, args: string[]) {
   let heap = new Heap<Value>();
+
+  memory = new Uint8Array(32 * 1024); // 32k
+  prog.data.forEach((data) => {
+    data.bytes.forEach((byte, i) => (memory[data.offset + i] = byte));
+  });
+
   let main = prog.functions.main;
-  if (!main) return 0;
-  if (main === null) {
+  if (!main || main === null) {
     logger.warn(`no main function defined, doing nothing`);
-    return 0;
+    return { result: 0, state: { icount: 0 } };
   }
 
   // Silly argument parsing to find the `-p` flag.
@@ -900,18 +931,18 @@ function evalProg(prog: IBrilProgram, args: string[]): Value | null {
     logger.error(`total_dyn_inst: ${state.icount}`);
   }
 
-  return result;
+  return { result, state };
 }
 
 export function runInterpretor(prog: IBrilProgram, args: string[], mylogger: Console, optimLevel = "Unknown") {
   logger = mylogger;
   try {
-    logger.info(`Running ${optimLevel}`);
+    logger.info(`Running ${optimLevel}...`);
     const startTime = performance.now();
-    const result = evalProg(prog, args);
+    const { result, state } = evalProg(prog, args);
     const endTime = performance.now();
     if (result != null) logger.info(`Returned ${result}`);
-    logger.info(`Completed in ${(endTime - startTime).toFixed(1)}ms`);
+    logger.info(`Completed ${state.icount} instructions in ${(endTime - startTime).toFixed(1)}ms`);
   } catch (e) {
     if (e instanceof BriliError) {
       logger.error(`error: ${e.message}`);

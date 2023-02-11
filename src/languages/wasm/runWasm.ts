@@ -36,13 +36,13 @@ export const runWasm = (wasmBuffer: Uint8Array) => {
     };
     return WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
       //run functions here
-      console.info(`Running Wasm`);
+      console.info(`Running Wasm...`);
       const startTime = performance.now();
       const myresult = res.instance.exports.main();
       const endTime = performance.now();
       // if (myresult != null)
       window.conout3.info(`Returned ${myresult || "void"}, heap_pointer = ${res.instance.exports.heap_pointer.value}`);
-      console.info(`Completed in ${(endTime - startTime).toFixed(1)}ms`);
+      console.info(`Wasm completed in ${(endTime - startTime).toFixed(1)}ms`);
       // const data = new Uint8Array(memory.buffer, 0, 1024);
       // const screen = new Uint8ClampedArray(memory.buffer, 1024, 100 * 100);
       // const heap = new Uint8Array(memory.buffer, 1024 + 100 * 100, 1024 + 100 * 100 + 1024);

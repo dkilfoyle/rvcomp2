@@ -122,7 +122,7 @@ export const Output: React.FC = () => {
       if (isRunUnoptim) brilMemory = runInterpretor(bril, [], window.conout1, "un-optimised");
       if (isRunOptim) optimMemory = runInterpretor(brilOptim, [], window.conout2, "optimised");
     }
-  }, [bril, brilOptim]);
+  }, [bril, brilOptim, isRunAuto, isRunWasm, isRunUnoptim, isRunOptim]);
 
   useEffect(() => {
     if (showScreen) paintScreen("brilCanvas", brilMemory);
@@ -216,7 +216,7 @@ export const Output: React.FC = () => {
             {showScreen ? <canvas id="brilCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
           </Grid>
         </TabPanel>
-        <TabPanel>
+        <TabPanel height="100%">
           <Grid templateColumns="1fr auto auto auto auto" gap="2" height="100%">
             <OverlayScrollbarsComponent style={fullHeight} ref={optimOutputRef}>
               <Console

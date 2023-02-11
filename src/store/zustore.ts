@@ -62,7 +62,7 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   // },
   bril: {
     removePhis: false,
-    isSSA: true,
+    isSSA: false,
   },
   wasm: {
     foldExprs: true,

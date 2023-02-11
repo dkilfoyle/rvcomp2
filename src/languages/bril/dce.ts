@@ -71,5 +71,5 @@ export const runDCE = (blockMap: ICFGBlockMap, func: IBrilFunction) => {
     dceIterations++;
   }
   stats.iterations = dceIterations;
-  return stats;
+  return { removed: stats.removedInstructions.length, iterations: stats.iterations };
 };

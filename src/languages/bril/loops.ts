@@ -239,7 +239,39 @@ export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   // console.log("codeMotion", codeMotion);
   // console.log("licd: ", licd);
 
-  console.log("licm", newBlocks);
+  return {
+    blockMap: newBlocks,
+    stats: {
+      loops: licd.length,
+      motion: licd.reduce((accum, cur) => {
+        return (accum += cur.length);
+      }, 0),
+    },
+  };
+};
 
-  return newBlocks;
+const getInductionVars = (
+  blockMap: ICFGBlockMap,
+  loops: string[][],
+  licd: IBrilValueInstruction[][],
+  reachingDefs: Record<string, Record<string, string[]>>
+) => {
+  const constants: IStringsMap = {};
+  loops.forEach((loop, iLoop) => {
+    const [head, tail] = loop;
+
+    // for each variable that reaches the loop header
+    Object.keys(reachingDefs[head]).forEach((reachingVar) => {
+      // test if it has reached from outside of the loop, if so it is loop invariant and "constant" with respect to the loop
+      if (!reachingDefs[head][reachingVar].includes(head) && !reachingDefs[head][reachingVar].includes(tail))
+        constants[iLoop].push(reachingVar);
+    });
+
+    // for each variable that reaches the loop tail
+    Object.keys(reachingDefs[tail]).forEach((reachingVar) => {
+      // test if it has reached from outside of the loop, if so it is loop invariant and "constant" with respect to the loop
+      if (!reachingDefs[head][reachingVar].includes(head) && !reachingDefs[head][reachingVar].includes(tail))
+        constants[iLoop].push(reachingVar);
+    });
+  });
 };

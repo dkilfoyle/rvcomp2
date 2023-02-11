@@ -1,10 +1,7 @@
 // adapted from https://github.com/ColinEberhardt/chasm
 // information on sections https://coinexsmartchain.medium.com/wasm-introduction-part-1-binary-format-57895d851580
 
-import { NumberInputProps } from "@chakra-ui/react";
-import { sign } from "crypto";
 import _ from "lodash";
-import { type } from "os";
 import {
   IBrilArgument,
   IBrilConst,
@@ -17,7 +14,6 @@ import {
   IBrilProgram,
   IBrilType,
   IBrilValueInstruction,
-  IBrilValueType,
 } from "../bril/BrilInterface";
 import { cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGBlock } from "../bril/cfg";
 import { findCommonDescendent, getDominatorMap } from "../bril/dom";

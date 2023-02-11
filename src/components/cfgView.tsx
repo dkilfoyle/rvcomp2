@@ -16,6 +16,70 @@ interface ICfgEdge {
   to: string;
 }
 
+interface ICFGVisNode {
+  id: string;
+  level?: number;
+  label: string;
+  color?: string;
+  borderWidth?: any;
+  shapeProperties?: any;
+}
+
+const calculateLevels = (nodes: ICFGVisNode[], edges: any[], backEdges?: string[][]) => {
+  if (!backEdges) {
+    debugger;
+    throw new Error();
+  }
+  let reverseEdgesMap = new Map();
+  let nodesMap = new Map();
+  for (let edge of edges) {
+    let from = edge.from;
+    let to = edge.to;
+    if (reverseEdgesMap.has(to)) {
+      reverseEdgesMap.get(to).push(from);
+    } else {
+      reverseEdgesMap.set(to, [edge.from]);
+    }
+  }
+  for (let node of nodes) {
+    let id = node.id;
+    nodesMap.set(id, node);
+  }
+  for (let node of nodes) {
+    node.level = calculateMaxNodeLength(nodesMap, reverseEdgesMap, node.id, backEdges);
+  }
+  console.log(nodes);
+};
+
+const calculateMaxNodeLength = (
+  nodesMap: Map<string, ICFGVisNode>,
+  reverseEdgesMap: Map<string, any>,
+  nodeId: string,
+  backEdges: string[][]
+) => {
+  if (!(nodesMap instanceof Map)) {
+    throw new Error("nodesMap parameter should be an instance of Map");
+  }
+  if (!(reverseEdgesMap instanceof Map)) {
+    throw new Error("reverseEdgesMap parameter should be an instance of Map");
+  }
+  let parents = [];
+  let longestParentDepth = 0;
+  if (reverseEdgesMap.has(nodeId)) {
+    parents = reverseEdgesMap.get(nodeId);
+    for (let parentId of parents) {
+      if (!backEdges.find(([tail, head]) => head == nodeId && tail == parentId)) {
+        let parentDepth = 1;
+        parentDepth += calculateMaxNodeLength(nodesMap, reverseEdgesMap, parentId, backEdges);
+        if (parentDepth > longestParentDepth) {
+          longestParentDepth = parentDepth;
+        }
+      }
+    }
+  }
+  return longestParentDepth;
+};
+
 export const CfgView = () => {
   const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
   const functionName = useSettingsStore((state: SettingsState) => state.cfg.functionName);
@@ -48,7 +112,7 @@ export const CfgView = () => {
   }, [brilOptim, functionName]);
 
   const cfgVisData = useMemo(() => {
-    const nodes: { id: string; label: string; color?: string; borderWidth?: any; shapeProperties?: any }[] = [];
+    const nodes: ICFGVisNode[] = [];
     const edges: any[] = [];
 
     if (cfg) {
@@ -85,6 +149,7 @@ export const CfgView = () => {
             });
         });
       });
+      calculateLevels(nodes, edges, cfg.backEdges);
     } else {
       nodes.push({ id: "cfgerror", label: "Invalid CFG" });
     }
@@ -94,21 +159,23 @@ export const CfgView = () => {
 
   useEffect(() => {
     const options: Options = {
-      autoResize: true,
-      height: "90%",
+      // autoResize: true,
+      // height: "90%",
       width: "100%",
       interaction: { hover: true },
       layout: {
         hierarchical: {
           enabled: true,
           levelSeparation: 110,
+          // sortMethod: "directed",
+          // shakeTowards: "roots",
 
           //   levelSeparation: 55,
           //   edgeMinimization: false,
           // sortMethod: "directed",
         },
       },
-      physics: true,
+      physics: false,
       // physics: {
       //   hierarchicalRepulsion: {
       //     nodeDistance: 70,

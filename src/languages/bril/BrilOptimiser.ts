@@ -25,7 +25,9 @@ export const optimiseBril = (bril: IBrilProgram, optimisations: string[], log = 
             if (log) console.info(`${func.name}: SSA: `, statsSSA);
             break;
           case "LICM":
-            blockMap = licm(func, blockMap);
+            const licmResult = licm(func, blockMap);
+            blockMap = licmResult.blockMap;
+            if (log) console.info(`${func.name}: LICM: `, licmResult.stats);
             break;
           case "LVN":
             const lvnStats = lvn(blockMap);
@@ -33,14 +35,14 @@ export const optimiseBril = (bril: IBrilProgram, optimisations: string[], log = 
             break;
           case "GVN":
             const gvnStats = gvn(func, blockMap);
-            if (log) console.info(`${func.name}: LVN: `, gvnStats);
+            if (log) console.info(`${func.name}: GVN: `, gvnStats);
             break;
           case "Phis-":
             const statsPhis = removePhis(blockMap);
             break;
           case "DCE":
-            const statsDCE = runDCE(blockMap, func);
-            if (log) console.info(`${func.name}: DCE: removed ${statsDCE.removedInstructions.length}`);
+            const dceStats = runDCE(blockMap, func);
+            if (log) console.info(`${func.name}: DCE: `, dceStats);
             break;
           default:
             throw new Error(`Unknown optimisation  ${optim}`);

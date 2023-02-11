@@ -4,6 +4,14 @@ import { getDominanceTree, getDominatorMap } from "./dom";
 import { IDictNumber, IDictNumbers, IDictStrings } from "./utils";
 import { fold, VNTable, VNValue } from "./vn";
 
+// Global Value Numbering
+// 1. Remove meaningless phi nodes
+// 2. Remove redundant phi nodes
+// 3. Constant propogation
+// 4. Common subexpression evaluation
+// 5. Copy propogation
+// 6. Constant folding
+
 // RPO guarantees that you see a node before all of its successors
 export const reversePostOrder = (startBlockName: string, successors: IDictStrings) => {
   const visited: string[] = []; // set
@@ -72,148 +80,14 @@ export const isRemovablePhi = (instr: IBrilValueOperation, vnTable: VNTable) => 
 const dvn = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStrings, domTree: IDictStrings) => {
   const vnTable = new VNTable();
 
-  // insert function args into lvntable
-  func.args?.forEach((arg) => vnTable.addValue(new VNValue("input" + arg.name), arg.name));
-
-  const dvnBlock = (blockName: string) => {
-    // const pushed: IDictNumber = {};
-    // console.log("visiting", blockName);
-    const new_instructions: IBrilInstruction[] = [];
-
-    // do a phi removal pass
-    // remove meaningless (args have same value) or redundant (identical) phis
-    blockMap[blockName].instructions.every((instr, i) => {
-      // all phis at start of block so abort once see a non-phi
-      if (instr.op != "phi") return false; // break
-
-      const instrValue = vnTable.instruction2value(instr);
-
-      if (isRemovablePhi(instr, vnTable)) {
-        // instrsToRemove.push(i);
-        blockMap[blockName].instructions.splice(i, 1);
-      } else {
-        vnTable.addValue(instrValue, instr.dest);
-        // const instrKey = instrValue.toString();
-        // if (!pushed[instrKey]) pushed[instrKey] = 0;
-        // else pushed[instrKey] += 1;
-        new_instructions.push({ ...instr });
-      }
-    });
-
-    // do an lvn type pass
-    // a) if value already exists in VNTable
-    //     1. Common Subexpression Elimination - check if value already exists
-    //     2. Copy Propogation - check if assigning to exisiting variable
-    // b) if value does not yet exist
-    //     1. Generate a new entry in VNTable for this value
-    //     2. If op is foldable convertable the instruction to a constant assign with precomputed fold
-    blockMap[blockName].instructions.forEach((instr, i) => {
-      let value;
-
-      if (instr.op == "phi") return;
-
-      if ("dest" in instr && "args" in instr && instr.op != "call") {
-        // if non-call non-const value instruction with args
-        value = vnTable.instruction2value(instr);
-        const num = vnTable.value2num(value);
-        if (num != -1) {
-          // if canonical value already exists
-          // link instr.dest to num
-          vnTable.addVar(instr.dest, num);
-
-          if (vnTable.isConst(num)) {
-            // Constant Propogation
-            // replace this instruction with the canonical const
-
-            // a:int = 10
-            // b:int = id a   -----> b:int = const 10
-
-            new_instructions.push({ ...instr, op: "const", value: vnTable.num2const(num), args: [] } as IBrilConst);
-          } else {
-            // CSE and Copy Propogation
-            // replace this instruction with the canonical variable ie dest = canonvar
-
-            // Common Subexpression Elimination
-            // a:int = add b c
-            // ...
-            // x:int = add b c  ---- > x:int = id a
-
-            // Copy propogation
-            // a: int = call random
-            // b: int = id a
-            // c: int = id b  -----> c:int = id a
-
-            new_instructions.push({ ...instr, op: "id", args: [vnTable.num2canonvar(num)] });
-          }
-
-          return; // to next instruction in block
-        }
-      }
-
-      if ("dest" in instr) {
-        // instruction produces a new value
-        const newnum = vnTable.addValue(new VNValue("blank_" + instr.dest), instr.dest);
-        // if const operation then save const value into named value row
-        if ("value" in instr) vnTable.rows[newnum].constval = (instr as IBrilConst).value as number;
-
-        if (value) {
-          // Constant folding
-          const constValue = fold(vnTable, value);
-          if (typeof constValue !== "undefined") {
-            vnTable.rows[newnum].constval = constValue;
-            new_instructions.push({ dest: instr.dest, pos: instr.pos, type: instr.type, op: "const", value: constValue } as IBrilConst);
-            return; // to next instruction
-          }
-          // not a foldable const instruction
-          vnTable.rows[newnum].value = value;
-        }
-
-        if ("args" in instr) new_instructions.push({ ...instr, args: vnTable.vars2canonvars(instr.args) } as IBrilValueInstruction);
-        else new_instructions.push({ ...instr } as IBrilValueInstruction);
-      } else {
-        // Effect operation
-        // not a value instruction but still need to convert args
-        if ("args" in instr && instr.args)
-          new_instructions.push({ ...instr, args: vnTable.vars2canonvars(instr.args) } as IBrilValueInstruction);
-        else new_instructions.push({ ...instr } as IBrilValueInstruction);
-      }
-    });
-
-    // iterate through successors blocks phis
-    successors[blockName].forEach((succName) => {
-      blockMap[succName].instructions.every((instr) => {
-        if (instr.op != "phi") return false; // break
-        // replace phi args if they were calculated in blockName
-        // debugger;
-        for (let i = 0; i < instr.args.length; i++) {
-          const arg = instr.args[i];
-          if (!instr.labels) throw Error();
-          const predecessor = instr.labels[i];
-          if (predecessor != blockName || !vnTable.var2num[arg]) continue;
-          instr.args[i] = vnTable.var2canonvar(arg);
-        }
-      });
-    });
-
-    blockMap[blockName].instructions = new_instructions;
-    // console.log(blockName, blockMap[blockName].instructions);
-
-    const vnTableSize = vnTable.rows.length;
-
-    // reverse post order of the successors of blockName that are in the dominance tree of blockName
-    const orderedChildren = reversePostOrder(blockName, successors).filter((b) => domTree[blockName].includes(b));
-    orderedChildren.forEach((childName) => dvnBlock(childName));
-
-    // delete vnTable rows belonging to the child blocks
-    // vnTable.rows.splice(Object.keys(pushed).length);
-    vnTable.rows.splice(vnTableSize);
+  const stats = {
+    removed: 0,
+    fold: 0,
+    cse: 0,
+    cpprop: 0,
+    conprop: 0,
+    phi: 0,
   };
-
-  dvnBlock(Object.keys(blockMap)[0]);
-};
-
-const dvn2 = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStrings, domTree: IDictStrings) => {
-  const vnTable = new VNTable();
 
   // insert function args into lvntable
   func.args?.forEach((arg) => vnTable.addValue(new VNValue("input" + arg.name), arg.name));
@@ -228,8 +102,10 @@ const dvn2 = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStri
     blockMap[blockName].instructions.forEach((instr, i) => {
       if (instr.op !== "phi") return; // phis come first
       const instrValue = vnTable.instruction2value(instr);
-      if (isRemovablePhi(instr, vnTable)) instrsToRemove.push(i);
-      else vnTable.addValue(instrValue, instr.dest);
+      if (isRemovablePhi(instr, vnTable)) {
+        instrsToRemove.push(i);
+        stats.phi++;
+      } else vnTable.addValue(instrValue, instr.dest);
     });
 
     blockMap[blockName].instructions.forEach((instr, i) => {
@@ -241,9 +117,11 @@ const dvn2 = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStri
           // new const value, save in vnTable, keep instruction
           vnTable.addValue(instrValue, instr.dest, instr.value as number);
         } else {
+          // Constant propogation
           // existing const value, map instr.dest to this value, remove instruction
           vnTable.addVar(instr.dest, instrValueNum);
           instrsToRemove.push(i);
+          stats.conprop++;
         }
       }
 
@@ -256,20 +134,27 @@ const dvn2 = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStri
 
         if (instrValueNum != -1) {
           // Common Subexpression Evaluation
+          // a:int = add b c
+          // ...
+          // x:int = add b c --> deleted, map x -> a, future references of x will be replaced by canoonical form "a"
           // existing value operation, map instr.dest to this value, remove instruction
           vnTable.addVar(instr.dest, instrValueNum);
           instrsToRemove.push(i);
+          stats.cse++;
         } else if (instr.op == "id" && vnTable.hasVar(instr.args[0])) {
           // Copy Propogation
-          // new id operation, remove instr and replace with mapping to args[0]
           // y:int = call rnd
-          // x:int = id y  ---> deleted, vnTable.var2num[x] = var2num[y]
+          // x:int = id y  ---> deleted, map x to canonical form of y
+          // vnTable.var2num[x] = var2num[y]
           vnTable.addVar(instr.dest, vnTable.var2num[instr.args[0]]);
           instrsToRemove.push(i);
+          stats.cpprop++;
         } else {
-          // new value operation
-          // see if it can be folded
-          if (instr.dest == "lt1.2") debugger;
+          // new value operation, see if it can be folded
+          // Constant folding
+          // a:int = const 2;
+          // b:int = const 3;
+          // c:int = add a b --> replace with c:int = const 5;
           const constValue = fold(vnTable, instrValue);
           if (typeof constValue !== "undefined") {
             // it can be folded, convert the instruction into a const
@@ -283,6 +168,7 @@ const dvn2 = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStri
             const newConstValue = vnTable.instruction2value(newConstInstr);
             vnTable.addValue(newConstValue, instr.dest);
             instrsToReplace.set(i, newConstInstr);
+            stats.fold++;
           } else {
             // unfoldable new value operation, add to vnTable
             vnTable.addValue(instrValue, instr.dest);
@@ -316,6 +202,8 @@ const dvn2 = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStri
       });
     });
 
+    stats.removed += instrsToRemove.length;
+
     // remove instructions marked for removal
     blockMap[blockName].instructions = blockMap[blockName].instructions.filter((b, i) => !instrsToRemove.includes(i));
     // replace instructions mapped for replacement (constant folds)
@@ -334,11 +222,12 @@ const dvn2 = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStri
   };
 
   dvnBlock(Object.keys(blockMap)[0]);
+  return stats;
 };
 
 export const gvn = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
   const domMap = getDominatorMap(successorsMap, Object.keys(blockMap)[0]);
   const domTree = getDominanceTree(domMap);
-  dvn2(func, blockMap, successorsMap, domTree);
+  return dvn(func, blockMap, successorsMap, domTree);
 };
