@@ -143,7 +143,7 @@ export const dfWorklist = (blockMap: ICFGBlockMap, analysis: IDFAnalysis<any>) =
     outEdges = predecessorsMap;
   }
 
-  const _in: Record<string, any> = { firstBlock: analysis.init };
+  const _in: Record<string, any> = { [firstBlock!.name]: analysis.init };
   const _out: Record<string, any> = Object.keys(blockMap).reduce((accum: Record<string, any>, name) => {
     accum[name] = analysis.init;
     return accum;

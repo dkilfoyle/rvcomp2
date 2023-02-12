@@ -220,6 +220,109 @@ const moveLI = (
   return { codeMotion: blockMap, licd };
 };
 
+const getInductionVars = (
+  blockMap: ICFGBlockMap,
+  loops: string[][],
+  licd: IBrilValueInstruction[][],
+  reachingDefs: Record<string, Record<string, string[]>>
+) => {
+  const constants: string[][] = [];
+  const inductionVars: string[][] = [];
+  const loopInvariants: string[][] = [];
+  const basicVars: string[][] = [];
+  const trace: IStringsMap[] = [];
+
+  loops.forEach((loop, iLoop) => {
+    const head = loop[0];
+    const tail = _.last(loop)!;
+    constants[iLoop] = [];
+    inductionVars[iLoop] = [];
+    loopInvariants[iLoop] = [];
+    basicVars[iLoop] = [];
+    trace[iLoop] = {};
+
+    // for each variable that reaches the loop header
+    Object.keys(reachingDefs[head]).forEach((varReachingHead) => {
+      const definedInBlocks = reachingDefs[head][varReachingHead];
+      // test if it has reached from outside of the loop, if so it is loop invariant and "constant" with respect to the loop
+      if (
+        !definedInBlocks.includes(head) && // definition reaching head didn't originate from head itself
+        !definedInBlocks.includes(tail) // definition reaching head didn't come via tail
+      ) {
+        constants[iLoop].push(varReachingHead);
+      }
+    });
+
+    // for each variable that reaches the loop tail
+    Object.keys(reachingDefs[tail]).forEach((varReachingTail) => {
+      const definedInBlocks = reachingDefs[tail][varReachingTail];
+      // test if it has reached from outside of the loop, if so it is loop invariant and "constant" with respect to the loop
+      if (definedInBlocks.includes(tail) && definedInBlocks.length == 2) inductionVars[iLoop].push(varReachingTail);
+    });
+
+    licd[iLoop].forEach((li) => {
+      loopInvariants[iLoop].push(li.dest);
+    });
+
+    const tempTrace: string[] = [];
+    inductionVars[iLoop].forEach((inductionVar) => {
+      blockMap[tail].instructions.forEach((instr) => {
+        if (!["jmp", "br"].includes(instr.op) && "dest" in instr) {
+          if (instr.dest == inductionVar) {
+            // writing to an inductionVar in the tail
+            const args = "args" in instr ? instr.args : [];
+            trace[iLoop][inductionVar] = [instr.op, ...args];
+            tempTrace.push(...args);
+          }
+        }
+      });
+    });
+
+    while (tempTrace.length) {
+      console.log(tempTrace);
+      const temp = tempTrace.pop();
+      for (let instr of blockMap[tail].instructions) {
+        if (["jmp", "br"].includes(instr.op)) continue;
+        if ("dest" in instr && instr.dest == temp) {
+          const args = "args" in instr ? instr.args : [];
+          trace[iLoop][temp] = [instr.op, ...args];
+          for (let arg of args) {
+            if (constants[iLoop].includes(arg)) continue;
+            else if (Object.keys(trace[iLoop]).includes(arg)) continue;
+            else if (tempTrace.includes(arg)) continue;
+            else tempTrace.push(arg);
+          }
+        }
+      }
+    }
+
+    for (let inductionVar of inductionVars[iLoop]) {
+      let tempInd = [...trace[iLoop][inductionVar].slice(1)];
+      while (tempInd.length) {
+        let temp = tempInd.pop()!;
+        if (temp == inductionVar) {
+          tempInd = [];
+          basicVars[iLoop].push(temp);
+          break;
+        } else if (constants[iLoop].includes(temp) || loopInvariants[iLoop].includes(temp)) continue;
+        else if (inductionVars[iLoop].includes(temp)) {
+          tempInd = [];
+          continue;
+        } else if (["mul", "div"].includes(trace[iLoop][temp][0])) break;
+        else tempInd.push(...trace[iLoop][inductionVar].slice(1));
+      }
+    }
+  });
+
+  return { constants, inductionVars, loopInvariants, basicVars, trace };
+};
+
+// export const strengthReduction = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
+//   console.log("STRENGTH REDUCTION");
+//   console.log("reachingIn", reachingIn);
+//   const inductionVars = getInductionVars(blockMap, loops, [], reachingIn);
+// };
+
 export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   const blocks = Object.values(blockMap);
   const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
@@ -230,21 +333,23 @@ export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   const { _in: liveIn, _out: liveOut } = dfWorklist(blockMap, ANALYSES["live"]);
   const { _in: reachingIn, _out: reachingOut } = dfWorklist(blockMap, ANALYSES["reaching"]);
 
+  console.log("Reaching", reachingIn);
+
+  // LICM
   const invariants = findLoopInvariants(blockMap, loops, reachingIn);
   const { newBlocks, preHeaderMap } = createPreheaders(blockMap, loops, predecessorsMap);
   const { codeMotion, licd } = moveLI(newBlocks, preHeaderMap, invariants, loops, dominatorMap, liveOut, exits);
 
-  console.log("backEdges: ", backEdges);
-  console.log("loops: ", loops);
-  console.log("reachingIn: ", reachingIn);
-  console.log("reachingOut: ", reachingOut);
-  // console.log("invariants: ", invariants);
-  // console.log("preHeaderMap: ", preHeaderMap);
-  // console.log("codeMotion", codeMotion);
-  // console.log("licd: ", licd);
+  // Strength Reduction
+  const result = getInductionVars(codeMotion, loops, licd, reachingIn);
+  console.log(result);
+
+  // temp
+  const sr = codeMotion;
 
   return {
-    blockMap: newBlocks,
+    blockMap: sr,
+    licd,
     stats: {
       loops: licd.length,
       motion: licd.reduce((accum, cur) => {
@@ -252,34 +357,4 @@ export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
       }, 0),
     },
   };
-};
-
-const getInductionVars = (
-  blockMap: ICFGBlockMap,
-  loops: string[][],
-  licd: IBrilValueInstruction[][],
-  reachingDefs: Record<string, Record<string, string[]>>
-) => {
-  const constants: IStringsMap = {};
-  loops.forEach((loop, iLoop) => {
-    const [head, tail] = loop;
-
-    // for each variable that reaches the loop header
-    Object.keys(reachingDefs[head]).forEach((varReachingHead) => {
-      const cameViaBlock = reachingDefs[head][varReachingHead];
-      // test if it has reached from outside of the loop, if so it is loop invariant and "constant" with respect to the loop
-      if (
-        !cameViaBlock.includes(head) && // definition reaching head didn't originate from head itself
-        !cameViaBlock.includes(tail) // definition reaching head didn't come via tail
-      )
-        constants[iLoop].push(varReachingHead);
-    });
-
-    // for each variable that reaches the loop tail
-    Object.keys(reachingDefs[tail]).forEach((varReachingTail) => {
-      const cameViaBlock = reachingDefs[tail][varReachingTail];
-      // test if it has reached from outside of the loop, if so it is loop invariant and "constant" with respect to the loop
-      if (cameViaBlock.includes(tail) && cameViaBlock.length == 2) constants[iLoop].push(varReachingTail);
-    });
-  });
 };
