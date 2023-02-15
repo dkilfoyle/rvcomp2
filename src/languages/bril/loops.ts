@@ -217,7 +217,7 @@ const moveLI = (
     });
   });
 
-  return { codeMotion: blockMap, licd };
+  return { postCodeMotionBlocks: blockMap, liInstructions: licd };
 };
 
 const getInductionVars = (
@@ -323,6 +323,111 @@ const getInductionVars = (
 //   const inductionVars = getInductionVars(blockMap, loops, [], reachingIn);
 // };
 
+// map of definitions in loop
+// {
+//   varName: [{ blockName, instrIndx }, ...]
+// }
+const getLoopDefinitions = (blockMap: ICFGBlockMap, loop: string[]) => {
+  let result: Record<string, { blockName: string; instrIndx: number }[]> = {};
+  for (let blockName of loop) {
+    blockMap[blockName].instructions.forEach((instr, instrIndx) => {
+      if ("dest" in instr) {
+        if (instr.dest in result) result.dest.push({ blockName, instrIndx });
+        else result[instr.dest] = [{ blockName, instrIndx }];
+      }
+    });
+  }
+  return result;
+};
+
+interface IInductionParam {
+  op: "const" | "ptrconst";
+  arg: string;
+}
+
+interface IInductionVar {
+  v: string;
+  a: IInductionParam;
+  b?: IInductionParam;
+}
+
+type IInductionVarMap = Record<string, IInductionVar>; 
+
+const getBasicInductionVars = (
+  blockMap: ICFGBlockMap,
+  loop: string[],
+  liInstructions: IBrilValueInstruction[],
+) => {
+  // v = add v const or v = ptradd v const
+  const inductionVarMap: Record<string, IInductionVar> = {};
+  const loopDefs = getLoopDefinitions(blockMap, loop);
+
+  for (let defsOfVar of Object.values(loopDefs)) {
+    if (defsOfVar.length == 1) {
+      const defOfVar = defsOfVar[0];
+      const instr = blockMap[defOfVar.blockName].instructions[defOfVar.instrIndx];
+      if ("dest" in instr) {
+        if (instr.op == "add" || instr.op == "ptradd") {
+          const destIndx = instr.args.indexOf(instr.dest);
+          if (destIndx != -1) {
+            // instr is x = add/ptradd x y, or add/ptradd y x
+            // now check if y is loop invariant
+            const otherIndx = destIndx == 0 ? 1 : 0;
+            if (liInstructions.some((liInstr) => liInstr.dest == instr.args[otherIndx])) {
+              // the other arg is loop invariant
+              inductionVarMap[instr.dest] = {
+                v: instr.dest,
+                a: { op: instr.op == "add" ? "const" : "ptrconst", arg: instr.args[otherIndx] },
+              };
+            }
+          }
+        }
+      }
+    }
+  }
+  return inductionVarMap;
+};
+
+const extractDerivedInductionVar = (instr: IBrilValueInstruction, basicInductionVarMap: IInductionVarMap, liInstructions: IBrilValueInstruction[]) => {
+  // check if instr is of form: x = mul i y
+  // where i is a basic induction var and y is loop invariant
+
+  if (instr.op == "add" || instr.op == "mul" || instr.op == "ptradd") {
+    const bivArgIndex = instr.args.findIndex(arg => arg in basicInductionVarMap);
+    if (bivArgIndex !== -1) {
+      // args[bivArgIndex] is a basic induction variable
+      const basicInductionVar = basicInductionVarMap[instr.args[bivArgIndex]];
+      const otherArgIndex = bivArgIndex == 0 ? 1 : 0;
+      if (liInstructions.find(liInstr => liInstr.dest == instr.args[otherArgIndex])) {
+        // args[otherArgIndex] is loop invariant
+        const invariantVar = instr.args[otherArgIndex];
+        if (instr.op == "add" || instr.op == "ptradd") {
+          if (!basicInductionVar.b)
+        }
+      }
+
+    }
+  }
+}
+
+const getDerivedInductionVars = (blockMap: ICFGBlockMap, loop: string[], basicInductionVarMap: IInductionVarMap, liInstructions:IBrilValueInstruction[]) => {
+  const derivedInductionVarMap: Record<string, IInductionVar> = {};
+  const loopDefs = getLoopDefinitions(blockMap, loop);
+  for (let defsOfVar of Object.values(loopDefs)) {
+    if (defsOfVar.length == 1) {
+      const defOfVar = defsOfVar[0];
+      const instr = blockMap[defOfVar.blockName].instructions[defOfVar.instrIndx];
+      if ("dest" in instr) {
+        const derivedInductionVar = extractDerivedInductionVar(instr, basicInductionVarMap, liInstructions);
+        if (derivedInductionVar.length) {
+          derivedInductionVarMap[instr.dest] = derivedInductionVar;
+        }
+      }
+    }
+  }
+  return derivedInductionVarMap;
+};
+
 export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   const blocks = Object.values(blockMap);
   const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
@@ -338,21 +443,23 @@ export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   // LICM
   const invariants = findLoopInvariants(blockMap, loops, reachingIn);
   const { newBlocks, preHeaderMap } = createPreheaders(blockMap, loops, predecessorsMap);
-  const { codeMotion, licd } = moveLI(newBlocks, preHeaderMap, invariants, loops, dominatorMap, liveOut, exits);
+  const { postCodeMotionBlocks, liInstructions } = moveLI(newBlocks, preHeaderMap, invariants, loops, dominatorMap, liveOut, exits);
 
   // Strength Reduction
-  const result = getInductionVars(codeMotion, loops, licd, reachingIn);
-  console.log(result);
+  loops.forEach((loop, iLoop) => {
+    const basicInductionVars = getBasicInductionVars(postCodeMotionBlocks, loops[iLoop], liInstructions[iLoop]);
+    console.log(`Loop ${iLoop} basicInductionVars`, basicInductionVars);
+  });
 
   // temp
-  const sr = codeMotion;
+  const sr = postCodeMotionBlocks;
 
   return {
     blockMap: sr,
-    licd,
+    liInstructions,
     stats: {
-      loops: licd.length,
-      motion: licd.reduce((accum, cur) => {
+      loops: liInstructions.length,
+      motion: liInstructions.reduce((accum, cur) => {
         return (accum += cur.length);
       }, 0),
     },
