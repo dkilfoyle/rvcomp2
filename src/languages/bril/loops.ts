@@ -189,7 +189,7 @@ const moveLI = (
     });
   });
 
-  return { codeMotion: blockMap, licd };
+  return { postCodeMotionBlocks: blockMap, liInstructions: licd };
 };
 
 const getInductionVars = (
@@ -289,33 +289,11 @@ const getInductionVars = (
   return { constants, inductionVars, loopInvariants, basicVars, trace };
 };
 
-const strengthReduction = (
-  blockMap: ICFGBlockMap,
-  preHeaderMap: Record<string, string>,
-  constants: string[][],
-  loopInvariants: string[][],
-  basicVars: string[][],
-  inductionVars: string[][],
-  trace: IStringsMap[],
-  loops: string[][],
-  reachingIn: Record<string, any>
-) => {
-  const blockNames = Object.keys(blockMap);
-  const names = Object.keys(reachingIn[_.last(blockNames)!]);
-
-  loops.forEach((loop, iLoop) => {
-    const ind = _.indexOf(blockNames, preHeaderMap[loop[1]]);
-    for (let inductionVar of inductionVars[iLoop]) {
-      if (basicVars[iLoop].includes(inductionVar)) continue;
-      let temp = [inductionVar];
-      let result = [];
-      while (temp.length) {
-        const currentVar = temp.pop();
-      }
-    }
-  });
-  return blockMap;
-};
+// export const strengthReduction = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
+//   console.log("STRENGTH REDUCTION");
+//   console.log("reachingIn", reachingIn);
+//   const inductionVars = getInductionVars(blockMap, loops, [], reachingIn);
+// };
 
 export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   const blocks = Object.values(blockMap);
@@ -332,21 +310,21 @@ export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   // LICM
   const invariants = findLoopInvariants(blockMap, loops, reachingIn);
   const { newBlocks, preHeaderMap } = createPreheaders(blockMap, loops, predecessorsMap);
-  const { codeMotion, licd } = moveLI(newBlocks, preHeaderMap, invariants, loops, dominatorMap, liveOut, exits);
+  const { postCodeMotionBlocks, liInstructions } = moveLI(newBlocks, preHeaderMap, invariants, loops, dominatorMap, liveOut, exits);
 
   // Strength Reduction
-  const { constants, basicVars, inductionVars, loopInvariants, trace } = getInductionVars(codeMotion, loops, licd, reachingIn);
-  console.log({ constants, basicVars, inductionVars, trace });
-  const { predecessorsMap: predecessorsMap2, successorsMap: successorsMap2 } = getCfgEdges(codeMotion);
-  const { preHeaderMap: preHeaderMap2, newBlocks: newBlocks2 } = createPreheaders(codeMotion, loops, predecessorsMap2);
-  const sr = strengthReduction(newBlocks2, preHeaderMap2, constants, loopInvariants, basicVars, inductionVars, trace, loops, reachingIn);
+  const result = getInductionVars(codeMotion, loops, licd, reachingIn);
+  console.log(result);
+
+  // temp
+  const sr = codeMotion;
 
   return {
     blockMap: sr,
-    licd,
+    liInstructions,
     stats: {
-      loops: licd.length,
-      motion: licd.reduce((accum, cur) => {
+      loops: liInstructions.length,
+      motion: liInstructions.reduce((accum, cur) => {
         return (accum += cur.length);
       }, 0),
     },
