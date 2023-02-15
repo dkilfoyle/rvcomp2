@@ -139,34 +139,6 @@ const createPreheaders = (blockMap: ICFGBlockMap, loops: string[][], predecessor
   return { newBlocks, preHeaderMap };
 };
 
-// const createPreheaders = (blockMap: ICFGBlockMap, loops: string[][]) => {
-//   const newBlocks: ICFGBlockMap = {};
-//   const blockNames = Object.keys(blockMap);
-//   const preHeaderMap: Record<string, string> = {}; // map block to it's pre-header
-
-//   blockNames.forEach((blockName, iBlock) => {
-//     newBlocks[blockName] = _.cloneDeep(blockMap[blockName]);
-//     if (iBlock + 1 < blockNames.length) {
-//       loops.forEach((loop) => {
-//         if (loop.includes(blockNames[iBlock + 1])) {
-//           const name = brilBuilder.freshVar("prehd");
-//           newBlocks[name] = {
-//             name,
-//             instructions: [],
-//             defined: [],
-//             keyEnd: -99,
-//             keyStart: -99,
-//             live: [],
-//             out: [],
-//           };
-//           loop.forEach((b) => (preHeaderMap[b] = name));
-//         }
-//       });
-//     }
-//   });
-//   return { newBlocks, preHeaderMap };
-// };
-
 const moveLI = (
   blockMap: ICFGBlockMap,
   preHeaderMap: Record<string, string>,
@@ -317,11 +289,33 @@ const getInductionVars = (
   return { constants, inductionVars, loopInvariants, basicVars, trace };
 };
 
-// export const strengthReduction = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
-//   console.log("STRENGTH REDUCTION");
-//   console.log("reachingIn", reachingIn);
-//   const inductionVars = getInductionVars(blockMap, loops, [], reachingIn);
-// };
+const strengthReduction = (
+  blockMap: ICFGBlockMap,
+  preHeaderMap: Record<string, string>,
+  constants: string[][],
+  loopInvariants: string[][],
+  basicVars: string[][],
+  inductionVars: string[][],
+  trace: IStringsMap[],
+  loops: string[][],
+  reachingIn: Record<string, any>
+) => {
+  const blockNames = Object.keys(blockMap);
+  const names = Object.keys(reachingIn[_.last(blockNames)!]);
+
+  loops.forEach((loop, iLoop) => {
+    const ind = _.indexOf(blockNames, preHeaderMap[loop[1]]);
+    for (let inductionVar of inductionVars[iLoop]) {
+      if (basicVars[iLoop].includes(inductionVar)) continue;
+      let temp = [inductionVar];
+      let result = [];
+      while (temp.length) {
+        const currentVar = temp.pop();
+      }
+    }
+  });
+  return blockMap;
+};
 
 export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   const blocks = Object.values(blockMap);
@@ -341,11 +335,11 @@ export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   const { codeMotion, licd } = moveLI(newBlocks, preHeaderMap, invariants, loops, dominatorMap, liveOut, exits);
 
   // Strength Reduction
-  const result = getInductionVars(codeMotion, loops, licd, reachingIn);
-  console.log(result);
-
-  // temp
-  const sr = codeMotion;
+  const { constants, basicVars, inductionVars, loopInvariants, trace } = getInductionVars(codeMotion, loops, licd, reachingIn);
+  console.log({ constants, basicVars, inductionVars, trace });
+  const { predecessorsMap: predecessorsMap2, successorsMap: successorsMap2 } = getCfgEdges(codeMotion);
+  const { preHeaderMap: preHeaderMap2, newBlocks: newBlocks2 } = createPreheaders(codeMotion, loops, predecessorsMap2);
+  const sr = strengthReduction(newBlocks2, preHeaderMap2, constants, loopInvariants, basicVars, inductionVars, trace, loops, reachingIn);
 
   return {
     blockMap: sr,
