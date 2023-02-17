@@ -125,6 +125,12 @@ export const ANALYSES: Record<string, IDFAnalysis<any>> = {
     merge: cprop_merge,
     transfer: cprop_transfer,
   } as IDFAnalysis<Record<string, string>>,
+  written: {
+    forward: true,
+    init: [],
+    merge: union,
+    transfer: (block, in_) => generatedVars(block),
+  },
 };
 
 export const dfWorklist = (blockMap: ICFGBlockMap, analysis: IDFAnalysis<any>) => {

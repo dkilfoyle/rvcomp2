@@ -50,6 +50,7 @@ export const BrilEditor: VFC = () => {
     setParse((state: ParseState) => {
       state.cfg = optimCfg;
     });
+    // console.log(optimBril);
   }, [bril, optimisations]);
 
   const brilTxtOptim = useMemo(() => {
