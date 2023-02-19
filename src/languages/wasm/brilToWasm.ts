@@ -222,7 +222,7 @@ const createSection = (sectionType: Section, data: any[]) => [sectionType, ...en
 
 enum Offsets {
   screen = 0,
-  data = 10240,
+  data = 40960,
 }
 
 const encodeConstI32_Signed = (i32: number) => {
@@ -240,10 +240,14 @@ const importedFunctions = [
   { name: "print_int", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
   { name: "print_string", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
   { name: "print_char", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
+  { name: "render", signature: [functionType, ...encodeVector([]), emptyArray] },
 ];
 
 const libraryFunctions = [
-  { name: "set_pixel", signature: [functionType, ...encodeVector([Valtype.f32, Valtype.f32, Valtype.f32]), emptyArray] },
+  {
+    name: "set_pixel",
+    signature: [functionType, ...encodeVector([Valtype.f32, Valtype.f32, Valtype.f32, Valtype.f32, Valtype.f32]), emptyArray],
+  },
 ];
 
 // ===========================================================================
@@ -253,12 +257,15 @@ const emitSetPixelFunction = () => {
   const args: IBrilArgument[] = [
     { name: "x", type: "float" },
     { name: "y", type: "float" },
-    { name: "c", type: "float" },
+    { name: "r", type: "float" },
+    { name: "g", type: "float" },
+    { name: "b", type: "float" },
   ];
 
   const symbols = new Map<string, { index: number; type: Valtype }>(
     args.map((arg, index) => [arg.name, { index, type: Valtype[convertBrilToWasmType(arg.type)] }])
   );
+  symbols.set("poffset", { index: 5, type: Valtype.i32 });
 
   const localIndexForSymbol = (name: string, type: IBrilType) => {
     if (!symbols.has(name)) {
@@ -269,33 +276,64 @@ const emitSetPixelFunction = () => {
 
   // emit instructions
 
-  // compute the offset (y * 100) + x
-  code.push(Opcodes.get_local);
-  code.push(...unsignedLEB128(localIndexForSymbol("y", "float").index));
-  code.push(Opcodes.f32_const);
-  code.push(...ieee754(100));
+  // compute the offset (y * 100 * 4) + (x*4)
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("y", "float").index));
+  code.push(Opcodes.f32_const, ...ieee754(400));
   code.push(Opcodes.f32_mul);
 
-  code.push(Opcodes.get_local);
-  code.push(...unsignedLEB128(localIndexForSymbol("x", "float").index));
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("x", "float").index));
+  code.push(Opcodes.f32_const, ...ieee754(4));
+  code.push(Opcodes.f32_mul);
+
   code.push(Opcodes.f32_add);
 
   // convert to an integer
   code.push(Opcodes.i32_trunc_f32_s);
 
-  // fetch the color
-  code.push(Opcodes.get_local);
-  code.push(...unsignedLEB128(localIndexForSymbol("c", "float").index));
-  code.push(Opcodes.i32_trunc_f32_s);
+  // save in local $poffset
+  // code.push(Opcodes.set_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
+  code.push(Opcodes.set_local, ...unsignedLEB128(5));
 
-  // write
-  code.push(Opcodes.i32_store_8);
-  code.push(...[0x00, 0x00]); // align and offset
+  // fetch the pixel offset
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
+  // fetch red value and cast to int
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("r", "float").index));
+  code.push(Opcodes.i32_trunc_f32_s);
+  // write r
+  code.push(Opcodes.i32_store_8, 0x00, 0x00); // align and offset
+
+  // fetch the pixel offset
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
+  // fetch red value and cast to int
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("g", "float").index));
+  code.push(Opcodes.i32_trunc_f32_s);
+  // write r
+  code.push(Opcodes.i32_store_8, 0x00, 0x01); // align and offset
+
+  // fetch the pixel offset
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
+  // fetch red value and cast to int
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("b", "float").index));
+  code.push(Opcodes.i32_trunc_f32_s);
+  // write r
+  code.push(Opcodes.i32_store_8, 0x00, 0x02); // align and offset
+
+  // fetch the pixel offset
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
+  // then push 255
+  code.push(Opcodes.i32_const, ...unsignedLEB128(255));
+  // then store at offset poffset+3
+  code.push(Opcodes.i32_store, 0x00, 0x03); // align and offset
 
   const localCount = symbols.size;
-  const locals = Array.from(symbols).map(([key, value]) => encodeLocal(1, value.type));
+  // locals come after args
+  const locals = Array.from(symbols)
+    .slice(args.length)
+    .map(([key, value]) => encodeLocal(1, value.type));
+  console.log(encodeVector(locals));
 
   allSymbols["set_pixel"] = Array.from(symbols.keys());
+  console.log(allSymbols);
 
   return encodeVector([...encodeVector(locals), ...code, Opcodes.end]);
 };
@@ -537,7 +575,6 @@ const emitWasmFunction = (
           case "call":
             if (!instr.funcs) throw new Error(`Instr.funcs missing, badly formed bril`);
             const funcName = instr.funcs[0];
-            // TODO: allow for >1 imported function
             let callFuncIndex: number;
             switch (funcName) {
               case "print_int":
@@ -548,6 +585,9 @@ const emitWasmFunction = (
                 break;
               case "print_char":
                 callFuncIndex = 2;
+                break;
+              case "render":
+                callFuncIndex = 3;
                 break;
               case "set_pixel":
                 callFuncIndex = Object.keys(program.functions).length + importedFunctions.length;
@@ -731,7 +771,9 @@ const emitWasmFunction = (
   emitBlock(blockArray[0]); // start emitting blocks
 
   const localCount = localsymbols.size;
-  const locals = Array.from(localsymbols).map(([key, value]) => encodeLocal(1, value.type));
+  const locals = Array.from(localsymbols)
+    .slice(func.args.length)
+    .map(([key, value]) => encodeLocal(1, value.type));
 
   allSymbols[func.name] = Array.from(localsymbols.keys());
 
@@ -745,7 +787,13 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   const cfg = cfgBuilder.buildProgram(bril);
 
   allSymbols = {};
+
   includeLibFunctions.set_pixel = false;
+  Object.values(bril.functions).forEach((func) => {
+    func.instrs.forEach((instr) => {
+      if ("op" in instr && instr.op == "call" && instr.funcs && instr.funcs[0] == "set_pixel") includeLibFunctions.set_pixel = true;
+    });
+  });
 
   let dataSection: number[];
   if (bril.data.size) {

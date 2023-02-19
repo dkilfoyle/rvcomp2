@@ -84,7 +84,7 @@ export const Output: React.FC = () => {
   const [optimlogs, setOptimLogs] = useState<any[]>([]);
   const [wasmlogs, setWasmLogs] = useState<any[]>([]);
 
-  const [showScreen, setShowScreen] = useState<boolean>(false);
+  const [showScreen, setShowScreen] = useState<boolean>(true);
   const [showMem, setShowMem] = useState<boolean>(true);
 
   const unoptimOutputRef = useRef<OverlayScrollbarsComponentRef>(null);
@@ -111,10 +111,10 @@ export const Output: React.FC = () => {
           window.conout3.log(`emitWasm error: ${e}`);
           return;
         }
-        runWasm(wasmByteCode).then((res) => {
-          wasmMemory = new Uint8Array(res.memory.buffer, 0, 10240 + res.heap_pointer);
-          segments[1].end = 10240 + Math.max(0, brilOptim.dataSize - 1);
-          segments[2].start = 10240 + brilOptim.dataSize;
+        runWasm(wasmByteCode, "wasmCanvas").then((res) => {
+          wasmMemory = new Uint8Array(res.memory.buffer, 0, res.heap_pointer);
+          segments[1].end = 40960 + Math.max(0, brilOptim.dataSize - 1);
+          segments[2].start = 40960 + brilOptim.dataSize;
           segments[2].end = res.heap_pointer - 1;
         });
       }
@@ -132,9 +132,9 @@ export const Output: React.FC = () => {
     if (showScreen) paintScreen("optimCanvas", optimMemory);
   }, [optimMemory, showScreen]);
 
-  useEffect(() => {
-    if (showScreen) paintScreen("wasmCanvas", wasmMemory);
-  }, [wasmMemory, showScreen]);
+  // useEffect(() => {
+  //   if (showScreen) paintScreen("wasmCanvas", wasmMemory);
+  // }, [wasmMemory, showScreen]);
 
   useEffect(() => {
     if (optimOutputRef.current && optimOutputRef.current.osInstance()) {

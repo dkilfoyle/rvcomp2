@@ -6,13 +6,18 @@ interface IWasmExports {
   heap_pointer: number;
 }
 
-export const runWasm = (wasmBuffer: Uint8Array) => {
+export const runWasm = (wasmBuffer: Uint8Array, canvasId: string) => {
   return WabtModule().then((wabtModule) => {
     const wasmModule = wabtModule.readWasm(wasmBuffer, { readDebugNames: true });
     wasmModule.applyNames();
     // wasmModule.generateNames();
     // wasmModule.validate();
     const memory = new WebAssembly.Memory({ initial: 1 });
+
+    const screenCanvas = document.getElementById(canvasId) as HTMLCanvasElement;
+    if (!screenCanvas) throw new Error(`HTML document canvas ${canvasId} does not exist`);
+    const screenCtx = screenCanvas.getContext("2d");
+    if (!screenCtx) throw new Error(`Unable to create canvas ctx`);
 
     const getStringFromMemory = (offset: number) => {
       const buffer = new Uint8Array(memory.buffer, offset, 100);
@@ -31,9 +36,15 @@ export const runWasm = (wasmBuffer: Uint8Array) => {
         print_int: (x: number) => window.conout3.info("print_int: ", x),
         print_string: (x: number) => window.conout3.info(`print_string @ 0x${x.toString(16)}: ${getStringFromMemory(x)}`),
         print_char: (x: number) => window.conout3.info(`print_char: ${x} = 0x${x.toString(16)} = ${String.fromCharCode(x)}`),
+        render: () => {
+          const screenData = new Uint8ClampedArray(memory.buffer, 0, 100 * 100 * 4);
+          const screenImage = new ImageData(screenData.slice(0, 100 * 100 * 4), 100, 100);
+          screenCtx.putImageData(screenImage, 0, 0);
+        },
         memory,
       },
     };
+
     return WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
       //run functions here
       console.info(`Running Wasm...`);

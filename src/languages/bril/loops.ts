@@ -222,7 +222,7 @@ const getLoopDefinitions = (blockMap: ICFGBlockMap, loop: string[]) => {
     blockMap[blockName].instructions.forEach((instr, instrIndx) => {
       if ("dest" in instr) {
         if (instr.dest in result)
-          result.dest.push({
+          result[instr.dest].push({
             blockName,
             instrIndx,
           });
