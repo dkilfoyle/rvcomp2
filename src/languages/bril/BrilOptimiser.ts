@@ -4,7 +4,7 @@ import { blockMap2Instructions, getFunctionBlockMap, ICFG } from "./cfg";
 import { runDCE } from "./dce";
 import { removePhis, runSSA } from "./ssa";
 import { gvn } from "./gvn";
-import { licm } from "./loops";
+import { licm_sr } from "./loops";
 
 export type IBrilOptimisations = "doSSA" | "removePhis" | "doLVN" | "doGVN" | "doDCE" | "doLICM";
 
@@ -24,10 +24,10 @@ export const optimiseBril = (bril: IBrilProgram, optimisations: string[], logger
             const statsSSA = runSSA(blockMap, func);
             if (logger) logger.info(`${func.name}: SSA: `, statsSSA);
             break;
-          case "LICM":
-            const licmResult = licm(func, blockMap);
+          case "LICM/SR":
+            const licmResult = licm_sr(func, blockMap);
             blockMap = licmResult.blockMap;
-            if (logger) logger.info(`${func.name}: LICM: `, licmResult.stats);
+            if (logger) logger.info(`${func.name}: LICM/SR: `, licmResult.stats);
             break;
           case "LVN":
             const lvnStats = lvn(blockMap);

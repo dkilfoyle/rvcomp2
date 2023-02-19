@@ -50,7 +50,7 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   },
   optimisations: {
     // selected: ["LICM", "SSA", "Phis-", "DCE"],
-    selected: ["LICM"],
+    selected: ["LICM/SR"],
     available: ["LVN", "GVN"],
   },
   // optim: {

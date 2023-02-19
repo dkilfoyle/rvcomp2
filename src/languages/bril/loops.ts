@@ -23,10 +23,10 @@ export const getBackEdges = (cfgBlocks: ICFGBlock[], dominatorMap: IStringsMap, 
 
 const freshVars = (existing: string[]) => {
   let fresh_var = 0;
-  return () => {
-    let new_var = "__" + fresh_var++;
+  return (prefix: string = "__") => {
+    let new_var = prefix + fresh_var++;
     while (existing.includes(new_var)) {
-      new_var = "__" + fresh_var++;
+      new_var = prefix + fresh_var++;
     }
     return new_var;
   };
@@ -148,7 +148,7 @@ const createPreheaders = (blockMap: ICFGBlockMap, loops: string[][], predecessor
     });
   });
 
-  return { newBlocks, preHeaderMap };
+  return { blockMap: newBlocks, preHeaderMap };
 };
 
 const moveLI = (
@@ -358,15 +358,16 @@ const getDerivedInductionVarMap = (
 
 const generateInstructionsFromInductionParam = (
   inductionParam: IInductionParam,
-  getFreshVars: () => string
+  getFreshVars: (prefix?: string) => string,
+  prefix?: string
 ): [string, IBrilValueInstruction[]] => {
   if (typeof inductionParam.arg === "string") {
     return [inductionParam.arg, []];
   } else {
     if (inductionParam.op == "add" || inductionParam.op == "mul" || inductionParam.op == "ptradd") {
-      const [leftDest, leftInstrs] = generateInstructionsFromInductionParam(inductionParam.arg[0], getFreshVars);
-      const [rightDest, rightInstrs] = generateInstructionsFromInductionParam(inductionParam.arg[1], getFreshVars);
-      const tmpVar = getFreshVars();
+      const [leftDest, leftInstrs] = generateInstructionsFromInductionParam(inductionParam.arg[0], getFreshVars, prefix);
+      const [rightDest, rightInstrs] = generateInstructionsFromInductionParam(inductionParam.arg[1], getFreshVars, prefix);
+      const tmpVar = getFreshVars(prefix);
       return [tmpVar, [...leftInstrs, ...rightInstrs, { op: inductionParam.op, dest: tmpVar, type: "int", args: [leftDest, rightDest] }]];
     } else {
       debugger;
@@ -376,7 +377,7 @@ const generateInstructionsFromInductionParam = (
 };
 
 const strengthReduction = (
-  getFreshVars: () => string,
+  getFreshVars: (prefix?: string) => string,
   isPtr: boolean,
   dest: string,
   inductionVar: IInductionVar,
@@ -398,15 +399,15 @@ const strengthReduction = (
 
   // insert pre-header instructions
   const preheadInstrs: IBrilValueInstruction[] = [];
-  const [aVar, aInstrs] = generateInstructionsFromInductionParam(inductionVar.a, getFreshVars);
+  const [aVar, aInstrs] = generateInstructionsFromInductionParam(inductionVar.a, getFreshVars, `${dest}.inc`);
   console.log("Strength reduction genInstr", aVar, aInstrs);
-  const tmpVar = getFreshVars();
+  const tmpVar = getFreshVars(`${dest}.sr`);
   if (!inductionVar.b) {
     preheadInstrs.push(...aInstrs, { op: "mul", dest: tmpVar, type: "int", args: [inductionVar.v, aVar] });
   } else {
-    const [bVar, bInstrs] = generateInstructionsFromInductionParam(inductionVar.b, getFreshVars);
+    const [bVar, bInstrs] = generateInstructionsFromInductionParam(inductionVar.b, getFreshVars, `${dest}.inc`);
     preheadInstrs.push(...aInstrs, ...bInstrs);
-    const tmpVar2 = getFreshVars();
+    const tmpVar2 = getFreshVars(`${dest}.sr`);
     const mulInstr = { op: "mul", dest: tmpVar2, type: "int", args: [inductionVar.v, aVar] } as IBrilValueInstruction;
     const addInstr = {
       op: isPtr ? "ptradd" : "add",
@@ -443,7 +444,7 @@ const strengthReduction = (
   return [aVar, bVar, tmpVar];
 };
 
-export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
+export const licm_sr = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   const blocks = Object.values(blockMap);
   const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
   const dominatorMap = getDominatorMap(successorsMap, Object.keys(blockMap)[0]);
@@ -452,21 +453,22 @@ export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   const exits = getLoopExits(loops, successorsMap);
   const { _in: liveIn, _out: liveOut } = dfWorklist(blockMap, ANALYSES["live"]);
   const { _in: reachingIn, _out: reachingOut } = dfWorklist(blockMap, ANALYSES["reaching"]);
-  console.log("Reaching", reachingIn);
 
   // LICM
   const invariants = findLoopInvariants(blockMap, loops, reachingIn);
-  const { newBlocks, preHeaderMap } = createPreheaders(blockMap, loops, predecessorsMap);
+  const { blockMap: newBlocks, preHeaderMap } = createPreheaders(blockMap, loops, predecessorsMap);
   const { postCodeMotionBlocks, liInstructions } = moveLI(newBlocks, preHeaderMap, invariants, loops, dominatorMap, liveOut, exits);
 
   // Strength Reduction
-  const defined = _.flatten(Object.values(dfWorklist(postCodeMotionBlocks, ANALYSES["written"])._out as Record<string, string[]>));
+  const defined = _.flatten(Object.values(dfWorklist(blockMap, ANALYSES["written"])._out as Record<string, string[]>));
   const getFreshVars = freshVars(defined);
+  let totalDerivedInductionVars = 0;
   loops.forEach((loop, iLoop) => {
-    const basicInductionVars = getBasicInductionVars(postCodeMotionBlocks, loops[iLoop], liInstructions[iLoop]);
-    console.log(`Loop ${iLoop} basicInductionVars`, basicInductionVars);
-    const derivedInductionVarMap = getDerivedInductionVarMap(postCodeMotionBlocks, loops[iLoop], basicInductionVars, liInstructions[iLoop]);
-    console.log(`Loop ${iLoop} derivedInductionVars`, derivedInductionVarMap);
+    const liInstructions = _.flatten(Object.values(invariants[iLoop]));
+    const basicInductionVars = getBasicInductionVars(postCodeMotionBlocks, loops[iLoop], liInstructions);
+    // console.log(`Loop ${iLoop} basicInductionVars`, basicInductionVars);
+    const derivedInductionVarMap = getDerivedInductionVarMap(postCodeMotionBlocks, loops[iLoop], basicInductionVars, liInstructions);
+    // console.log(`Loop ${iLoop} derivedInductionVars`, derivedInductionVarMap);
 
     for (let [dest, [instr, inductionVar]] of Object.entries(derivedInductionVarMap)) {
       const isPtr = instr.op == "ptradd";
@@ -479,24 +481,19 @@ export const licm = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
         postCodeMotionBlocks,
         postCodeMotionBlocks[preHeaderMap[loop[0]]]
       );
-      console.log("done strength reduction", a, b, newDest);
     }
+
+    totalDerivedInductionVars += Object.keys(derivedInductionVarMap).length;
   });
 
-  // temp
-  const sr = postCodeMotionBlocks;
-
   return {
-    blockMap: sr,
-
-    liInstructions,
-
+    blockMap: postCodeMotionBlocks,
     stats: {
       loops: liInstructions.length,
-
       motion: liInstructions.reduce((accum, cur) => {
         return (accum += cur.length);
       }, 0),
+      derivedInductionVars: totalDerivedInductionVars,
     },
   };
 };
