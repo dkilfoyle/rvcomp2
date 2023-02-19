@@ -2,8 +2,8 @@ import { beforeAll, expect, test } from "vitest";
 import { cstVisitor } from "../simpleC/cstToAstVisitor";
 import { parse } from "../simpleC/parser";
 import { astToBrilVisitor } from "./astToBrilVisitor";
-import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGBlock, ICFGBlockMap } from "./cfgBuilder";
-import { getDominanceFrontierMap, getDominanceTree, getDominatorMap, invertMap, postOrder, stringMap } from "./dom";
+import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGBlock, ICFGBlockMap } from "./cfg";
+import { getDominanceFrontierMap, getDominanceTree, getDominatorMap, invertMap, postOrder, IStringsMap } from "./dom";
 import domCode from "../../examples/ssaif.sc?raw";
 import { getBlockToPhiVariablesMap, getVariableDefinitionToBlocksMap, renameVars } from "./ssa";
 import { IBrilProgram } from "./BrilInterface";
@@ -12,9 +12,9 @@ import { getBrilFunctionArgs, getBrilFunctionVarTypes } from "./utils";
 let bril: IBrilProgram;
 let cfg: ICFG;
 let blockMap: Record<string, ICFGBlock>;
-let successors: stringMap;
-let dominatorMap: stringMap;
-let dominanceFrontier: stringMap;
+let successors: IStringsMap;
+let dominatorMap: IStringsMap;
+let dominanceFrontier: IStringsMap;
 
 beforeAll(() => {
   const { cst, lexErrors, parseErrors } = parse(domCode);
@@ -84,10 +84,10 @@ test("renameVars renames vars in instructions and produces correct phiMaps", () 
 //   addCfgTerminators(blockMap);
 //   const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
 
-//   const ordered = (inmap: stringMap) =>
+//   const ordered = (inmap: IStringsMap) =>
 //     Object.keys(inmap)
 //       .sort()
-//       .reduce((obj: stringMap, key) => {
+//       .reduce((obj: IStringsMap, key) => {
 //         obj[key] = inmap[key].sort();
 //         return obj;
 //       }, {});

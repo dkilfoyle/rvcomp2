@@ -6,7 +6,7 @@ import { brilPrinter } from "../../languages/bril/BrilPrinter";
 import { VStack } from "@chakra-ui/react";
 import { setupLanguage } from "./monaco/setup";
 
-import { optimiseBril } from "../../languages/bril/BrilCompiler";
+import { optimiseBril } from "../../languages/bril/BrilOptimiser";
 import { useSettingsStore, SettingsState, ParseState, useParseStore } from "../../store/zustore";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 
@@ -31,32 +31,27 @@ export const BrilEditor: VFC = () => {
   const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
   const setParse = useParseStore((state: ParseState) => state.set);
 
-  const cfgNodeName = useSettingsStore((state: SettingsState) => state.cfg.nodeName);
-  const cfgFunctionName = useSettingsStore((state: SettingsState) => state.cfg.functionName);
-  const keepPhis = useSettingsStore((state: SettingsState) => state.optim.keepPhis);
-  const isSSA = useSettingsStore((state: SettingsState) => state.optim.isSSA);
-  const brilKeepPhis = useSettingsStore((state: SettingsState) => state.bril.keepPhis);
-  const brilIsSSA = useSettingsStore((state: SettingsState) => state.bril.isSSA);
-  const doLVN = useSettingsStore((state: SettingsState) => state.optim.doLVN);
-  const doGVN = useSettingsStore((state: SettingsState) => state.optim.doGVN);
-  const doDCE = useSettingsStore((state: SettingsState) => state.optim.doDCE);
+  const [cfgNodeName, cfgFunctionName] = useSettingsStore((state: SettingsState) => [state.cfg.nodeName, state.cfg.functionName]);
+  const [brilIsSSA, brilRemovePhis] = useSettingsStore((state: SettingsState) => [state.bril.isSSA, state.bril.removePhis]);
+  const optimisations = useSettingsStore((state: SettingsState) => state.optimisations.selected);
 
   const brilTxt = useMemo(() => {
     if (brilIsSSA) {
-      const { optimBril, optimCfg } = optimiseBril(bril, brilIsSSA, keepPhis);
+      const { optimBril, optimCfg } = optimiseBril(bril, ["SSA", "Phis-"]);
       return brilPrinter.print(optimBril);
     } else return brilPrinter.print(bril);
-  }, [bril, brilIsSSA, brilKeepPhis]);
+  }, [bril, brilIsSSA, brilRemovePhis]);
 
   useEffect(() => {
-    const { optimBril, optimCfg } = optimiseBril(bril, isSSA, keepPhis, doLVN, doGVN, doDCE, true);
+    const { optimBril, optimCfg } = optimiseBril(bril, optimisations, window.conout0); //, "doLICM", "removePhis", "doDCE"], true);
     setParse((state: ParseState) => {
       state.brilOptim = optimBril;
     });
     setParse((state: ParseState) => {
       state.cfg = optimCfg;
     });
-  }, [bril, keepPhis, isSSA, doLVN, doGVN, doDCE]);
+    // console.log(optimBril);
+  }, [bril, optimisations]);
 
   const brilTxtOptim = useMemo(() => {
     return brilPrinter.print(brilOptim);

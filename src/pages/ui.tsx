@@ -21,6 +21,7 @@ import {
   TbArrowBarToRight,
   TbArrowBarToUp,
   TbArrowBarUp,
+  TbTerminal2,
 } from "react-icons/tb";
 import { BiCollapse, BiExpand } from "react-icons/bi";
 
@@ -42,6 +43,9 @@ import { Output } from "../components/output";
 import _ from "lodash";
 import { WasmEditor } from "../components/wasmEditor/WasmEditor";
 import { accordionTheme } from "./theme";
+import { FaRunning } from "react-icons/fa";
+import { SiCodecademy, SiWebassembly } from "react-icons/si";
+import { GiSlowBlob } from "react-icons/gi";
 
 export const theme = extendTheme({
   components: { Accordion: accordionTheme },
@@ -60,15 +64,15 @@ const defaultlayout: LayoutBase = {
       {
         mode: "horizontal",
         id: "mainHorizontalBox",
-        size: 800,
+        size: 700,
         children: [
           {
             id: "codeBox",
             size: 1000,
             mode: "vertical",
             children: [
-              { id: "codePanel", group: "card", tabs: [{ id: "code" }] },
-              { id: "brilPanel", group: "card", tabs: [{ id: "bril" }, { id: "wasm" }] },
+              { id: "codePanel", size: 400, group: "card", tabs: [{ id: "code" }] },
+              { id: "brilPanel", size: 600, group: "card", tabs: [{ id: "bril" }, { id: "wasm" }] },
             ],
           },
           {
@@ -82,9 +86,12 @@ const defaultlayout: LayoutBase = {
       },
       {
         id: "outputPanel",
-        size: 200,
-        group: "card",
-        tabs: [{ id: "console" }, { id: "output" }],
+        size: 300,
+        mode: "horizontal",
+        children: [
+          { id: "consolePanel", size: 300, group: "card", tabs: [{ id: "console" }] },
+          { id: "outputPanel", size: 700, group: "card", tabs: [{ id: "output" }] },
+        ],
       },
     ],
   },
@@ -119,18 +126,33 @@ const findInLayout = (id: string, layout: LayoutBase) => {
 const tabs: Record<string, TabData> = {
   code: {
     id: "code",
-    title: "SimpleC",
+    title: (
+      <HStack>
+        <Icon as={SiCodecademy}></Icon>
+        <span>SimpleC</span>
+      </HStack>
+    ),
     content: <Editor></Editor>,
   },
   bril: {
     id: "bril",
-    title: "Bril",
+    title: (
+      <HStack>
+        <Icon as={GiSlowBlob}></Icon>
+        <span>Bril</span>
+      </HStack>
+    ),
     content: <BrilEditor></BrilEditor>,
     cached: true,
   },
   wasm: {
     id: "wasm",
-    title: "Wasm",
+    title: (
+      <HStack>
+        <Icon as={SiWebassembly}></Icon>
+        <span>Wasm</span>
+      </HStack>
+    ),
     content: <WasmEditor></WasmEditor>,
     cached: true,
   },
@@ -161,8 +183,26 @@ const tabs: Record<string, TabData> = {
     title: "",
     content: <h2>Collapsed</h2>,
   },
-  console: { id: "console", title: "Console", content: <Consoler></Consoler> },
-  output: { id: "output", title: "Output", content: <Output></Output> },
+  console: {
+    id: "console",
+    title: (
+      <HStack>
+        <Icon as={TbTerminal2}></Icon>
+        <span>Console</span>
+      </HStack>
+    ),
+    content: <Consoler></Consoler>,
+  },
+  output: {
+    id: "output",
+    title: (
+      <HStack>
+        <Icon as={FaRunning}></Icon>
+        <span>Output</span>
+      </HStack>
+    ),
+    content: <Output></Output>,
+  },
 };
 
 const createCollapsedTab = (tabbases: TabBase[]) => {
@@ -297,7 +337,6 @@ export const UI: React.FC = () => {
 
     if (graphPanel.size <= 35) {
       // graphTabs panel is collapsed
-      console.log("collapsed");
       tabs.collapsed = createCollapsedTab(graphPanel.tabs);
       graphPanel.tabs = [{ id: "collapsed" }];
       graphPanel.group = "notabs";

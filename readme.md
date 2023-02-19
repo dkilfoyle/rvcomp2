@@ -4,10 +4,10 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
 
 ## Implemented
 
-1. Chevrotain based simple C-like parser with AST generation
-2. Basic UI for code editing, AST/IR/CFG visualisation
-3. C-like AST to Bril IR ("blang?")
-4. Bril IR
+1. Chevrotain based simple C-like language parser with AST generation
+   1. Basic UI for code editing, AST/IR/CFG visualisation
+   2. C-like AST to Bril IR ("blang?")
+2. Bril IR
    1. Control Flow Graph (CFG) visualisation with dominance highlighting
    2. Conversion to Single Static Assignment (SSA) form
    3. Data flow analysis
@@ -15,40 +15,45 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
       2. Live variables
    4. Optimisations
       1. Dead-code elimination
-      2. Local value numbering
+      2. Local and global value numbering
          1. Common expression evaluation
          2. Constant folding
          3. Copy propogation
+      3. Loop invariant code motion
+      4. Strength reduction
+3. Code generation
+   1. Webassmebly
 
 ## Planned
 
 1. Expand SimpleC
-   1. ~~if (cond) instead of if (cond == true) where cond is boolean identifier~~
-   2. if (cond) instead of if (cond == true) where cond is boolean function call
+   - [x] if (cond) instead of if (cond == true) where cond is boolean identifier
+   - [x] uf (cond) instead of if (cond == true) where cond is boolean function call
+   - [x] arrays
+   - [x] stdlib (print_int, print_string)  
 2. Improve UI
-   1. CFG node selection shows DFA for that node
-   2. ~~Bril IR diffeditor - plain vs SSA and SSA vs optimisations~~
+   - [ ] CFG node selection shows DFA for that node
+   - [x] Bril IR diffeditor - plain vs SSA and SSA vs optimisations
 3. Refactor
-   1. ~~Switch from redux-toolkit to zustand~~
-   2. Use Map instead of Record<string,>
+   - [x] Switch from redux-toolkit to zustand
+   - [ ] Use Map instead of Record<string,>
 4. Optimisations
-   1. Use DFA
-      1. Use DFA to do global DCE - research how
-      2. Copy propogation
-      3. Global constant folding??
-   2. CFG optimisations
+   1. CFG optimisations
       - [ ] Branch removal
       - [ ] Unreachable code elimination
       - [ ] CFG cleaning
       - [ ] Tail merging
       - [ ] Remove top label and any unnecessary terminator instructions
-   3. Loop optimisation
+   2. Loop optimisation
       - [ ] Unrolling
-      - [ ] Loop-invariant computation hoisting
+      - [x] Loop-invariant computation hoisting
+      - [x] Strength reduction 
 5. Many more examples
+   - [x] Mandelbrot
+   - [ ] Game of Life
 6. Code generators
    - [ ] IR to RiscV
-   - [ ] IR to WebAssembly (https://github.com/ColinEberhardt/chasm)
+   - [x] IR to WebAssembly
 7. Add LLVM mid-end?
 
 ### Tools

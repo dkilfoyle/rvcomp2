@@ -1,13 +1,83 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Options, Network } from "vis-network";
+import { DataSet } from "vis-data";
 import { getDominanceFrontierMap, getDominanceTree, getDominatorMap } from "../languages/bril/dom";
-import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfgBuilder";
+import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "../languages/bril/cfg";
 import { getDataFlow } from "../languages/bril/df";
 import { Box, Checkbox, Flex, Grid, Select, Table, Td, Th, Thead, Tooltip, Tr, VStack } from "@chakra-ui/react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import "./cfgView.css";
 import { ParseState, SettingsState, useParseStore, useSettingsStore } from "../store/zustore";
+import { getBackEdges, getNaturalLoops } from "../languages/bril/loops";
+
+interface ICfgEdge {
+  from: string;
+  to: string;
+}
+
+interface ICFGVisNode {
+  id: string;
+  level?: number;
+  label: string;
+  color?: string;
+  borderWidth?: any;
+  shapeProperties?: any;
+}
+
+const calculateLevels = (nodes: ICFGVisNode[], edges: any[], backEdges?: string[][]) => {
+  if (!backEdges) {
+    debugger;
+    throw new Error();
+  }
+  let reverseEdgesMap = new Map();
+  let nodesMap = new Map();
+  for (let edge of edges) {
+    let from = edge.from;
+    let to = edge.to;
+    if (reverseEdgesMap.has(to)) {
+      reverseEdgesMap.get(to).push(from);
+    } else {
+      reverseEdgesMap.set(to, [edge.from]);
+    }
+  }
+  for (let node of nodes) {
+    let id = node.id;
+    nodesMap.set(id, node);
+  }
+  for (let node of nodes) {
+    node.level = calculateMaxNodeLength(nodesMap, reverseEdgesMap, node.id, backEdges);
+  }
+};
+
+const calculateMaxNodeLength = (
+  nodesMap: Map<string, ICFGVisNode>,
+  reverseEdgesMap: Map<string, any>,
+  nodeId: string,
+  backEdges: string[][]
+) => {
+  if (!(nodesMap instanceof Map)) {
+    throw new Error("nodesMap parameter should be an instance of Map");
+  }
+  if (!(reverseEdgesMap instanceof Map)) {
+    throw new Error("reverseEdgesMap parameter should be an instance of Map");
+  }
+  let parents = [];
+  let longestParentDepth = 0;
+  if (reverseEdgesMap.has(nodeId)) {
+    parents = reverseEdgesMap.get(nodeId);
+    for (let parentId of parents) {
+      if (!backEdges.find(([tail, head]) => head == nodeId && tail == parentId)) {
+        let parentDepth = 1;
+        parentDepth += calculateMaxNodeLength(nodesMap, reverseEdgesMap, parentId, backEdges);
+        if (parentDepth > longestParentDepth) {
+          longestParentDepth = parentDepth;
+        }
+      }
+    }
+  }
+  return longestParentDepth;
+};
 
 export const CfgView = () => {
   const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
@@ -26,18 +96,21 @@ export const CfgView = () => {
     if (!fn) return undefined;
 
     let blockMap = getCfgBlockMap(cfg[functionName]);
-    blockMap = addCfgEntry(blockMap);
-    addCfgTerminators(blockMap);
+    // optimised bril already has entry and terminators
+    // blockMap = addCfgEntry(blockMap);
+    // addCfgTerminators(blockMap);
     const dataFlow = getDataFlow(blockMap);
     const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
     const dom = getDominatorMap(successorsMap, fn[0].name);
     const frontier = getDominanceFrontierMap(dom, successorsMap);
     const domtree = getDominanceTree(dom);
-    return { blockMap, successorsMap, dom, frontier, domtree, dataFlow };
+    const backEdges = getBackEdges(cfg[functionName], dom, successorsMap);
+    const loops = getNaturalLoops(backEdges, predecessorsMap);
+    return { blockMap, successorsMap, dom, frontier, domtree, dataFlow, backEdges, loops };
   }, [brilOptim, functionName]);
 
   const cfgVisData = useMemo(() => {
-    const nodes: { id: string; label: string; color?: string; borderWidth?: any; shapeProperties?: any }[] = [];
+    const nodes: ICFGVisNode[] = [];
     const edges: any[] = [];
 
     if (cfg) {
@@ -45,39 +118,68 @@ export const CfgView = () => {
         nodes.push({
           id: node.name,
           label: node.name,
-          color: cfg.dom[nodeName]?.includes(node.name) ? "#FC8181" : cfg.domtree[nodeName]?.includes(node.name) ? "#68D391" : "#97C2FC",
-          borderWidth: node.name == nodeName ? 3 : 1,
-          shapeProperties: cfg.frontier[nodeName]?.includes(node.name) ? { borderDashes: [5, 5] } : {},
+          color: "#97C2FC",
         });
         node.out.forEach((out) => {
-          edges.push({ from: node.name, to: out, physics: false, smooth: { type: "cubicBezier" } });
+          if (
+            cfg.backEdges.find(([tail, head]) => {
+              return tail == node.name && head == out;
+            })
+          ) {
+            edges.push({
+              from: node.name,
+              to: out,
+              color: "orangered",
+              dashes: true,
+              physics: false,
+              width: 2,
+              smooth: { enabled: true, type: "cubicBezier" },
+            });
+          } else
+            edges.push({
+              id: `${node.name}_${out}`,
+              from: node.name,
+              to: out,
+              width: 1,
+              color: "grey",
+              physics: false,
+              smooth: { enabled: true, type: "cubicBezier" },
+            });
         });
       });
+      calculateLevels(nodes, edges, cfg.backEdges);
     } else {
       nodes.push({ id: "cfgerror", label: "Invalid CFG" });
     }
 
-    return { nodes, edges };
-  }, [cfg, nodeName]);
+    return { nodes: new DataSet(nodes), edges: new DataSet(edges) };
+  }, [cfg]);
 
   useEffect(() => {
     const options: Options = {
-      autoResize: true,
-      height: "100%",
+      // autoResize: true,
+      // height: "90%",
       width: "100%",
       interaction: { hover: true },
       layout: {
         hierarchical: {
           enabled: true,
-          levelSeparation: 50,
-          sortMethod: "directed",
+          levelSeparation: 110,
+          // sortMethod: "directed",
+          // shakeTowards: "roots",
+
+          //   levelSeparation: 55,
+          //   edgeMinimization: false,
+          // sortMethod: "directed",
         },
       },
-      physics: {
-        hierarchicalRepulsion: {
-          nodeDistance: 50,
-        },
-      },
+      physics: false,
+      // physics: {
+      //   hierarchicalRepulsion: {
+      //     nodeDistance: 70,
+      //     avoidOverlap: 0.5,
+      //   },
+      // },
       nodes: {
         shape: "box",
       },
@@ -95,7 +197,32 @@ export const CfgView = () => {
         setSettings((state: SettingsState) => {
           state.cfg.nodeName = params.node;
         });
+        if (cfg) {
+          // set all nodes back to default color and border
+          cfgVisData.nodes.update(Object.values(cfg.blockMap).map((node) => ({ id: node.name, color: "#97C2FC" })));
+          // color dolminance tree of the hovered node in green
+          cfgVisData.nodes.update(cfg.domtree[params.node].map((dominator) => ({ id: dominator, color: "#68D391" })));
+          // color dominators of the hovered node in red
+          cfgVisData.nodes.update(cfg.dom[params.node].map((dominator) => ({ id: dominator, color: "#FC8181" })));
+        }
         // dispatch(setCfgNodeName(params.node));
+      });
+      network.on("hoverEdge", (params) => {
+        if (cfg) {
+          const hoveredEdge = cfgVisData.edges.get(params.edge) as unknown as ICfgEdge;
+          const backEdge = cfg.backEdges.find(([tail, head]) => tail == hoveredEdge.from && head == hoveredEdge.to);
+          if (backEdge) {
+            const loop = cfg.loops.find((loop) => loop.includes(hoveredEdge.from));
+            // set all nodes back to default color and border
+            cfgVisData.nodes.update(Object.values(cfg.blockMap).map((node) => ({ id: node.name, color: "#97C2FC" })));
+            if (loop) cfgVisData.nodes.update(loop.map((node) => ({ id: node, color: "orange" })));
+          }
+        }
+      });
+      network.on("blurEdge", (params) => {
+        if (cfg) {
+          cfgVisData.nodes.update(Object.values(cfg.blockMap).map((node) => ({ id: node.name, color: "#97C2FC" })));
+        }
       });
       network?.fit();
     }
@@ -140,6 +267,7 @@ export const CfgView = () => {
       cfg.domtree[nodeName]?.length,
       cfg.dataFlow.definedIn[nodeName]?.length,
       cfg.dataFlow.liveOut[nodeName]?.length,
+      Object.keys(cfg.dataFlow.reachingOut[nodeName])?.length,
       0
     );
     const rows: JSX.Element[] = [];
@@ -150,6 +278,9 @@ export const CfgView = () => {
           <td className={"DOMTREElist"}>{i < cfg.domtree[nodeName].length ? cfg.domtree[nodeName][i] : ""}</td>
           <td className={"DEFINEDlist"}>{i < cfg.dataFlow.definedIn[nodeName].length ? cfg.dataFlow.definedIn[nodeName][i] : ""}</td>
           <td className={"ALIVElist"}>{i < cfg.dataFlow.liveOut[nodeName].length ? cfg.dataFlow.liveOut[nodeName][i] : ""}</td>
+          <td className={"REACHlist"}>
+            {i < Object.keys(cfg.dataFlow.reachingIn[nodeName]).length ? Object.keys(cfg.dataFlow.reachingIn[nodeName])[i] : ""}
+          </td>
         </tr>
       );
       rows.push(row);
@@ -182,6 +313,7 @@ export const CfgView = () => {
       </Box>
 
       <Box ref={visJsRef} overflow="hidden"></Box>
+
       {showTable && (
         <Box p={2} borderTop="1px solid lightgrey" height="250px" width="100%" fontSize="10pt">
           <OverlayScrollbarsComponent defer style={{ marginTop: "0px" }}>
@@ -192,6 +324,7 @@ export const CfgView = () => {
                   <th>DomTree</th>
                   <th>Defined</th>
                   <th>Alive</th>
+                  <th>Reach</th>
                 </tr>
               </thead>
               <tbody>{renderRows}</tbody>

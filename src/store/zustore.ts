@@ -2,7 +2,7 @@ import { CstNode } from "chevrotain";
 import produce from "immer";
 import create from "zustand";
 import { IBrilProgram } from "../languages/bril/BrilInterface";
-import { ICFG } from "../languages/bril/cfgBuilder";
+import { ICFG } from "../languages/bril/cfg";
 import { IAstProgram } from "../languages/simpleC/ast";
 import { ISimpleCLangError } from "../components/simpleCEditor/monaco/DiagnosticsAdapter";
 
@@ -12,15 +12,20 @@ export interface SettingsState {
     nodeName: string;
     functionName: string;
   };
-  optim: {
-    keepPhis: boolean;
-    isSSA: boolean;
-    doLVN: boolean;
-    doGVN: boolean;
-    doDCE: boolean;
+  optimisations: {
+    selected: string[];
+    available: string[];
   };
+  // optim: {
+  //   removePhis: boolean;
+  //   isSSA: boolean;
+  //   doLVN: boolean;
+  //   doGVN: boolean;
+  //   doDCE: boolean;
+  //   doLICM: boolean;
+  // };
   bril: {
-    keepPhis: boolean;
+    removePhis: boolean;
     isSSA: boolean;
   };
   wasm: {
@@ -37,20 +42,27 @@ export interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Screen/setpixel.sc",
-  filename: "./Syntax/memory.sc",
+  // filename: "./Syntax/while.sc",
+  filename: "./Optimisation/induction.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
   },
-  optim: {
-    keepPhis: true,
-    isSSA: false,
-    doLVN: false,
-    doGVN: false,
-    doDCE: false,
+  optimisations: {
+    // selected: ["LICM", "SSA", "Phis-", "DCE"],
+    selected: ["LICM/SR"],
+    available: ["LVN", "GVN"],
   },
+  // optim: {
+  //   removePhis: true,
+  //   isSSA: true,
+  //   doLVN: false,
+  //   doGVN: true,
+  //   doDCE: true,
+  //   doLICM: true,
+  // },
   bril: {
-    keepPhis: true,
+    removePhis: false,
     isSSA: false,
   },
   wasm: {

@@ -1,6 +1,9 @@
+// Reaching definitions
+// https://www.cs.cornell.edu/courses/cs6120/2019fa/blog/loop-reduction/
+
 import _ from "lodash";
 import { IBrilProgram, IBrilValueInstruction } from "./BrilInterface";
-import { addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGBlock, ICFGBlockMap } from "./cfgBuilder";
+import { addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGBlock, ICFGBlockMap } from "./cfg";
 
 interface IDFAnalysis<T> {
   forward: boolean;
@@ -15,6 +18,15 @@ const union = (sets: string[][]) => _.union(...sets);
 
 // vars that have a generated value in this block
 const generatedVars = (block: ICFGBlock) => block.instructions.filter((ins) => "dest" in ins).map((ins) => (ins as IBrilValueInstruction).dest);
+
+// {var:block} for vars defined in block
+const definedVars = (block: ICFGBlock) =>
+  block.instructions
+    .filter((ins) => "dest" in ins)
+    .map((ins) => {
+      const i = ins as IBrilValueInstruction;
+      return { [i.dest]: block.name };
+    });
 
 // vars that are read/used before they are written to in this block
 // the values must have been set in an earlier block
@@ -60,7 +72,46 @@ const cprop_merge = (inputs: Record<string, string>[]) => {
   return merged;
 };
 
-const ANALYSES: Record<string, IDFAnalysis<any>> = {
+// reaching definitions
+// { blockName: { reachingVariable: [...originatingBlocks] } }
+
+const reaching_transfer = (block: ICFGBlock, in_: Record<string, string[]>) => {
+  const _out: Record<string, string[]> = { ...in_ };
+  // overwrite any incoming definitions with local definition if same name - the local kills the incoming definition
+  // this achieves the same as def_b | (in_b - def_b)
+
+  // def_b is all variable names defined in block (ie x:int = const 5;)
+  const def_b = generatedVars(block);
+  def_b.forEach((definedVar) => {
+    _out[definedVar] = [block.name];
+  });
+
+  return _out;
+};
+
+const reaching_merge = (inputs: Record<string, string[]>[]) => {
+  // reaching merge is union of all inedges
+  // inputs will be array of { reachingVarName: [...OriginatingBlocks]}
+
+  const out: Record<string, string[]> = {};
+
+  inputs.forEach((incoming) => {
+    Object.entries(incoming).forEach(([reachingVarName, originatingBlocks]) => {
+      if (!Object.keys(out).includes(reachingVarName)) {
+        // reachingVarName is not yet in out
+        out[reachingVarName] = originatingBlocks;
+      } else {
+        // reachingVarName is already in out, merge the originating blocks
+        out[reachingVarName] = _.union(out[reachingVarName], originatingBlocks);
+      }
+    });
+  });
+
+  return out;
+};
+
+export const ANALYSES: Record<string, IDFAnalysis<any>> = {
+  reaching: { forward: true, init: {}, merge: reaching_merge, transfer: reaching_transfer } as IDFAnalysis<Record<string, string[]>>,
   defined: { forward: true, init: [], merge: union, transfer: (block, in_) => _.union(in_, generatedVars(block)) } as IDFAnalysis<string[]>,
   live: {
     forward: false,
@@ -74,6 +125,12 @@ const ANALYSES: Record<string, IDFAnalysis<any>> = {
     merge: cprop_merge,
     transfer: cprop_transfer,
   } as IDFAnalysis<Record<string, string>>,
+  written: {
+    forward: true,
+    init: [],
+    merge: union,
+    transfer: (block, in_) => generatedVars(block),
+  },
 };
 
 export const dfWorklist = (blockMap: ICFGBlockMap, analysis: IDFAnalysis<any>) => {
@@ -92,7 +149,7 @@ export const dfWorklist = (blockMap: ICFGBlockMap, analysis: IDFAnalysis<any>) =
     outEdges = predecessorsMap;
   }
 
-  const _in: Record<string, any> = { firstBlock: analysis.init };
+  const _in: Record<string, any> = { [firstBlock!.name]: analysis.init };
   const _out: Record<string, any> = Object.keys(blockMap).reduce((accum: Record<string, any>, name) => {
     accum[name] = analysis.init;
     return accum;
@@ -128,12 +185,13 @@ export const runDataFlow = (bril: IBrilProgram, analysis: string) => {
     addCfgTerminators(dfBlockMap);
 
     const { _in, _out } = dfWorklist(dfBlockMap, ANALYSES[analysis]);
-    console.log(`${fnName}: `, _in, _out);
+    // console.log(`${fnName}: `, _in, _out);
   });
 };
 
 export const getDataFlow = (blockMap: ICFGBlockMap) => {
   const { _in: definedIn, _out: definedOut } = dfWorklist(blockMap, ANALYSES["defined"]);
+  const { _in: reachingIn, _out: reachingOut } = dfWorklist(blockMap, ANALYSES["reaching"]);
   const { _in: liveIn, _out: liveOut } = dfWorklist(blockMap, ANALYSES["live"]);
   const { _in: cpropIn, _out: cpropOut } = dfWorklist(blockMap, ANALYSES["cprop"]);
   return {
@@ -143,5 +201,7 @@ export const getDataFlow = (blockMap: ICFGBlockMap) => {
     liveOut: liveOut as Record<string, string[]>,
     cpropIn: cpropIn as Record<string, Record<string, string>>,
     cpropOut: cpropOut as Record<string, Record<string, string>>,
+    reachingIn: reachingIn as Record<string, Record<string, string[]>>,
+    reachingOut: reachingOut as Record<string, Record<string, string[]>>,
   };
 };

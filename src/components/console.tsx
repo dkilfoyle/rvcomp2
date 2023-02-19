@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Console, Hook } from "console-feed";
 import "overlayscrollbars/overlayscrollbars.css";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import { Grid, Tag, TagLabel, TagLeftIcon } from "@chakra-ui/react";
+import { Grid, Tag, TagLabel, TagLeftIcon, VStack } from "@chakra-ui/react";
 import { CheckCircleIcon, CloseIcon, QuestionIcon, WarningIcon } from "@chakra-ui/icons";
 import { useParseStore, ParseState } from "../store/zustore";
 import { IBrilProgram } from "../languages/bril/BrilInterface";
@@ -46,7 +46,7 @@ const statusLookup = {
 
 const makeTag = (item: string, data: string, status: "good" | "bad" | "na") => {
   return (
-    <Tag size="sm" borderRadius="full" colorScheme={statusLookup[status].color} key={item}>
+    <Tag size="sm" borderRadius="full" colorScheme={statusLookup[status].color} key={item} width="100%" height="30px" fontSize="8pt">
       <TagLeftIcon boxSize="12px" as={statusLookup[status].icon}></TagLeftIcon>
       <TagLabel width="100%">
         <Grid templateColumns="auto 1fr" width="100%">
@@ -60,6 +60,8 @@ const makeTag = (item: string, data: string, status: "good" | "bad" | "na") => {
 const countInstructions = (bril: IBrilProgram) => {
   return Object.values(bril.functions).reduce((accum, curFn) => (accum += curFn.instrs.length), 0);
 };
+
+window.conout0 = { ...window.console };
 
 export const Consoler: React.FC = () => {
   const { cst, ast, bril, brilOptim, errors, wasm } = useParseStore((state: ParseState) => ({
@@ -80,7 +82,7 @@ export const Consoler: React.FC = () => {
   const consoleScollRef = useRef<OverlayScrollbarsComponentRef>(null);
 
   useEffect(() => {
-    Hook((window as any).console, (log) => setLogs((currLogs) => [...currLogs, log]), false);
+    Hook((window as any).conout0, (log) => setLogs((currLogs) => [...currLogs, log]), false);
     // return () => Unhook((window as any).console);
   }, []);
 
@@ -117,9 +119,9 @@ export const Consoler: React.FC = () => {
 
   return (
     <Grid templateColumns="auto 1fr" height="100%" gap={2}>
-      <Grid gap={0.5} p={2} borderRight="1px solid lightgrey" minWidth="180px">
-        {statusTags.map((tag) => tag)}
-      </Grid>
+      {/* <Grid gap={0.5} p={2} borderRight="1px solid lightgrey" minWidth="180px"> */}
+      <VStack p="5px">{statusTags.map((tag) => tag)}</VStack>
+      {/* </Grid> */}
       <OverlayScrollbarsComponent defer style={{ height: "100%", marginTop: "3px", marginBottom: "3px" }}>
         <Console
           logs={logs}

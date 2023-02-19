@@ -12,7 +12,7 @@ import { runWasm } from "../languages/wasm/runWasm";
 
 import "./output.css";
 import { GiSlowBlob } from "react-icons/gi";
-import { FaRunning } from "react-icons/fa";
+import { FaRunning, FaShippingFast } from "react-icons/fa";
 import { SiWebassembly } from "react-icons/si";
 
 const theme = {
@@ -104,7 +104,14 @@ export const Output: React.FC = () => {
 
     if (isRunAuto) {
       if (isRunWasm && Object.keys(brilOptim.functions).length) {
-        runWasm(brilOptim).then((res) => {
+        let wasmByteCode: Uint8Array;
+        try {
+          wasmByteCode = emitWasm(brilOptim);
+        } catch (e) {
+          window.conout3.log(`emitWasm error: ${e}`);
+          return;
+        }
+        runWasm(wasmByteCode).then((res) => {
           wasmMemory = new Uint8Array(res.memory.buffer, 0, 10240 + res.heap_pointer);
           segments[1].end = 10240 + Math.max(0, brilOptim.dataSize - 1);
           segments[2].start = 10240 + brilOptim.dataSize;
@@ -115,7 +122,7 @@ export const Output: React.FC = () => {
       if (isRunUnoptim) brilMemory = runInterpretor(bril, [], window.conout1, "un-optimised");
       if (isRunOptim) optimMemory = runInterpretor(brilOptim, [], window.conout2, "optimised");
     }
-  }, [bril, brilOptim]);
+  }, [bril, brilOptim, isRunAuto, isRunWasm, isRunUnoptim, isRunOptim]);
 
   useEffect(() => {
     if (showScreen) paintScreen("brilCanvas", brilMemory);
@@ -178,7 +185,7 @@ export const Output: React.FC = () => {
           <Icon as={GiSlowBlob} />
         </Tab>
         <Tab>
-          <Icon as={FaRunning} />
+          <Icon as={FaShippingFast} />
         </Tab>
         <Tab>
           <Icon as={SiWebassembly} />
@@ -209,7 +216,7 @@ export const Output: React.FC = () => {
             {showScreen ? <canvas id="brilCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
           </Grid>
         </TabPanel>
-        <TabPanel>
+        <TabPanel height="100%">
           <Grid templateColumns="1fr auto auto auto auto" gap="2" height="100%">
             <OverlayScrollbarsComponent style={fullHeight} ref={optimOutputRef}>
               <Console

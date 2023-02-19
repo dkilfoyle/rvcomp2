@@ -49,7 +49,7 @@ export const BrilView: React.FC = () => {
         };
       }),
     };
-    console.log("brilTreeDataMemo", bril);
+    // console.log("brilTreeDataMemo", bril);
     return root;
   }, [bril]);
 

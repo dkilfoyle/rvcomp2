@@ -33,7 +33,7 @@ export class BrilBuilder {
   reset() {
     this.program = { functions: {}, key: 0, data: new Map<string, { offset: number; size: number; bytes: Uint8Array }>(), dataSize: 0 };
     this.curFunction = undefined;
-    this.nextFresh = 0;
+    this.nextFresh = 1;
     this.keyIndex = 1;
   }
 

@@ -14,7 +14,7 @@ export class BrilCompletionProvider implements monaco.languages.CompletionItemPr
       startColumn: word.startColumn,
       endColumn: word.endColumn,
     };
-    console.log("Word: ", word, range);
+    // console.log("Word: ", word, range);
 
     const resource = model.uri;
     const items: monaco.languages.CompletionItem[] = [];
