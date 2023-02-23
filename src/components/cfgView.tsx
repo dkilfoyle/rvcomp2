@@ -86,6 +86,7 @@ export const CfgView = () => {
   const setSettings = useSettingsStore((state: SettingsState) => state.set);
 
   const [showTable, setShowTable] = useState<boolean>(true);
+  const [hoverActive, setHoverActive] = useState<boolean>(true);
 
   const visJsRef = useRef<HTMLDivElement>(null);
   let network: Network;
@@ -160,17 +161,14 @@ export const CfgView = () => {
       // autoResize: true,
       // height: "90%",
       width: "100%",
-      interaction: { hover: true },
+      interaction: { hover: true, dragNodes: true },
       layout: {
         hierarchical: {
           enabled: true,
-          levelSeparation: 110,
-          // sortMethod: "directed",
-          // shakeTowards: "roots",
-
-          //   levelSeparation: 55,
-          //   edgeMinimization: false,
-          // sortMethod: "directed",
+          levelSeparation: 100,
+          nodeSpacing: 200,
+          parentCentralization: true,
+          edgeMinimization: true,
         },
       },
       physics: false,
@@ -193,21 +191,26 @@ export const CfgView = () => {
       //   dispatch(setCfgNodeName(params.nodes[0]));
       //   // console.log(cfg?.blockMap[params.nodes[0]]);
       // });
+      network.on("dragEnd", (params) => {
+        setHoverActive(false);
+      });
       network.on("hoverNode", (params) => {
+        // if (!hoverActive) return;
         setSettings((state: SettingsState) => {
           state.cfg.nodeName = params.node;
         });
         if (cfg) {
           // set all nodes back to default color and border
-          cfgVisData.nodes.update(Object.values(cfg.blockMap).map((node) => ({ id: node.name, color: "#97C2FC" })));
+          cfgVisData.nodes.updateOnly(Object.values(cfg.blockMap).map((node) => ({ id: node.name, color: "#97C2FC" })));
           // color dolminance tree of the hovered node in green
-          cfgVisData.nodes.update(cfg.domtree[params.node].map((dominator) => ({ id: dominator, color: "#68D391" })));
+          cfgVisData.nodes.updateOnly(cfg.domtree[params.node].map((dominator) => ({ id: dominator, color: "#68D391" })));
           // color dominators of the hovered node in red
-          cfgVisData.nodes.update(cfg.dom[params.node].map((dominator) => ({ id: dominator, color: "#FC8181" })));
+          cfgVisData.nodes.updateOnly(cfg.dom[params.node].map((dominator) => ({ id: dominator, color: "#FC8181" })));
         }
         // dispatch(setCfgNodeName(params.node));
       });
       network.on("hoverEdge", (params) => {
+        if (!hoverActive) return;
         if (cfg) {
           const hoveredEdge = cfgVisData.edges.get(params.edge) as unknown as ICfgEdge;
           const backEdge = cfg.backEdges.find(([tail, head]) => tail == hoveredEdge.from && head == hoveredEdge.to);
@@ -220,11 +223,12 @@ export const CfgView = () => {
         }
       });
       network.on("blurEdge", (params) => {
+        if (!hoverActive) return;
         if (cfg) {
           cfgVisData.nodes.update(Object.values(cfg.blockMap).map((node) => ({ id: node.name, color: "#97C2FC" })));
         }
       });
-      network?.fit();
+      // network?.fit();
     }
   }, [visJsRef, cfgVisData]);
 

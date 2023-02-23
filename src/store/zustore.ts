@@ -43,7 +43,7 @@ export interface SettingsState {
 export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Screen/setpixel.sc",
   // filename: "./Syntax/while.sc",
-  filename: "./Screen/gameoflife.sc",
+  filename: "./Screen/setpixel.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

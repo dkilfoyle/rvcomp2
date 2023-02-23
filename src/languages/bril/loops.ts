@@ -191,7 +191,7 @@ const moveLI = (
         const cond2 = liveOut[blockNames[ind]].includes(invariantInstruction.dest) == false;
         // cond3: block dominates all loop exits where dest is live out
         const cond3 = edest.every((exitBlockName) => dom[exitBlockName].includes(blockName));
-        console.log(`block ${blockName}, invariant intruction dest ${invariantInstruction.dest}, codeMotion = `, cond1, cond2, cond3);
+        // console.log(`block ${blockName}, invariant intruction dest ${invariantInstruction.dest}, codeMotion = `, cond1, cond2, cond3);
         if (cond1 && cond2 && cond3) {
           _.remove(blockMap[blockName].instructions, (i) => "dest" in i && i.dest == invariantInstruction.dest);
           blockMap[preHeaderMap[blockName]].instructions.unshift(invariantInstruction); // unshift because preheader comes with preformed terminator instruction

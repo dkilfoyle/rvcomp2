@@ -16,13 +16,30 @@ import {
   IBrilValueInstruction,
 } from "../bril/BrilInterface";
 import { cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGBlock } from "../bril/cfg";
-import { findCommonDescendent, getDominatorMap } from "../bril/dom";
+import { findCommonDescendent, findCommonSuccessor, getDominatorMap } from "../bril/dom";
 import { getBackEdges, getNaturalLoops } from "../bril/loops";
 import { unsignedLEB128, signedLEB128, encodeString, ieee754 } from "./encoding";
+import {
+  Opcodes,
+  functionType,
+  encodeVector,
+  Valtype,
+  emptyArray,
+  Blocktype,
+  IWasmOpCode,
+  encodeLocal,
+  createSection,
+  Section,
+  Mutable,
+  ExportType,
+  magicModuleHeader,
+  moduleVersion,
+} from "./wasm";
+import { libraryFunctions } from "./wasmLib";
 
-let allSymbols: Record<string, string[]> = {};
+export let allSymbols: Record<string, string[]> = {};
 
-const convertBrilToWasmType = (type: IBrilType) => {
+export const convertBrilToWasmType = (type: IBrilType) => {
   if (typeof type == "object" && "ptr" in type) return "i32";
   switch (type) {
     case "int":
@@ -40,185 +57,7 @@ const convertBrilToWasmType = (type: IBrilType) => {
   }
 };
 
-const flatten = (arr: any[]) => [].concat.apply([], arr);
-
-// https://webassembly.github.io/spec/core/binary/modules.html#sections
-enum Section {
-  custom = 0,
-  type = 1,
-  import = 2,
-  func = 3,
-  table = 4,
-  memory = 5,
-  global = 6,
-  export = 7,
-  start = 8,
-  element = 9,
-  code = 10,
-  data = 11,
-}
-
-// https://webassembly.github.io/spec/core/binary/types.html
-enum Valtype {
-  i32 = 0x7f,
-  f32 = 0x7d,
-  void = 0x0,
-}
-
-enum Mutable {
-  no = 0,
-  yes = 1,
-}
-
-// https://webassembly.github.io/spec/core/binary/types.html#binary-blocktype
-enum Blocktype {
-  void = 0x40,
-}
-
-type IWasmOpCode =
-  | "block"
-  | "loop"
-  | "if"
-  | "else"
-  | "br"
-  | "br_if"
-  | "end"
-  | "return"
-  | "call"
-  | "get_local"
-  | "set_local"
-  | "get_global"
-  | "set_global"
-  | "i32_load"
-  | "i32_load8_s"
-  | "i32_store_8"
-  | "i32_store"
-  | "f32_store"
-  | "i32_const"
-  | "f32_const"
-  | "i32_eqz"
-  | "i32_eq"
-  | "i32_lt"
-  | "i32_gt"
-  | "i32_le"
-  | "i32_ge"
-  | "f32_lt"
-  | "f32_gt"
-  | "f32_le"
-  | "f32_ge"
-  | "f32_eq"
-  | "i32_and"
-  | "i32_or"
-  | "i32_add"
-  | "i32_sub"
-  | "i32_mul"
-  | "i32_div"
-  | "f32_add"
-  | "f32_sub"
-  | "f32_mul"
-  | "f32_div"
-  | "i32_trunc_f32_s";
-
-// https://webassembly.github.io/spec/core/binary/instructions.html
-const Opcodes: Record<IWasmOpCode, number> = {
-  block: 0x02,
-  loop: 0x03,
-  if: 0x04,
-  else: 0x05,
-  br: 0x0c,
-  br_if: 0x0d,
-  return: 0x0f,
-  end: 0x0b,
-  call: 0x10,
-  // locals
-  get_local: 0x20,
-  set_local: 0x21,
-  get_global: 0x23,
-  set_global: 0x24,
-
-  // memory
-  i32_load: 0x28,
-  i32_load8_s: 0x2c,
-  i32_store_8: 0x3a,
-  i32_store: 0x36,
-  f32_store: 0x38,
-  // numeric
-  i32_const: 0x41,
-  f32_const: 0x43,
-  i32_eqz: 0x45,
-  i32_eq: 0x46,
-  // i32 signed comparison
-  i32_lt: 0x48,
-  i32_gt: 0x4a,
-  i32_le: 0x4c,
-  i32_ge: 0x4e,
-  // f32 comparison
-  f32_lt: 0x5d,
-  f32_gt: 0x5e,
-  f32_le: 0x5f,
-  f32_ge: 0x60,
-
-  f32_eq: 0x5b,
-  // i32 logical
-  i32_and: 0x71,
-  i32_or: 0x72,
-  // i32 arthimetic
-  i32_add: 0x6a,
-  i32_sub: 0x6b,
-  i32_mul: 0x6c,
-  i32_div: 0x6d,
-  // f32 arthimetic
-  f32_add: 0x92,
-  f32_sub: 0x93,
-  f32_mul: 0x94,
-  f32_div: 0x95,
-  i32_trunc_f32_s: 0xa8,
-};
-
-const binaryOpcode = {
-  float: {
-    add: Opcodes.f32_add,
-    sub: Opcodes.f32_sub,
-    mul: Opcodes.f32_mul,
-    div: Opcodes.f32_div,
-    eq: Opcodes.f32_eq,
-    gt: Opcodes.f32_gt,
-    lt: Opcodes.f32_lt,
-  },
-  int: {
-    "&&": Opcodes.i32_and,
-  },
-};
-
-// http://webassembly.github.io/spec/core/binary/modules.html#export-section
-enum ExportType {
-  func = 0x00,
-  table = 0x01,
-  mem = 0x02,
-  global = 0x03,
-}
-
-// http://webassembly.github.io/spec/core/binary/types.html#function-types
-const functionType = 0x60;
-
-const emptyArray = 0x0;
-
-// https://webassembly.github.io/spec/core/binary/modules.html#binary-module
-const magicModuleHeader = [0x00, 0x61, 0x73, 0x6d];
-const moduleVersion = [0x01, 0x00, 0x00, 0x00];
-
-// https://webassembly.github.io/spec/core/binary/conventions.html#binary-vec
-// Vectors are encoded with their length followed by their element sequence
-const encodeVector = (data: any[]) => [...unsignedLEB128(data.length), ...flatten(data)];
-
-// https://webassembly.github.io/spec/core/binary/modules.html#code-section
-const encodeLocal = (count: number, type: Valtype) => [...unsignedLEB128(count), type];
-
-// https://webassembly.github.io/spec/core/binary/modules.html#sections
-// sections are encoded by their type followed by their vector contents
-const createSection = (sectionType: Section, data: any[]) => [sectionType, ...encodeVector(data)];
-
-// ===========================================================================
+export const flatten = (arr: any[]) => [].concat.apply([], arr);
 
 enum Offsets {
   screen = 0,
@@ -232,111 +71,12 @@ const encodeConstI32_UnSigned = (i32: number) => {
   return [Opcodes.i32_const, ...unsignedLEB128(i32), Opcodes.end];
 };
 
-const includeLibFunctions = {
-  set_pixel: false,
-};
-
 const importedFunctions = [
   { name: "print_int", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
   { name: "print_string", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
   { name: "print_char", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
   { name: "render", signature: [functionType, ...encodeVector([]), emptyArray] },
 ];
-
-const libraryFunctions = [
-  {
-    name: "set_pixel",
-    signature: [functionType, ...encodeVector([Valtype.f32, Valtype.f32, Valtype.f32, Valtype.f32, Valtype.f32]), emptyArray],
-  },
-];
-
-// ===========================================================================
-
-const emitSetPixelFunction = () => {
-  const code: number[] = [];
-  const args: IBrilArgument[] = [
-    { name: "x", type: "float" },
-    { name: "y", type: "float" },
-    { name: "r", type: "float" },
-    { name: "g", type: "float" },
-    { name: "b", type: "float" },
-  ];
-
-  const symbols = new Map<string, { index: number; type: Valtype }>(
-    args.map((arg, index) => [arg.name, { index, type: Valtype[convertBrilToWasmType(arg.type)] }])
-  );
-  symbols.set("poffset", { index: 5, type: Valtype.i32 });
-
-  const localIndexForSymbol = (name: string, type: IBrilType) => {
-    if (!symbols.has(name)) {
-      symbols.set(name, { index: symbols.size, type: Valtype[convertBrilToWasmType(type)] });
-    }
-    return symbols.get(name)!;
-  };
-
-  // emit instructions
-
-  // compute the offset (y * 100 * 4) + (x*4)
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("y", "float").index));
-  code.push(Opcodes.f32_const, ...ieee754(400));
-  code.push(Opcodes.f32_mul);
-
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("x", "float").index));
-  code.push(Opcodes.f32_const, ...ieee754(4));
-  code.push(Opcodes.f32_mul);
-
-  code.push(Opcodes.f32_add);
-
-  // convert to an integer
-  code.push(Opcodes.i32_trunc_f32_s);
-
-  // save in local $poffset
-  // code.push(Opcodes.set_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
-  code.push(Opcodes.set_local, ...unsignedLEB128(5));
-
-  // fetch the pixel offset
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
-  // fetch red value and cast to int
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("r", "float").index));
-  code.push(Opcodes.i32_trunc_f32_s);
-  // write r
-  code.push(Opcodes.i32_store_8, 0x00, 0x00); // align and offset
-
-  // fetch the pixel offset
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
-  // fetch red value and cast to int
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("g", "float").index));
-  code.push(Opcodes.i32_trunc_f32_s);
-  // write r
-  code.push(Opcodes.i32_store_8, 0x00, 0x01); // align and offset
-
-  // fetch the pixel offset
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
-  // fetch red value and cast to int
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("b", "float").index));
-  code.push(Opcodes.i32_trunc_f32_s);
-  // write r
-  code.push(Opcodes.i32_store_8, 0x00, 0x02); // align and offset
-
-  // fetch the pixel offset
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
-  // then push 255
-  code.push(Opcodes.i32_const, ...unsignedLEB128(255));
-  // then store at offset poffset+3
-  code.push(Opcodes.i32_store, 0x00, 0x03); // align and offset
-
-  const localCount = symbols.size;
-  // locals come after args
-  const locals = Array.from(symbols)
-    .slice(args.length)
-    .map(([key, value]) => encodeLocal(1, value.type));
-  console.log(encodeVector(locals));
-
-  allSymbols["set_pixel"] = Array.from(symbols.keys());
-  console.log(allSymbols);
-
-  return encodeVector([...encodeVector(locals), ...code, Opcodes.end]);
-};
 
 const emitWasmFunction = (
   func: IBrilFunction,
@@ -402,22 +142,28 @@ const emitWasmFunction = (
       const loopExitChild = loopBodyChild == 0 ? 1 : 0;
       emitBlock(blockMap[block.out[loopExitChild]]);
     } else if (ifBlock) {
+      // console.log("Emitting ifblock", block.name);
       emitInstructions(block.instructions, false);
 
       // end if block will be where the if and else paths converge
-      const endIfBlock = findCommonDescendent(successorsMap, backEdges, block.out[0], block.out[1]);
+      const endIfBlock = findCommonSuccessor(successorsMap, backEdges, block.out[0], block.out[1]);
+      if (endIfBlock == "") throw new Error(`findCommonSuccessor found no result for ${block.out[0]}, ${block.out[1]}`);
+      // console.log("  endif block = ", endIfBlock);
 
       // traverse then blocks until reach endif
+      // console.log("  traversing then for ", block.name);
       emitBlock(blockMap[block.out[0]], endIfBlock);
 
       // traverse else blocks (if present) until reach endif
       if (block.out[1] !== endIfBlock) {
+        // console.log("  traversing else for ", block.name);
         code.push(Opcodes.else);
         emitBlock(blockMap[block.out[1]], endIfBlock);
       }
 
       // traverse the endIfBlock
       code.push(Opcodes.end);
+      // console.log(`  traversing endifblock for ${block.name} = ${endIfBlock}`);
       emitBlock(blockMap[endIfBlock], stopBlock);
     } else {
       emitInstructions(block.instructions, false);
@@ -539,65 +285,27 @@ const emitWasmFunction = (
               code.push(Opcodes.if);
               code.push(Blocktype.void);
             }
-
-            // br could be start of if/then/else or start of loop
-            // ideal: examine CFG to determine if loop (loop has a backedge - ie an edge where the head (destination) dominates the tail)
-            // cheat: use the label name prefix as generated by astToBril ie br test then.0 else.0 vs br test whilebody.0 whileend.0
-            // if (!instr.labels) throw new Error("Instr missing labels - badly formed bril");
-            // const brInstr = instr as IBrilEffectOperation;
-            // if (!brInstr.args) throw new Error("Branch instruction missing args - badly formed bril");
-
-            // if (instr.labels[0].startsWith("then")) {
-            //   // if branch
-            //   // load test bool var onto top of stack
-            //   code.push(Opcodes.get_local);
-            //   code.push(...unsignedLEB128(localIndexForSymbol(brInstr.args[0], "int").index));
-
-            //   code.push(Opcodes.if);
-            //   code.push(Blocktype.void);
-
-            //   blockStatus.push("expectThen"); // the next label should be then.x
-            // } else if (instr.labels[0].startsWith("whilebody")) {
-            //   // while loop
-            //   // instr is br args[0] whilebody whileexit
-            //   // we should already have processed whiletest and should be expecting whilebody
-            //   if (_.last(blockStatus) != "expectWhileBody") throw new Error(`Hit .whilebody but expecting ${_.last(blockStatus)}`);
-            //   // load test bool var onto top of stack
-            //   code.push(Opcodes.get_local);
-            //   code.push(...unsignedLEB128(localIndexForSymbol(brInstr.args[0], "int").index));
-            //   // exit loop if !true
-            //   code.push(Opcodes.i32_eqz);
-            //   code.push(Opcodes.br_if);
-            //   code.push(...signedLEB128(1));
-            //   // the nested logic will now follow until we hit the whileend label
-            // } else throw new Error("Unknown branch type");
             break;
           case "call":
             if (!instr.funcs) throw new Error(`Instr.funcs missing, badly formed bril`);
             const funcName = instr.funcs[0];
             let callFuncIndex: number;
-            switch (funcName) {
-              case "print_int":
-                callFuncIndex = 0;
-                break;
-              case "print_string":
-                callFuncIndex = 1;
-                break;
-              case "print_char":
-                callFuncIndex = 2;
-                break;
-              case "render":
-                callFuncIndex = 3;
-                break;
-              case "set_pixel":
-                callFuncIndex = Object.keys(program.functions).length + importedFunctions.length;
-                includeLibFunctions.set_pixel = true;
-                break;
-              default:
-                callFuncIndex = Object.keys(program.functions).findIndex((f) => f === funcName);
-                if (callFuncIndex == -1) throw new Error(`calling unknown function ${funcName}`);
-                callFuncIndex += importedFunctions.length;
+
+            const importedFuncIndex = importedFunctions.findIndex((importfunc) => importfunc.name == funcName);
+            if (importedFuncIndex !== -1) {
+              callFuncIndex = importedFuncIndex;
+            } else {
+              const programFuncIndex = Object.keys(program.functions).findIndex((f) => f === funcName);
+              if (programFuncIndex !== -1) {
+                callFuncIndex = importedFunctions.length + programFuncIndex;
+              } else {
+                const libraryFuncIndex = Object.keys(libraryFunctions).findIndex((f) => f === funcName);
+                if (libraryFuncIndex !== -1) {
+                  callFuncIndex = Object.keys(program.functions).length + importedFunctions.length + libraryFuncIndex;
+                } else throw new Error(`calling unknown function ${funcName}`);
+              }
             }
+
             const argIndexes = instr.args?.map((arg) => localsymbols.get(arg)!.index);
             argIndexes?.forEach((argIndex, i) => {
               if (_.isUndefined(argIndex)) {
@@ -608,6 +316,12 @@ const emitWasmFunction = (
             });
             code.push(Opcodes.call);
             code.push(...unsignedLEB128(callFuncIndex));
+
+            if ("dest" in instr) {
+              const calldest = localIndexForSymbol(instr.dest, instr.type).index;
+              code.push(Opcodes.set_local);
+              code.push(...unsignedLEB128(calldest));
+            }
 
             //const argIndexesString = argIndexes?.map((i) => `(get_local ${i})`);
             // console.log(`(call ${callFuncIndex} ${argIndexesString})`);
@@ -704,70 +418,13 @@ const emitWasmFunction = (
         }
       else {
         // label instruction
-        const lblInstr = instr as IBrilLabel;
+        // const lblInstr = instr as IBrilLabel;
         // ignore labels
-
-        // if (instr.label.startsWith("whiletest")) {
-        //   // while lope
-        //   // outer block
-        //   code.push(Opcodes.block);
-        //   code.push(Blocktype.void);
-        //   // inner loop
-        //   code.push(Opcodes.loop);
-        //   code.push(Blocktype.void);
-        //   blockStatus.push("expectWhileBody");
-        // } else
-        //   switch (_.last(blockStatus)) {
-        //     case "expectThen":
-        //       if (lblInstr.label.startsWith("then")) {
-        //         // thenBlock
-        //         // the next label in current block stack should be an else
-        //         blockStatus[blockStatus.length - 1] = "expectElse";
-        //       } else throw new Error("Wasm was expecting a 'then' label");
-        //       break;
-        //     case "expectElse":
-        //       if (lblInstr.label.startsWith("else")) {
-        //         code.push(Opcodes.else);
-        //         // the next label in current block stack should be an endif
-        //         blockStatus[blockStatus.length - 1] = "expectEndif";
-        //       } else throw new Error("Wasm was expected a 'else' label");
-        //       break;
-        //     case "expectEndif":
-        //       if (lblInstr.label.startsWith("endif")) {
-        //         code.push(Opcodes.end);
-        //         // pop the if/then/else block off the stack
-        //         blockStatus.pop();
-        //       } else throw new Error("Wasm was expected a 'endif' label");
-        //       break;
-        //     case "expectWhileBody":
-        //       blockStatus[blockStatus.length - 1] = "expectWhileEnd";
-        //       break;
-        //     case "expectWhileEnd":
-        //       // br $label1
-        //       code.push(Opcodes.br);
-        //       code.push(...signedLEB128(0));
-        //       // end loop
-        //       code.push(Opcodes.end);
-        //       // end block
-        //       code.push(Opcodes.end);
-        //       blockStatus.pop();
-        //       break;
-        //     case "root":
-        //       if (lblInstr.label !== func.name)
-        //         // functions start with label :funcName
-        //         throw new Error("Block stack at root level - why are we seeing label " + instr.label);
-        //       break;
-        //     default:
-        //       throw new Error(`Unknown block status ${_.last(blockStatus)} at top of block stack`);
-        //   }
-        // debugger;
-        // throw new Error(`emitWasm: labels not implemented yet`);
       }
     });
-    // const bs = _.last(blockStatus);
-    // if (bs !== "root") throw new Error(`Wasm block stack should be at root, not ${bs}`);
   };
 
+  console.log("emtiWasm: Function: ", func.name);
   emitBlock(blockArray[0]); // start emitting blocks
 
   const localCount = localsymbols.size;
@@ -788,11 +445,20 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
 
   allSymbols = {};
 
-  includeLibFunctions.set_pixel = false;
-  Object.values(bril.functions).forEach((func) => {
-    func.instrs.forEach((instr) => {
-      if ("op" in instr && instr.op == "call" && instr.funcs && instr.funcs[0] == "set_pixel") includeLibFunctions.set_pixel = true;
-    });
+  Object.values(libraryFunctions).forEach((libFunc) => {
+    let found = false;
+    for (let codeFunc of Object.values(bril.functions)) {
+      for (let instr of codeFunc.instrs) {
+        if ("op" in instr && instr.op == "call" && instr.funcs) {
+          if (Object.keys(libraryFunctions).includes(instr.funcs[0])) {
+            found = true;
+            break;
+          }
+        }
+      }
+      if (found) break;
+    }
+    libFunc.include = found;
   });
 
   let dataSection: number[];
@@ -835,14 +501,23 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   ]);
 
   // the type section is a vector of function types
-  const functionTypes = [...importedFunctions.map((impfun) => impfun.signature), ...codeFunctions];
-  if (includeLibFunctions.set_pixel) functionTypes.push(libraryFunctions[0].signature);
+  const functionTypes = [
+    ...importedFunctions.map((impfun) => impfun.signature),
+    ...codeFunctions,
+    ...Object.values(libraryFunctions)
+      .filter((f) => f.include)
+      .map((f) => f.signature),
+  ];
   const typeSection = createSection(Section.type, encodeVector(functionTypes));
 
   // the function section is a vector of type indices that indicate the type of each function
   // in the code section
-  const nonImportFunctionTypeIndexes = brilFunctions.map((_, index) => index + importedFunctions.length); // + 1 because imported print_int is type 0
-  if (includeLibFunctions.set_pixel) nonImportFunctionTypeIndexes.push(brilFunctions.length + importedFunctions.length); // set pixel type is after coded functions
+  const nonImportFunctionTypeIndexes = [
+    ...brilFunctions.map((_, index) => importedFunctions.length + index),
+    ...Object.values(libraryFunctions)
+      .filter((f) => f.include)
+      .map((_, index) => importedFunctions.length + brilFunctions.length + index),
+  ];
   const funcSection = createSection(Section.func, encodeVector(nonImportFunctionTypeIndexes));
 
   // the import section is a vector of imported functions
@@ -881,8 +556,12 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
   );
 
   // the code section contains vectors of functions
-  const functionBodies = brilFunctions.map((func) => emitWasmFunction(func, bril, cfg, globals));
-  if (includeLibFunctions.set_pixel) functionBodies.push(emitSetPixelFunction());
+  const functionBodies = [
+    ...brilFunctions.map((func) => emitWasmFunction(func, bril, cfg, globals)),
+    ...Object.values(libraryFunctions)
+      .filter((f) => f.include)
+      .map((f) => f.emit()),
+  ];
   const codeSection = createSection(Section.code, encodeVector(functionBodies));
 
   const globalsArray = Object.values(globals);

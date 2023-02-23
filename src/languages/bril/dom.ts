@@ -123,6 +123,28 @@ export const findCommonDescendent = (successorMap: IStringsMap, backEdges: strin
   return "";
 };
 
+export const findCommonSuccessor = (successorMap: IStringsMap, backEdges: string[][], a: string, b: string) => {
+  const getSuccessors = (node: string, successors: string[]) => {
+    successorMap[node].forEach((successorName) => {
+      if (!backEdges.find(([tail, head]) => tail == node && head == successorName)) {
+        successors.push(successorName);
+        getSuccessors(successorName, successors);
+      }
+    });
+  };
+
+  const aSuccessors: string[] = [];
+  getSuccessors(a, aSuccessors);
+  const bSuccessors: string[] = [];
+  getSuccessors(b, bSuccessors);
+
+  const abIntersection = _.intersection(aSuccessors, bSuccessors);
+  console.log("findCommonSucessor", a, b, abIntersection);
+
+  if (abIntersection.length > 0) return abIntersection[0];
+  else return "";
+};
+
 // def dom_tree(dom):
 //     # Get the blocks strictly dominated by a block strictly dominated by
 //     # a given block.
