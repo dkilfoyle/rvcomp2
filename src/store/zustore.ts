@@ -43,15 +43,15 @@ export interface SettingsState {
 export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Screen/setpixel.sc",
   // filename: "./Syntax/while.sc",
-  filename: "./Screen/setpixel.sc",
+  filename: "./Screen/mandel.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
   },
   optimisations: {
     // selected: ["LICM", "SSA", "Phis-", "DCE"],
-    selected: ["LICM/SR"],
-    available: ["LVN", "GVN"],
+    selected: [],
+    available: ["LICM&SR", "LVN", "GVN", "DCE"],
   },
   // optim: {
   //   removePhis: true,

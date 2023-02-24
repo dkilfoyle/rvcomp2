@@ -140,7 +140,7 @@ const emitWasmFunction = (
 
       // visit the loop exit block
       const loopExitChild = loopBodyChild == 0 ? 1 : 0;
-      emitBlock(blockMap[block.out[loopExitChild]]);
+      emitBlock(blockMap[block.out[loopExitChild]], stopBlock);
     } else if (ifBlock) {
       // console.log("Emitting ifblock", block.name);
       emitInstructions(block.instructions, false);

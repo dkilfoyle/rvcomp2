@@ -22,8 +22,9 @@ void main() {
         b = j;
         c = c + 1f;
       }
-      set_pixel(x, y, c);
+      set_pixel(x, y, c, c, c);
     }
   }
+  render();
 }
     

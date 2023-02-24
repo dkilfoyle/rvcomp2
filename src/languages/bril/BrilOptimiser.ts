@@ -24,10 +24,10 @@ export const optimiseBril = (bril: IBrilProgram, optimisations: string[], logger
             const statsSSA = runSSA(blockMap, func);
             if (logger) logger.info(`${func.name}: SSA: `, statsSSA);
             break;
-          case "LICM/SR":
+          case "LICM&SR":
             const licmResult = licm_sr(func, blockMap);
             blockMap = licmResult.blockMap;
-            if (logger) logger.info(`${func.name}: LICM/SR: `, licmResult.stats);
+            if (logger) logger.info(`${func.name}: LICM&SR: `, licmResult.stats);
             break;
           case "LVN":
             const lvnStats = lvn(blockMap);
