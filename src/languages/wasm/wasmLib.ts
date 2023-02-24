@@ -1,16 +1,18 @@
 import { IBrilArgument, IBrilType } from "../bril/BrilInterface";
 import { allSymbols, convertBrilToWasmType } from "./brilToWasm";
-import { unsignedLEB128, ieee754 } from "./encoding";
+import { unsignedLEB128, ieee754, signedLEB128 } from "./encoding";
 import { functionType, encodeVector, Valtype, emptyArray, Opcodes, encodeLocal } from "./wasm";
 
 export const libraryFunctions = {
   set_pixel: {
-    signature: [functionType, ...encodeVector([Valtype.f32, Valtype.f32, Valtype.f32, Valtype.f32, Valtype.f32]), ...[emptyArray]],
+    argTypes: [Valtype.i32, Valtype.i32, Valtype.i32, Valtype.i32, Valtype.i32],
+    retType: Valtype.i32,
     include: false,
     emit: () => emitSetPixelFunction(),
   },
   get_pixel: {
-    signature: [functionType, ...encodeVector([Valtype.i32, Valtype.i32]), ...[1, Valtype.i32]],
+    argTypes: [Valtype.i32, Valtype.i32],
+    retType: Valtype.i32,
     include: false,
     emit: () => emitGetPixelFunction(),
   },
@@ -36,15 +38,13 @@ const emitGetPixelFunction = () => {
     return symbols.get(name)!;
   };
   // compute the offset (y * 100 + x)*4
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("y", "float").index));
-  code.push(Opcodes.f32_const, ...ieee754(100));
-  code.push(Opcodes.f32_mul);
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("y", "int").index));
+  code.push(Opcodes.i32_const, ...signedLEB128(100));
+  code.push(Opcodes.i32_mul);
 
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("x", "float").index));
-  code.push(Opcodes.f32_add);
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("x", "int").index));
+  code.push(Opcodes.i32_add);
 
-  // convert to an integer
-  code.push(Opcodes.i32_trunc_f32_s);
   // shl 2 = * 4
   code.push(Opcodes.i32_const, ...unsignedLEB128(2));
   code.push(Opcodes.i32_shl);
@@ -66,11 +66,11 @@ const emitGetPixelFunction = () => {
 const emitSetPixelFunction = () => {
   const code: number[] = [];
   const args: IBrilArgument[] = [
-    { name: "x", type: "float" },
-    { name: "y", type: "float" },
-    { name: "r", type: "float" },
-    { name: "g", type: "float" },
-    { name: "b", type: "float" },
+    { name: "x", type: "int" },
+    { name: "y", type: "int" },
+    { name: "r", type: "int" },
+    { name: "b", type: "int" },
+    { name: "g", type: "int" },
   ];
 
   const symbols = new Map<string, { index: number; type: Valtype }>(
@@ -88,63 +88,51 @@ const emitSetPixelFunction = () => {
   // emit instructions
 
   // compute the offset (y * 100 + x)*4
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("y", "float").index));
-  code.push(Opcodes.f32_const, ...ieee754(100));
-  code.push(Opcodes.f32_mul);
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("y", "int").index));
+  code.push(Opcodes.i32_const, ...signedLEB128(100));
+  code.push(Opcodes.i32_mul);
 
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("x", "float").index));
-  code.push(Opcodes.f32_add);
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("x", "int").index));
+  code.push(Opcodes.i32_add);
 
-  // convert to an integer
-  code.push(Opcodes.i32_trunc_f32_s);
   // shl 2 = * 4
   code.push(Opcodes.i32_const, ...unsignedLEB128(2));
   code.push(Opcodes.i32_shl);
 
   // save in local $poffset
-  // code.push(Opcodes.set_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
-  code.push(Opcodes.set_local, ...unsignedLEB128(5));
+  code.push(Opcodes.set_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
 
-  // fetch the pixel offset
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
-  // fetch red value and cast to int
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("r", "float").index));
-  code.push(Opcodes.i32_trunc_f32_s);
   // write r
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("r", "int").index));
   code.push(Opcodes.i32_store_8, 0x00, 0x00); // align and offset
 
-  // fetch the pixel offset
+  // write b
   code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
-  // fetch red value and cast to int
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("g", "float").index));
-  code.push(Opcodes.i32_trunc_f32_s);
-  // write r
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("b", "int").index));
   code.push(Opcodes.i32_store_8, 0x00, 0x01); // align and offset
 
-  // fetch the pixel offset
+  // write g
   code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
-  // fetch red value and cast to int
-  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("b", "float").index));
-  code.push(Opcodes.i32_trunc_f32_s);
-  // write r
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("g", "int").index));
   code.push(Opcodes.i32_store_8, 0x00, 0x02); // align and offset
 
-  // fetch the pixel offset
+  // write alpha
   code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
-  // then push 255
   code.push(Opcodes.i32_const, ...unsignedLEB128(255));
-  // then store at offset poffset+3
   code.push(Opcodes.i32_store, 0x00, 0x03); // align and offset
+
+  // return the offset
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
+  code.push(Opcodes.return);
 
   const localCount = symbols.size;
   // locals come after args
   const locals = Array.from(symbols)
     .slice(args.length)
     .map(([key, value]) => encodeLocal(1, value.type));
-  console.log(encodeVector(locals));
 
   allSymbols["set_pixel"] = Array.from(symbols.keys());
-  console.log(allSymbols);
 
   return encodeVector([...encodeVector(locals), ...code, Opcodes.end]);
 };

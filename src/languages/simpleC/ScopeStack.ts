@@ -42,7 +42,7 @@ export class ScopeStack {
         {
           _name: "functionDeclaration",
           id: "set_pixel",
-          type: "void",
+          type: "int",
           block: { _name: "block", statements: [], heapVars: [] },
           params: [
             { _name: "variableDeclaration", id: "x", type: "float", pos: getLibPos() },

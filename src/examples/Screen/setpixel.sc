@@ -1,8 +1,9 @@
 void main() {
-  float x = 50f;
-  float y = 50f;
-  float c = 100f;
-  set_pixel(x,y,c,0f,0f);
-  print_int(get_pixel(50,50));
+  int x = 0;
+  int y = 0;
+  int c = 255;
+  set_pixel(x, y, c, 155, 0);
+  print_int(get_pixel(x, y));
+  render();
 }
     

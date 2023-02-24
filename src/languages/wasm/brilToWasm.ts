@@ -72,10 +72,10 @@ const encodeConstI32_UnSigned = (i32: number) => {
 };
 
 const importedFunctions = [
-  { name: "print_int", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
-  { name: "print_string", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
-  { name: "print_char", signature: [functionType, ...encodeVector([Valtype.i32]), emptyArray] },
-  { name: "render", signature: [functionType, ...encodeVector([]), emptyArray] },
+  { name: "print_int", argTypes: [Valtype.i32], retType: Valtype.void },
+  { name: "print_string", argTypes: [Valtype.i32], retType: Valtype.void },
+  { name: "print_char", argTypes: [Valtype.i32], retType: Valtype.void },
+  { name: "render", argTypes: [], retType: Valtype.void },
 ];
 
 const emitWasmFunction = (
@@ -290,30 +290,48 @@ const emitWasmFunction = (
             if (!instr.funcs) throw new Error(`Instr.funcs missing, badly formed bril`);
             const funcName = instr.funcs[0];
             let callFuncIndex: number;
+            let calleeSignature: number[];
 
             const importedFuncIndex = importedFunctions.findIndex((importfunc) => importfunc.name == funcName);
             if (importedFuncIndex !== -1) {
               callFuncIndex = importedFuncIndex;
+              calleeSignature = importedFunctions[importedFuncIndex].argTypes;
             } else {
               const programFuncIndex = Object.keys(program.functions).findIndex((f) => f === funcName);
               if (programFuncIndex !== -1) {
                 callFuncIndex = importedFunctions.length + programFuncIndex;
+                calleeSignature = program.functions[funcName].args.map((arg) => Valtype[convertBrilToWasmType(arg.type)]);
               } else {
                 const libraryFuncIndex = Object.keys(libraryFunctions).findIndex((f) => f === funcName);
                 if (libraryFuncIndex !== -1) {
                   callFuncIndex = Object.keys(program.functions).length + importedFunctions.length + libraryFuncIndex;
+                  calleeSignature = Object.values(libraryFunctions)[libraryFuncIndex].argTypes;
                 } else throw new Error(`calling unknown function ${funcName}`);
               }
             }
 
-            const argIndexes = instr.args?.map((arg) => localsymbols.get(arg)!.index);
-            argIndexes?.forEach((argIndex, i) => {
-              if (_.isUndefined(argIndex)) {
-                throw new Error(`Emit call: argument[${i}] undefined`);
-              }
+            // push each argument onto the stack before emiting call opcode
+            // cast floats to ints if needed
+            instr.args?.forEach((argName, argIndex) => {
+              const argSymbol = localsymbols.get(argName);
+              if (!argSymbol) throw new Error(`Emit call: argument[${argName}] undefined`);
               code.push(Opcodes.get_local);
-              code.push(...unsignedLEB128(argIndex));
+              code.push(...unsignedLEB128(argSymbol.index));
+              if (argSymbol.type == Valtype.f32 && calleeSignature[argIndex] == Valtype.i32) {
+                // cast f32 argument to i32 parameter
+                code.push(Opcodes.i32_trunc_f32_s);
+              }
             });
+            // const argIndexes = instr.args?.map((arg) => localsymbols.get(arg)!.index);
+            // argIndexes?.forEach((argIndex, i) => {
+            //   if (_.isUndefined(argIndex)) {
+            //     throw new Error(`Emit call: argument[${i}] undefined`);
+            //   }
+            //   code.push(Opcodes.get_local);
+            //   code.push(...unsignedLEB128(argIndex));
+            // });
+
+            // emit call
             code.push(Opcodes.call);
             code.push(...unsignedLEB128(callFuncIndex));
 
@@ -502,11 +520,11 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
 
   // the type section is a vector of function types
   const functionTypes = [
-    ...importedFunctions.map((impfun) => impfun.signature),
+    ...importedFunctions.map((f) => [functionType, ...encodeVector(f.argTypes), ...(f.retType == 0 ? [0] : [1, f.retType])]),
     ...codeFunctions,
     ...Object.values(libraryFunctions)
       .filter((f) => f.include)
-      .map((f) => f.signature),
+      .map((f) => [functionType, ...encodeVector(f.argTypes), ...(f.retType == 0 ? [0] : [1, f.retType])]),
   ];
   const typeSection = createSection(Section.type, encodeVector(functionTypes));
 
