@@ -54,6 +54,7 @@ export interface IAstWhileStatement extends IAstStatement {
 export interface IAstDeclaration extends IAstNode {
   id: string;
   type: IDeclarationType;
+  size?: number;
   docComment?: IAstDocComment;
   pos: IPos;
 }
@@ -61,7 +62,6 @@ export interface IAstDeclaration extends IAstNode {
 export interface IAstVariableDeclaration extends IAstDeclaration {
   _name: "variableDeclaration";
   initExpr?: IAstExpression;
-  size?: number;
   pos: IPos;
 }
 
@@ -108,6 +108,7 @@ export interface IAstIdentifierExpression extends IAstDeclaration, IAstExpressio
 export interface IAstFunctionCallExpression extends IAstExpression {
   _name: "functionCallExpression";
   id: string;
+  size?: number;
   params: IAstExpression[];
   type: IDeclarationType;
 }

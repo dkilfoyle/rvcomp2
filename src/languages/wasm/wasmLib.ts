@@ -29,7 +29,7 @@ const emitGetPixelFunction = () => {
   const symbols = new Map<string, { index: number; type: Valtype }>(
     args.map((arg, index) => [arg.name, { index, type: Valtype[convertBrilToWasmType(arg.type)] }])
   );
-  symbols.set("poffset", { index: 5, type: Valtype.i32 });
+  symbols.set("poffset", { index: 2, type: Valtype.i32 });
 
   const localIndexForSymbol = (name: string, type: IBrilType) => {
     if (!symbols.has(name)) {
@@ -49,7 +49,15 @@ const emitGetPixelFunction = () => {
   code.push(Opcodes.i32_const, ...unsignedLEB128(2));
   code.push(Opcodes.i32_shl);
 
-  code.push(Opcodes.i32_load, 2, 0); // align and offset
+  // save in local $poffset
+  code.push(Opcodes.set_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
+
+  // retrieve the 4 byte pixel value as an int32
+  // code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
+  // code.push(Opcodes.i32_load, 2, 0); // align and offset
+
+  // return the offset
+  code.push(Opcodes.get_local, ...unsignedLEB128(localIndexForSymbol("poffset", "int").index));
   code.push(Opcodes.return);
 
   const localCount = symbols.size;

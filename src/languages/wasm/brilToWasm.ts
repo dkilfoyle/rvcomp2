@@ -291,21 +291,25 @@ const emitWasmFunction = (
             const funcName = instr.funcs[0];
             let callFuncIndex: number;
             let calleeSignature: number[];
+            let calleeReturnType: number;
 
             const importedFuncIndex = importedFunctions.findIndex((importfunc) => importfunc.name == funcName);
             if (importedFuncIndex !== -1) {
               callFuncIndex = importedFuncIndex;
               calleeSignature = importedFunctions[importedFuncIndex].argTypes;
+              calleeReturnType = importedFunctions[importedFuncIndex].retType;
             } else {
               const programFuncIndex = Object.keys(program.functions).findIndex((f) => f === funcName);
               if (programFuncIndex !== -1) {
                 callFuncIndex = importedFunctions.length + programFuncIndex;
                 calleeSignature = program.functions[funcName].args.map((arg) => Valtype[convertBrilToWasmType(arg.type)]);
+                calleeReturnType = Valtype[convertBrilToWasmType(program.functions[funcName].type!)];
               } else {
                 const libraryFuncIndex = Object.keys(libraryFunctions).findIndex((f) => f === funcName);
                 if (libraryFuncIndex !== -1) {
                   callFuncIndex = Object.keys(program.functions).length + importedFunctions.length + libraryFuncIndex;
                   calleeSignature = Object.values(libraryFunctions)[libraryFuncIndex].argTypes;
+                  calleeReturnType = Object.values(libraryFunctions)[libraryFuncIndex].retType;
                 } else throw new Error(`calling unknown function ${funcName}`);
               }
             }
@@ -336,9 +340,11 @@ const emitWasmFunction = (
             code.push(...unsignedLEB128(callFuncIndex));
 
             if ("dest" in instr) {
-              const calldest = localIndexForSymbol(instr.dest, instr.type).index;
-              code.push(Opcodes.set_local);
-              code.push(...unsignedLEB128(calldest));
+              // dest = pop return value off stack
+              code.push(Opcodes.set_local, ...unsignedLEB128(localIndexForSymbol(instr.dest, instr.type).index));
+            } else if (calleeReturnType != Valtype.void) {
+              // throw away dest
+              code.push(Opcodes.drop);
             }
 
             //const argIndexesString = argIndexes?.map((i) => `(get_local ${i})`);

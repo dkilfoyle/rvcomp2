@@ -78,7 +78,8 @@ export type IWasmOpCode =
   | "f32_mul"
   | "f32_div"
   | "i32_trunc_f32_s"
-  | "i32_shl";
+  | "i32_shl"
+  | "drop";
 
 // https://webassembly.github.io/spec/core/binary/instructions.html
 export const Opcodes: Record<IWasmOpCode, number> = {
@@ -91,6 +92,7 @@ export const Opcodes: Record<IWasmOpCode, number> = {
   return: 0x0f,
   end: 0x0b,
   call: 0x10,
+  drop: 0x1a,
   // locals
   get_local: 0x20,
   set_local: 0x21,

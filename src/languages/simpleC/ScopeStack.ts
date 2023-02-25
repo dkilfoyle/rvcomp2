@@ -1,6 +1,6 @@
 import { CstNodeLocation } from "chevrotain";
-import { parseDocCommentString, convertDocCommentToSuggestionString, IAstDocComment } from "./ast";
 import { IAstDeclaration, IAstFunctionDeclaration, IAstVariableDeclaration, IDeclarationType, IDeclarationValue, IPos } from "./ast";
+import { libraryFunctions } from "./libraryFunctions";
 
 export type ISignature = IAstVariableDeclaration | IAstFunctionDeclaration;
 export interface IScope {
@@ -32,97 +32,12 @@ export class ScopeStack {
   }
 
   getGlobalScope(location: CstNodeLocation): IScope {
-    const getLibPos = () => ({ startLineNumber: 0, endLineNumber: 0, startColumn: 0, endColumn: 0 });
     return {
       name: "global",
       location,
       parent: undefined,
       children: [],
-      signatures: [
-        {
-          _name: "functionDeclaration",
-          id: "set_pixel",
-          type: "int",
-          block: { _name: "block", statements: [], heapVars: [] },
-          params: [
-            { _name: "variableDeclaration", id: "x", type: "float", pos: getLibPos() },
-            { _name: "variableDeclaration", id: "y", type: "float", pos: getLibPos() },
-            { _name: "variableDeclaration", id: "r", type: "float", pos: getLibPos() },
-            { _name: "variableDeclaration", id: "g", type: "float", pos: getLibPos() },
-            { _name: "variableDeclaration", id: "b", type: "float", pos: getLibPos() },
-          ],
-          docComment: parseDocCommentString("/**\n* @desc Print an integer to console\n* @param [int num] Number to print\n*/"),
-          pos: getLibPos(),
-        },
-        {
-          _name: "functionDeclaration",
-          id: "get_pixel",
-          type: "int",
-          block: { _name: "block", statements: [], heapVars: [] },
-          params: [
-            { _name: "variableDeclaration", id: "x", type: "int", pos: getLibPos() },
-            { _name: "variableDeclaration", id: "y", type: "int", pos: getLibPos() },
-          ],
-          docComment: parseDocCommentString("/**\n* @desc Print an integer to console\n* @param [int num] Number to print\n*/"),
-          pos: getLibPos(),
-        },
-        {
-          _name: "functionDeclaration",
-          id: "print_int",
-          type: "void",
-          block: { _name: "block", statements: [], heapVars: [] },
-          params: [{ _name: "variableDeclaration", id: "x", type: "int", pos: getLibPos() }],
-          docComment: parseDocCommentString("/**\n* @desc Print an integer to console\n* @param [int num] Number to print\n*/"),
-          pos: getLibPos(),
-        },
-        {
-          _name: "functionDeclaration",
-          id: "print_string",
-          type: "void",
-          block: { _name: "block", statements: [], heapVars: [] },
-          params: [{ _name: "variableDeclaration", id: "x", type: "int", pos: getLibPos() }],
-          docComment: parseDocCommentString(
-            "/**\n* @desc Print the string at memory [offset] to console\n* @param [int offset] memory location of string\n*/"
-          ),
-          pos: getLibPos(),
-        },
-        {
-          _name: "functionDeclaration",
-          id: "print_char",
-          type: "void",
-          block: { _name: "block", statements: [], heapVars: [] },
-          params: [{ _name: "variableDeclaration", id: "x", type: "int", pos: getLibPos() }],
-          docComment: parseDocCommentString("/**\n* @desc Print the char to console\n* @param [char c]\n*/"),
-          pos: getLibPos(),
-        },
-        {
-          _name: "functionDeclaration",
-          id: "print_float",
-          type: "void",
-          block: { _name: "block", statements: [], heapVars: [] },
-          params: [{ _name: "variableDeclaration", id: "x", type: "float", pos: getLibPos() }],
-          docComment: parseDocCommentString("/**\n* @desc Print a float to console\n* @param [float num] Number to print\n*/"),
-          pos: getLibPos(),
-        },
-        {
-          _name: "functionDeclaration",
-          id: "print_bool",
-          type: "void",
-          block: { _name: "block", statements: [], heapVars: [] },
-          params: [{ _name: "variableDeclaration", id: "b", type: "bool", pos: getLibPos() }],
-          docComment: parseDocCommentString("/**\n* @desc Print an boolean to console\n* @param [int num] Number to print\n*/"),
-          pos: getLibPos(),
-        },
-        {
-          _name: "functionDeclaration",
-          id: "render",
-          type: "void",
-          block: { _name: "block", statements: [], heapVars: [] },
-          params: [],
-          docComment: parseDocCommentString("/**\n* @desc render screen buffer to DOM canvas\n */"),
-          pos: getLibPos(),
-        },
-      ],
+      signatures: libraryFunctions,
     };
   }
 

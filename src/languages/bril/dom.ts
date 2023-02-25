@@ -139,7 +139,7 @@ export const findCommonSuccessor = (successorMap: IStringsMap, backEdges: string
   getSuccessors(b, bSuccessors);
 
   const abIntersection = _.intersection(aSuccessors, bSuccessors);
-  console.log("findCommonSucessor", a, b, abIntersection);
+  // console.log("findCommonSucessor", a, b, abIntersection);
 
   if (abIntersection.length > 0) return abIntersection[0];
   else return "";

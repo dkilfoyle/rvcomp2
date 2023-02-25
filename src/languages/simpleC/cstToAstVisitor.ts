@@ -43,6 +43,7 @@ import {
   IAstBoolLiteralExpression,
   IAstExpression,
   IAstForStatement,
+  IAstFunctionCallExpression,
   IAstFunctionDeclaration,
   IAstIdentifierExpression,
   IAstIfStatement,
@@ -141,6 +142,10 @@ class CstVisitor extends CstBaseVisitor {
       const expr = lhs as IAstIdentifierExpression;
       if (expr.size && _.isUndefined(expr.index)) return `${expr.type}[${expr.size}]`;
       else return expr.type;
+    } else if (lhs._name == "functionCallExpression") {
+      const expr = lhs as IAstFunctionCallExpression;
+      if (expr.size) return `${expr.type}[${expr.size}]`;
+      else return expr.type;
     } else return lhs.type;
   }
 
@@ -151,6 +156,7 @@ class CstVisitor extends CstBaseVisitor {
     const rhsType = this.getExpressionType(rhs);
 
     if (lhsType !== rhsType) {
+      debugger;
       this.errors.push({ ...rhs.pos, code: "2", message: `Type mismatch: ${lhsType} != ${rhsType}` });
       return false;
     } else return true;
@@ -460,7 +466,7 @@ class CstVisitor extends CstBaseVisitor {
 
     const params = ctx.expressionList ? this.visit(ctx.expressionList).params : [];
     const pass = this.checkParams(decl.id, decl.pos!, params);
-    return { _name: "functionCallExpression", id: decl.id, params, type: decl.type, pos: decl.pos };
+    return { _name: "functionCallExpression", id: decl.id, params, type: decl.type, size: decl.size, pos: this.getTokenPos(ctx.ID[0]) };
   }
 
   identifierExpression(ctx: IdentifierExpressionCstChildren) {
