@@ -175,8 +175,14 @@ export class BrilBuilder {
     return this.buildEffect("call", args, [func], undefined);
   }
 
-  buildValueCall(func: string, args: string[], type: IBrilType, assignIDExpr?: IAstIdentifierExpression): IBrilValueOperation {
-    return this.buildValue("call", type, args, [func], undefined, assignIDExpr);
+  buildValueCall(func: string, args: string[], type: IBrilType, index?: number, assignIDExpr?: IAstIdentifierExpression): IBrilValueOperation {
+    const instr = this.buildValue("call", type, args, [func], undefined, assignIDExpr);
+    this.insert(instr);
+    if (!_.isUndefined(index)) {
+      // eg myfunc()[0]
+      const indexinstr = this.buildArrayGetValue(type, instr.dest, index, assignIDExpr);
+      return indexinstr;
+    } else return instr;
   }
 
   insertValueInstruction(instr: IBrilValueInstruction, assignIDExpr?: IAstIdentifierExpression) {

@@ -464,9 +464,12 @@ class CstVisitor extends CstBaseVisitor {
       return { _name: "nop" };
     }
 
+    const index = ctx.arrayIndex ? this.visit(ctx.arrayIndex[0]).value : undefined;
+    if (index) this.checkInBounds(decl, index.value, index.pos);
+
     const params = ctx.expressionList ? this.visit(ctx.expressionList).params : [];
     const pass = this.checkParams(decl.id, decl.pos!, params);
-    return { _name: "functionCallExpression", id: decl.id, params, type: decl.type, size: decl.size, pos: this.getTokenPos(ctx.ID[0]) };
+    return { _name: "functionCallExpression", id: decl.id, params, type: decl.type, size: decl.size, pos: this.getTokenPos(ctx.ID[0]), index };
   }
 
   identifierExpression(ctx: IdentifierExpressionCstChildren) {

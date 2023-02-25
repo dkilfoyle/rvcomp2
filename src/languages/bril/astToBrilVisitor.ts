@@ -247,6 +247,7 @@ class AstToBrilVisitor {
           n.id,
           params.map((p) => p.dest),
           n.type as IBrilType,
+          n.index,
           assignIDExpr
         );
       case "invalidExpression":

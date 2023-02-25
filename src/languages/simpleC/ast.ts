@@ -109,6 +109,7 @@ export interface IAstFunctionCallExpression extends IAstExpression {
   _name: "functionCallExpression";
   id: string;
   size?: number;
+  index?: number;
   params: IAstExpression[];
   type: IDeclarationType;
 }

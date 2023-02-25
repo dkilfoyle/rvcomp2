@@ -245,6 +245,9 @@ export type FunctionCallExpressionCstChildren = {
   LParen: IToken[];
   expressionList?: ExpressionListCstNode[];
   RParen: IToken[];
+  LSquare?: IToken[];
+  arrayIndex?: IntegerLiteralExpressionCstNode[];
+  RSquare?: IToken[];
 };
 
 export interface ParenExpressionCstNode extends CstNode {

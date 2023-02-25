@@ -272,6 +272,11 @@ class SimpleCParser extends CstParser {
     this.CONSUME(tokens.LParen);
     this.OPTION(() => this.SUBRULE(this.expressionList));
     this.CONSUME(tokens.RParen);
+    this.OPTION2(() => {
+      this.CONSUME(tokens.LSquare);
+      this.SUBRULE2(this.integerLiteralExpression, { LABEL: "arrayIndex" });
+      this.CONSUME(tokens.RSquare);
+    });
   });
 
   public parenExpression = this.RULE("parenExpression", () => {
