@@ -380,7 +380,7 @@ const emitWasmFunction = (
                 code.push(Opcodes.i32_load, 2, 0);
                 break;
               case "char":
-                code.push(Opcodes.i32_load8_s, 0, 0);
+                code.push(Opcodes.i32_load8_u, 0, 0);
                 break;
               default:
                 throw new Error("Unsupported load ptr type");

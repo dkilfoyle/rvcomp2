@@ -156,7 +156,6 @@ class CstVisitor extends CstBaseVisitor {
     const rhsType = this.getExpressionType(rhs);
 
     if (lhsType !== rhsType) {
-      debugger;
       this.errors.push({ ...rhs.pos, code: "2", message: `Type mismatch: ${lhsType} != ${rhsType}` });
       return false;
     } else return true;
@@ -241,7 +240,10 @@ class CstVisitor extends CstBaseVisitor {
 
   ifStatement(ctx: IfStatementCstChildren): IAstIfStatement {
     const cond = this.visit(ctx.testExpression) as IAstExpression;
-    if (cond.type != "bool") this.pushError("Expecting bool expression", convertCstNodeLocationToIPos(ctx.testExpression[0].location));
+    if (cond.type != "bool") {
+      debugger;
+      this.pushError("Expecting bool expression", convertCstNodeLocationToIPos(ctx.testExpression[0].location));
+    }
     return {
       _name: "ifStatement",
       cond: this.visit(ctx.testExpression),
@@ -398,6 +400,13 @@ class CstVisitor extends CstBaseVisitor {
     }
   }
 
+  isTypeMatch(lhs: string, rhs: string) {
+    if (lhs == rhs) return true;
+    if (lhs == "int" && rhs == "char") return true;
+    if (lhs == "char" && rhs == "int") return true;
+    return false;
+  }
+
   binaryExpression(ctx: AdditionExpressionCstChildren | MultiplicationExpressionCstChildren | ComparisonExpressionCstChildren) {
     const typeError = (node: IAstExpression): IAstInvalidExpression => {
       this.errors.push({ ...node.pos, code: "2", message: "Expression operands must be all of same type" });
@@ -410,7 +419,10 @@ class CstVisitor extends CstBaseVisitor {
     for (let i = 1; i < ctx.operands.length; i++) {
       const rhs = this.visit(ctx.operands[i]);
 
-      if (rhs.type !== lhs.type) return typeError(rhs);
+      if (!this.isTypeMatch(lhs.type, rhs.type)) {
+        debugger;
+        return typeError(rhs);
+      }
       if (ctx.operators && this.getOperationType(ctx.operators[i - 1].image, "num") == "num" && lhs.type == "bool") {
         this.pushError("Expression operator type does not match operand type", this.getTokenPos(ctx.operators[i - 1]));
         return { _name: "invalidExpression", type: "int", pos: this.getTokenPos(ctx.operators[i - 1]) };

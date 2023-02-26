@@ -2,22 +2,22 @@ int count_neighbors(int x, int y) {
   int count = 0;
   if (x > 0) {
     if (y > 0)
-      if (get_pixel(x-1, y-1) < 0) count++;
-    if (get_pixel(x-1, y) < 0) count++;
+      if (get_pixel(x-1, y-1)[1] == 255) count++;
+    if (get_pixel(x-1, y)[1] == 255) count++;
     if (y < 100)
-      if (get_pixel(x-1, y+1) < 0) count++;
+      if (get_pixel(x-1, y+1)[1] == 255) count++;
   }
   if (x < 99) {
     if (y > 0)
-      if (get_pixel(x+1, y-1) < 0) count++;
-    if (get_pixel(x+1, y) < 0) count++;
+      if (get_pixel(x+1, y-1)[1] == 255) count++;
+    if (get_pixel(x+1, y)[1] == 255) count++;
     if (y < 100)
-      if (get_pixel(x+1, y+1) < 0) count++;
+      if (get_pixel(x+1, y+1)[1] == 255) count++;
   }
   if (y > 0)
-    if (get_pixel(x, y-1) < 0) count++;
+    if (get_pixel(x, y-1)[1] == 255) count++;
   if (y < 99)
-    if (get_pixel(x, y+1) < 0) count++;
+    if (get_pixel(x, y+1)[1] == 255) count++;
   
   return count;
 } 
@@ -52,18 +52,18 @@ void clear_screen() {
 void main() {
   clear_screen();
   setup();
+  
   print_int(count_neighbors(0,0));
   print_int(count_neighbors(3,3));
   print_int(count_neighbors(2,2));
-  int[3] p00;
-  p00 = get_pixel(0,0);
-  print_int(p00[1]);
+  print_int(get_pixel(0,0)[1]);
+
   for (int frame=0; frame < 50; frame++;) {
     for (int x=0; x<100; x++;) {
       for (int y=0; y<100; y++;) {
-        int pixel = get_pixel(x,y);
+        int pixel = get_pixel(x,y)[1];
         int neighbors = count_neighbors(x,y);
-        if (pixel < 0) {
+        if (pixel == 255) {
           // alive
           if (neighbors < 2)
             set_pixel(x,y,0,0,0); 

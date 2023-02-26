@@ -51,6 +51,7 @@ export type IWasmOpCode =
   | "set_global"
   | "i32_load"
   | "i32_load8_s"
+  | "i32_load8_u"
   | "i32_store_8"
   | "i32_store"
   | "f32_store"
@@ -102,6 +103,7 @@ export const Opcodes: Record<IWasmOpCode, number> = {
   // memory
   i32_load: 0x28,
   i32_load8_s: 0x2c,
+  i32_load8_u: 0x2d,
   i32_store_8: 0x3a,
   i32_store: 0x36,
   f32_store: 0x38,
