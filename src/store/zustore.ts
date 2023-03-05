@@ -36,6 +36,12 @@ export interface SettingsState {
     isRunOptim: boolean;
     isRunWasm: boolean;
     isRunAuto: boolean;
+    mainName: string;
+    mainArgs: string;
+    loopName: string;
+    loopDelay: number;
+    loopTimes: number;
+    doRun: number;
   };
   set: (fn: (state: SettingsState) => void) => void;
 }
@@ -43,7 +49,7 @@ export interface SettingsState {
 export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Screen/setpixel.sc",
   // filename: "./Syntax/while.sc",
-  filename: "./Screen/setpixel.sc",
+  filename: "./Screen/gameoflife.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
@@ -73,6 +79,12 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
     isRunOptim: false,
     isRunWasm: true,
     isRunAuto: true,
+    mainName: "main",
+    mainArgs: "",
+    loopName: "frame",
+    loopDelay: 200,
+    loopTimes: 200,
+    doRun: 0,
   },
   set: (fn: (state: SettingsState) => void) => set(produce(fn)),
 }));

@@ -6,7 +6,16 @@ interface IWasmExports {
   heap_pointer: number;
 }
 
-export const runWasm = (wasmBuffer: Uint8Array, canvasId: string) => {
+export interface IRuntimeOptions {
+  canvasId: string;
+  mainFn: string;
+  mainArgs?: number[];
+  loopFn?: string;
+  loopDelay?: number;
+  loopTimes?: number;
+}
+
+export const runWasm = (wasmBuffer: Uint8Array, runtime: IRuntimeOptions) => {
   return WabtModule().then((wabtModule) => {
     const wasmModule = wabtModule.readWasm(wasmBuffer, { readDebugNames: true });
     wasmModule.applyNames();
@@ -14,8 +23,8 @@ export const runWasm = (wasmBuffer: Uint8Array, canvasId: string) => {
     // wasmModule.validate();
     const memory = new WebAssembly.Memory({ initial: 1 });
 
-    const screenCanvas = document.getElementById(canvasId) as HTMLCanvasElement;
-    if (!screenCanvas) throw new Error(`HTML document canvas ${canvasId} does not exist`);
+    const screenCanvas = document.getElementById(runtime.canvasId) as HTMLCanvasElement;
+    if (!screenCanvas) throw new Error(`HTML document canvas ${runtime.canvasId} does not exist`);
     const screenCtx = screenCanvas.getContext("2d");
     if (!screenCtx) throw new Error(`Unable to create canvas ctx`);
 
@@ -34,6 +43,7 @@ export const runWasm = (wasmBuffer: Uint8Array, canvasId: string) => {
     const importObject = {
       env: {
         print_int: (x: number) => window.conout3.info("print_int: ", x),
+        print_float: (x: number) => window.conout3.info("print_float: ", x),
         print_string: (x: number) => window.conout3.info(`print_string @ 0x${x.toString(16)}: ${getStringFromMemory(x)}`),
         print_char: (x: number) => window.conout3.info(`print_char: ${x} = 0x${x.toString(16)} = ${String.fromCharCode(x)}`),
         render: () => {
@@ -41,6 +51,7 @@ export const runWasm = (wasmBuffer: Uint8Array, canvasId: string) => {
           const screenImage = new ImageData(screenData.slice(0, 100 * 100 * 4), 100, 100);
           screenCtx.putImageData(screenImage, 0, 0);
         },
+        random: () => Math.random(),
         memory,
       },
     };
@@ -48,8 +59,26 @@ export const runWasm = (wasmBuffer: Uint8Array, canvasId: string) => {
     return WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
       //run functions here
       console.info(`Running Wasm...`);
+      const loopDelay = runtime.loopDelay || 1000;
+      const loopTimes = runtime.loopTimes || (loopDelay / 1000) * 10; // 10 seconds
+
       const startTime = performance.now();
-      const myresult = res.instance.exports.main();
+      const myresult = runtime.mainArgs ? res.instance.exports[runtime.mainFn](...runtime.mainArgs) : res.instance.exports[runtime.mainFn]();
+      if (runtime.loopFn) {
+        let loopCounter = 0;
+        const loopInterval = setInterval(() => {
+          const loopResult = res.instance.exports[runtime.loopFn]();
+          if (!loopResult) {
+            window.conout3.info(`Exited after frame ${loopCounter}`);
+            clearInterval(loopInterval);
+          }
+          loopCounter++;
+          if (loopCounter > loopTimes) {
+            window.conout3.info(`Halted after frame ${loopCounter}`);
+            clearInterval(loopInterval);
+          }
+        }, loopDelay);
+      }
       const endTime = performance.now();
       // if (myresult != null)
       window.conout3.info(`Returned ${myresult || "void"}, heap_pointer = ${res.instance.exports.heap_pointer.value}`);

@@ -90,4 +90,13 @@ export const libraryFunctions: ISignature[] = [
     docComment: parseDocCommentString("/**\n* @desc render screen buffer to DOM canvas\n */"),
     pos: getLibPos(),
   },
+  {
+    _name: "functionDeclaration",
+    id: "random",
+    type: "float",
+    block: { _name: "block", statements: [], heapVars: [] },
+    params: [],
+    docComment: parseDocCommentString("/**\n* @desc return a random var\n */"),
+    pos: getLibPos(),
+  },
 ];

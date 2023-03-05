@@ -91,11 +91,11 @@ export const Consoler: React.FC = () => {
     if (errors.length == 0) {
       tags.push(makeTag("Parser", `${ast.functionDeclarations.length} funs`, "good"));
       if (Object.keys(bril.functions).length > 0) {
-        tags.push(makeTag("Compiler", `${countInstructions(bril)} instr`, "good"));
+        tags.push(makeTag("Compiler", `${countInstructions(bril)} ins`, "good"));
         if (Object.keys(brilOptim.functions).length > 0) {
-          tags.push(makeTag("Optimiser", `${countInstructions(brilOptim)} instr`, "good"));
+          tags.push(makeTag("Optimiser", `${countInstructions(brilOptim)} ins`, "good"));
           if (wasm.length > 0) {
-            tags.push(makeTag("CodeGen", `${wasm.length} bytes`, "good"));
+            tags.push(makeTag("CodeGen", `${wasm.length}b`, "good"));
           } else {
             tags.push(makeTag("CodeGen", `error(s)`, "bad"));
           }
@@ -104,7 +104,7 @@ export const Consoler: React.FC = () => {
           tags.push(makeTag("CodeGen", `NA`, "na"));
         }
       } else {
-        tags.push(makeTag("Compiler", `${errors.length} instr`, "bad"));
+        tags.push(makeTag("Compiler", `${errors.length} ins`, "bad"));
         tags.push(makeTag("Optimiser", `NA`, "na"));
         tags.push(makeTag("CodeGen", `NA`, "na"));
       }

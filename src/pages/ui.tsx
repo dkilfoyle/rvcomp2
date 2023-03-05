@@ -1,7 +1,7 @@
 import { Editor } from "../components/simpleCEditor/Editor";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import "./ui.css";
-import { Sidebar } from "../components/SideBar";
+import { Sidebar } from "../components/sidebar/SideBar";
 import { Box, ChakraProvider, extendTheme, HStack, Icon, Tab, TabList, Tabs } from "@chakra-ui/react";
 import "rc-tree/assets/index.css";
 

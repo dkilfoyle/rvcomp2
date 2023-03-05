@@ -8,38 +8,16 @@ import { useParseStore, ParseState, useSettingsStore, SettingsState } from "../s
 import { runInterpretor } from "../languages/bril/interp";
 import { emitWasm } from "../languages/wasm/brilToWasm";
 import { MemView } from "./memView";
-import { runWasm } from "../languages/wasm/runWasm";
+import { IRuntimeOptions, runWasm } from "../languages/wasm/runWasm";
 
 import "./output.css";
 import { GiSlowBlob } from "react-icons/gi";
 import { FaRunning, FaShippingFast } from "react-icons/fa";
 import { SiWebassembly } from "react-icons/si";
 
-const theme = {
-  scheme: "monokai",
-  author: "wimer hazenberg (http://www.monokai.nl)",
-  base00: "#272822",
-  base01: "#383830",
-  base02: "#49483e",
-  base03: "#75715e",
-  base04: "#a59f85",
-  base05: "#f8f8f2",
-  base06: "#f5f4f1",
-  base07: "#f9f8f5",
-  base08: "#f92672",
-  base09: "#fd971f",
-  base0A: "#f4bf75",
-  base0B: "#a6e22e",
-  base0C: "#a1efe4",
-  base0D: "#66d9ef",
-  base0E: "#ae81ff",
-  base0F: "#cc6633",
-};
-
 let brilMemory = new Uint8Array();
 let optimMemory = new Uint8Array();
 let wasmMemory = new Uint8Array();
-let heapSize = 0;
 
 window.conout1 = { ...window.console };
 window.conout2 = { ...window.console };
@@ -91,6 +69,10 @@ export const Output: React.FC = () => {
   const optimOutputRef = useRef<OverlayScrollbarsComponentRef>(null);
   const wasmOutputRef = useRef<OverlayScrollbarsComponentRef>(null);
 
+  const [mainName, loopName] = useSettingsStore((state: SettingsState) => [state.interp.mainName, state.interp.loopName]);
+  const mainArgs = useSettingsStore((state: SettingsState) => state.interp.mainArgs);
+  const [loopDelay, loopTimes] = useSettingsStore((state: SettingsState) => [state.interp.loopDelay, state.interp.loopTimes]);
+
   useEffect(() => {
     Hook((window as any).conout1, (log) => setUnoptimLogs((currLogs) => [...currLogs, log]), false);
     Hook((window as any).conout2, (log) => setOptimLogs((currLogs) => [...currLogs, log]), false);
@@ -99,11 +81,9 @@ export const Output: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    setOptimLogs([]);
-    setUnoptimLogs([]);
-
     if (isRunAuto) {
       if (isRunWasm && Object.keys(brilOptim.functions).length) {
+        setWasmLogs([]);
         let wasmByteCode: Uint8Array;
         try {
           wasmByteCode = emitWasm(brilOptim);
@@ -111,7 +91,18 @@ export const Output: React.FC = () => {
           window.conout3.log(`emitWasm error: ${e}`);
           return;
         }
-        runWasm(wasmByteCode, "wasmCanvas").then((res) => {
+        const runtime: IRuntimeOptions = {
+          canvasId: "wasmCanvas",
+          mainFn: mainName,
+          mainArgs: mainArgs
+            .replace(" ", "")
+            .split(",")
+            .map((x) => Number(x)),
+          loopFn: loopName,
+          loopDelay: loopDelay,
+          loopTimes: loopTimes,
+        };
+        runWasm(wasmByteCode, runtime).then((res) => {
           wasmMemory = new Uint8Array(res.memory.buffer, 0, res.heap_pointer);
           segments[1].end = 40960 + Math.max(0, brilOptim.dataSize - 1);
           segments[2].start = 40960 + brilOptim.dataSize;
@@ -119,8 +110,14 @@ export const Output: React.FC = () => {
         });
       }
 
-      if (isRunUnoptim) brilMemory = runInterpretor(bril, [], window.conout1, "un-optimised");
-      if (isRunOptim) optimMemory = runInterpretor(brilOptim, [], window.conout2, "optimised");
+      if (isRunUnoptim) {
+        setUnoptimLogs([]);
+        brilMemory = runInterpretor(bril, [], window.conout1, "un-optimised");
+      }
+      if (isRunOptim) {
+        setOptimLogs([]);
+        optimMemory = runInterpretor(brilOptim, [], window.conout2, "optimised");
+      }
     }
   }, [bril, brilOptim, isRunAuto, isRunWasm, isRunUnoptim, isRunOptim]);
 

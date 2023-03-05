@@ -1,31 +1,8 @@
-import {
-  Accordion,
-  AccordionButton,
-  AccordionIcon,
-  AccordionItem,
-  AccordionPanel,
-  Box,
-  Button,
-  Checkbox,
-  Icon,
-  VStack,
-} from "@chakra-ui/react";
-import { extendTheme } from "@chakra-ui/react";
-import Tree from "rc-tree";
+import { Checkbox } from "@chakra-ui/react";
 import "rc-tree/assets/index.css";
-import { examples } from "../examples/examples";
-import { useSettingsStore, SettingsState } from "../store/zustore";
-import shallow from "zustand/shallow";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-
-import { VscListTree } from "react-icons/vsc";
-import { GiSlowBlob } from "react-icons/gi";
-import { GoFile, GoFileDirectory } from "react-icons/go";
-import { FaRunning, FaShippingFast } from "react-icons/fa";
-import { SiWebassembly } from "react-icons/si";
+import { useSettingsStore, SettingsState } from "../../store/zustore";
 
 import { DragDropContext, Droppable, Draggable, DropResult, ResponderProvided, DraggableLocation } from "react-beautiful-dnd";
-import { useState } from "react";
 
 const fullHeight = { maxHeight: "100%", height: "100%" };
 

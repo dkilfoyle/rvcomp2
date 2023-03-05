@@ -111,7 +111,10 @@ class CstVisitor extends CstBaseVisitor {
 
   checkInScope(testid: string, pos: IPos, scope = this.scopeStack.currentScope) {
     const sig = this.scopeStack.getSignature(testid, scope);
-    if (!sig) this.pushError(`Cannot find name'${testid}'`, pos);
+    // if (!sig) {
+    //   debugger;
+    //   this.pushError(`Cannot find name'${testid}'`, pos);
+    // }
     return sig;
   }
 
@@ -241,12 +244,11 @@ class CstVisitor extends CstBaseVisitor {
   ifStatement(ctx: IfStatementCstChildren): IAstIfStatement {
     const cond = this.visit(ctx.testExpression) as IAstExpression;
     if (cond.type != "bool") {
-      debugger;
       this.pushError("Expecting bool expression", convertCstNodeLocationToIPos(ctx.testExpression[0].location));
     }
     return {
       _name: "ifStatement",
-      cond: this.visit(ctx.testExpression),
+      cond,
       then: this.visit(ctx.thenStatement),
       else: ctx.elseStatement ? this.visit(ctx.elseStatement) : undefined,
     };
@@ -420,7 +422,6 @@ class CstVisitor extends CstBaseVisitor {
       const rhs = this.visit(ctx.operands[i]);
 
       if (!this.isTypeMatch(lhs.type, rhs.type)) {
-        debugger;
         return typeError(rhs);
       }
       if (ctx.operators && this.getOperationType(ctx.operators[i - 1].image, "num") == "num" && lhs.type == "bool") {
@@ -472,7 +473,7 @@ class CstVisitor extends CstBaseVisitor {
     const id = ctx.ID[0].image;
     const decl = this.checkInScope(id, this.getTokenPos(ctx.ID[0])) as IAstVariableDeclaration;
     if (!decl) {
-      this.pushError(`Function ${id} not defined`, this.getTokenPos(ctx.ID[0]));
+      this.pushError(`Function '${id}' not defined`, this.getTokenPos(ctx.ID[0]));
       return { _name: "nop" };
     }
 
@@ -488,10 +489,15 @@ class CstVisitor extends CstBaseVisitor {
     const id = ctx.ID[0].image;
     const index = ctx.arrayIndex ? this.visit(ctx.arrayIndex[0]).value : undefined;
     const decl = this.checkInScope(id, this.getTokenPos(ctx.ID[0])) as IAstVariableDeclaration;
-    if (decl && !_.isUndefined(index)) {
-      this.checkInBounds(decl, index.value, index.pos);
+    if (!decl) {
+      this.pushError(`Identifier '${id}' not defined`, this.getTokenPos(ctx.ID[0]));
+      return { _name: "nop" };
+    } else {
+      if (!_.isUndefined(index)) {
+        this.checkInBounds(decl, index.value, index.pos);
+      }
+      return { ...decl, _name: "identifierExpression", pos: this.getTokenPos(ctx.ID[0]), index };
     }
-    return { ...decl, _name: "identifierExpression", pos: this.getTokenPos(ctx.ID[0]), index };
   }
 
   literalExpression(ctx: LiteralExpressionCstChildren): IAstLiteralExpression {
@@ -567,23 +573,26 @@ class CstVisitor extends CstBaseVisitor {
     const id = ctx.ID[0].image;
     const pos = this.getTokenPos(ctx.ID[0]);
     let type = this.visit(ctx.typeSpecifier).type;
-
     const arraySize = ctx.arraySize ? this.visit(ctx.arraySize[0]).value : undefined;
 
     let initExpr = ctx.additionExpression ? this.visit(ctx.additionExpression) : undefined;
-    if (initExpr && initExpr.type !== type)
-      this.errors.push({
-        ...pos,
-        code: "2",
-        message: `Variable declaration type does not match initiator expression type: ${type} != ${initExpr.type}`,
-      });
+    if (initExpr) {
+      if (initExpr.type !== type)
+        this.errors.push({
+          ...pos,
+          code: "2",
+          message: `Variable declaration type does not match initiator expression type: ${type} != ${initExpr.type}`,
+        });
 
-    if (initExpr && initExpr?.size !== arraySize) {
-      this.errors.push({
-        ...pos,
-        code: "2",
-        message: `Variable declaration size does not match initiator expression size: ${arraySize} != ${initExpr.size}`,
-      });
+      const initExprSize = initExpr.index ? 1 : initExpr.size || 1;
+
+      if (initExprSize !== (arraySize || 1)) {
+        this.errors.push({
+          ...pos,
+          code: "2",
+          message: `Variable declaration size does not match initiator expression size: ${arraySize} != ${initExpr.size}`,
+        });
+      }
     }
 
     return { _name: "variableDeclaration", id, pos, type, initExpr, size: arraySize };

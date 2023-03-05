@@ -1,29 +1,17 @@
-import {
-  Accordion,
-  AccordionButton,
-  AccordionIcon,
-  AccordionItem,
-  AccordionPanel,
-  Box,
-  Button,
-  Checkbox,
-  Icon,
-  VStack,
-} from "@chakra-ui/react";
-import { extendTheme } from "@chakra-ui/react";
+import { Accordion, AccordionButton, AccordionIcon, AccordionItem, AccordionPanel, Box, Checkbox, Icon, VStack } from "@chakra-ui/react";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
-import { examples } from "../examples/examples";
-import { useSettingsStore, SettingsState } from "../store/zustore";
+import { examples } from "../../examples/examples";
+import { useSettingsStore, SettingsState } from "../../store/zustore";
 import shallow from "zustand/shallow";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
-import { VscListTree } from "react-icons/vsc";
 import { GiSlowBlob } from "react-icons/gi";
-import { GoFile, GoFileDirectory } from "react-icons/go";
+import { GoFileDirectory } from "react-icons/go";
 import { FaRunning, FaShippingFast } from "react-icons/fa";
 import { SiWebassembly } from "react-icons/si";
 import { OptimList } from "./OptimList";
+import { InterpreterSettings } from "./interpreterSettings";
 
 interface dirTreeNode {
   key: string;
@@ -69,10 +57,6 @@ export const Sidebar = () => {
   const [filename, isFoldExprs] = useSettingsStore((state: SettingsState) => [state.filename, state.wasm.foldExprs], shallow);
   const brilremovePhis = useSettingsStore((state: SettingsState) => state.bril.removePhis);
   const brilIsSSA = useSettingsStore((state: SettingsState) => state.bril.isSSA);
-  const isRunOptim = useSettingsStore((state: SettingsState) => state.interp.isRunOptim);
-  const isRunUnoptim = useSettingsStore((state: SettingsState) => state.interp.isRunUnoptim);
-  const isRunWasm = useSettingsStore((state: SettingsState) => state.interp.isRunWasm);
-  const isRunAuto = useSettingsStore((state: SettingsState) => state.interp.isRunAuto);
   const setSettings = useSettingsStore((state: SettingsState) => state.set);
 
   return (
@@ -176,49 +160,7 @@ export const Sidebar = () => {
               </AccordionButton>
             </h2>
             <AccordionPanel pb={4}>
-              <VStack alignItems="start">
-                <Checkbox
-                  isChecked={isRunUnoptim}
-                  size="sm"
-                  onChange={(e) =>
-                    setSettings((state: SettingsState) => {
-                      state.interp.isRunUnoptim = e.target.checked;
-                    })
-                  }>
-                  Run Un-optimised
-                </Checkbox>
-                <Checkbox
-                  isChecked={isRunOptim}
-                  size="sm"
-                  onChange={(e) =>
-                    setSettings((state: SettingsState) => {
-                      state.interp.isRunOptim = e.target.checked;
-                    })
-                  }>
-                  Run Optimised
-                </Checkbox>
-                <Checkbox
-                  isChecked={isRunWasm}
-                  size="sm"
-                  onChange={(e) =>
-                    setSettings((state: SettingsState) => {
-                      state.interp.isRunWasm = e.target.checked;
-                    })
-                  }>
-                  Run Wasm
-                </Checkbox>
-                <Checkbox
-                  isChecked={isRunAuto}
-                  size="sm"
-                  onChange={(e) =>
-                    setSettings((state: SettingsState) => {
-                      state.interp.isRunAuto = e.target.checked;
-                    })
-                  }>
-                  Auto Run
-                </Checkbox>
-                <Button size="sm">Run</Button>
-              </VStack>
+              <InterpreterSettings></InterpreterSettings>
             </AccordionPanel>
           </AccordionItem>
 
