@@ -450,7 +450,7 @@ const emitWasmFunction = (
     });
   };
 
-  console.log("emtiWasm: Function: ", func.name);
+  // console.log("emitWasm: Function: ", func.name);
   emitBlock(blockArray[0]); // start emitting blocks
 
   const localCount = localsymbols.size;

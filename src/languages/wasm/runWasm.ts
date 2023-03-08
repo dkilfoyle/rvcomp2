@@ -1,3 +1,4 @@
+import _ from "lodash";
 import { IBrilProgram } from "../bril/BrilInterface";
 import { emitWasm } from "./brilToWasm";
 
@@ -15,13 +16,16 @@ export interface IRuntimeOptions {
   loopTimes?: number;
 }
 
+let memory: WebAssembly.Memory = new WebAssembly.Memory({ initial: 1 });
+
 export const runWasm = (wasmBuffer: Uint8Array, runtime: IRuntimeOptions) => {
   return WabtModule().then((wabtModule) => {
     const wasmModule = wabtModule.readWasm(wasmBuffer, { readDebugNames: true });
     wasmModule.applyNames();
     // wasmModule.generateNames();
     // wasmModule.validate();
-    const memory = new WebAssembly.Memory({ initial: 1 });
+
+    if (runtime.mainFn) memory = new WebAssembly.Memory({ initial: 1 });
 
     const screenCanvas = document.getElementById(runtime.canvasId) as HTMLCanvasElement;
     if (!screenCanvas) throw new Error(`HTML document canvas ${runtime.canvasId} does not exist`);
@@ -58,30 +62,40 @@ export const runWasm = (wasmBuffer: Uint8Array, runtime: IRuntimeOptions) => {
 
     return WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
       //run functions here
-      console.info(`Running Wasm...`);
-      const loopDelay = runtime.loopDelay || 1000;
-      const loopTimes = runtime.loopTimes || (loopDelay / 1000) * 10; // 10 seconds
+      console.info(`Running Wasm...`, runtime);
+      const loopDelay = _.defaultTo(runtime.loopDelay, 1000);
+      const loopTimes = _.defaultTo(runtime.loopTimes, (loopDelay / 1000) * 10); // 10 seconds
 
       const startTime = performance.now();
-      const myresult = runtime.mainArgs ? res.instance.exports[runtime.mainFn](...runtime.mainArgs) : res.instance.exports[runtime.mainFn]();
-      if (runtime.loopFn) {
+      let myresult;
+      if (runtime.mainFn) {
+        window.conout3.info(`Executing ${runtime.mainFn}`);
+        myresult = runtime.mainArgs ? res.instance.exports[runtime.mainFn](...runtime.mainArgs) : res.instance.exports[runtime.mainFn]();
+        window.conout3.info(` - Returned ${myresult || "void"}`);
+        window.conout3.info(` - Heap_pointer = ${res.instance.exports.heap_pointer.value}`);
+      }
+
+      if (runtime.loopFn && loopTimes > 0) {
+        window.conout3.info(`Looping ${runtime.loopFn} n=${loopTimes}`);
         let loopCounter = 0;
         const loopInterval = setInterval(() => {
           const loopResult = res.instance.exports[runtime.loopFn]();
           if (!loopResult) {
-            window.conout3.info(`Exited after frame ${loopCounter}`);
+            window.conout3.info(` - Exited after frame ${loopCounter}`);
+            window.conout3.info(` - Heap_pointer = ${res.instance.exports.heap_pointer.value}`);
             clearInterval(loopInterval);
           }
           loopCounter++;
-          if (loopCounter > loopTimes) {
-            window.conout3.info(`Halted after frame ${loopCounter}`);
+          if (loopCounter >= loopTimes) {
+            window.conout3.info(` - Halted after frame ${loopCounter}`);
+            window.conout3.info(` - Heap_pointer = ${res.instance.exports.heap_pointer.value}`);
             clearInterval(loopInterval);
           }
         }, loopDelay);
       }
+
       const endTime = performance.now();
       // if (myresult != null)
-      window.conout3.info(`Returned ${myresult || "void"}, heap_pointer = ${res.instance.exports.heap_pointer.value}`);
       console.info(`Wasm completed in ${(endTime - startTime).toFixed(1)}ms`);
       // const data = new Uint8Array(memory.buffer, 0, 1024);
       // const screen = new Uint8ClampedArray(memory.buffer, 1024, 100 * 100);

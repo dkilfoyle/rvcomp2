@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { Console, Hook } from "console-feed";
 import "overlayscrollbars/overlayscrollbars.css";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import { Button, Divider, Flex, Grid, Icon, Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
+import { Button, ButtonGroup, Divider, Flex, Grid, HStack, Icon, IconButton, Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
 import { useParseStore, ParseState, useSettingsStore, SettingsState } from "../store/zustore";
 import { runInterpretor } from "../languages/bril/interp";
 import { emitWasm } from "../languages/wasm/brilToWasm";
@@ -14,6 +14,7 @@ import "./output.css";
 import { GiSlowBlob } from "react-icons/gi";
 import { FaRunning, FaShippingFast } from "react-icons/fa";
 import { SiWebassembly } from "react-icons/si";
+import { VscDebugRerun, VscDebugStepOver } from "react-icons/vsc";
 
 let brilMemory = new Uint8Array();
 let optimMemory = new Uint8Array();
@@ -80,44 +81,54 @@ export const Output: React.FC = () => {
     // return () => Unhook((window as any).console);
   }, []);
 
+  const run = (runMain: boolean = true, loops: number | undefined = undefined) => {
+    if (isRunWasm && Object.keys(brilOptim.functions).length && wasmByteCode) {
+      setWasmLogs([]);
+
+      const runtime: IRuntimeOptions = {
+        canvasId: "wasmCanvas",
+        mainFn: runMain ? mainName : "",
+        mainArgs: mainArgs
+          .replace(" ", "")
+          .split(",")
+          .map((x) => Number(x)),
+        loopFn: loopName,
+        loopDelay: loopDelay,
+        loopTimes: typeof loops == "undefined" ? loopTimes : loops,
+      };
+      runWasm(wasmByteCode, runtime).then((res) => {
+        wasmMemory = new Uint8Array(res.memory.buffer, 0, res.heap_pointer);
+        segments[1].end = 40960 + Math.max(0, brilOptim.dataSize - 1);
+        segments[2].start = 40960 + brilOptim.dataSize;
+        segments[2].end = res.heap_pointer - 1;
+      });
+    }
+
+    if (isRunUnoptim) {
+      setUnoptimLogs([]);
+      brilMemory = runInterpretor(bril, [], window.conout1, "un-optimised");
+    }
+    if (isRunOptim) {
+      setOptimLogs([]);
+      optimMemory = runInterpretor(brilOptim, [], window.conout2, "optimised");
+    }
+  };
+
+  const wasmByteCode = useMemo(() => {
+    if (Object.keys(brilOptim.functions).length == 0) return;
+    let wasmByteCode: Uint8Array;
+    try {
+      wasmByteCode = emitWasm(brilOptim);
+    } catch (e) {
+      window.conout3.log(`emitWasm error: ${e}`);
+      return;
+    }
+    return wasmByteCode;
+  }, [brilOptim]);
+
   useEffect(() => {
     if (isRunAuto) {
-      if (isRunWasm && Object.keys(brilOptim.functions).length) {
-        setWasmLogs([]);
-        let wasmByteCode: Uint8Array;
-        try {
-          wasmByteCode = emitWasm(brilOptim);
-        } catch (e) {
-          window.conout3.log(`emitWasm error: ${e}`);
-          return;
-        }
-        const runtime: IRuntimeOptions = {
-          canvasId: "wasmCanvas",
-          mainFn: mainName,
-          mainArgs: mainArgs
-            .replace(" ", "")
-            .split(",")
-            .map((x) => Number(x)),
-          loopFn: loopName,
-          loopDelay: loopDelay,
-          loopTimes: loopTimes,
-        };
-        runWasm(wasmByteCode, runtime).then((res) => {
-          wasmMemory = new Uint8Array(res.memory.buffer, 0, res.heap_pointer);
-          segments[1].end = 40960 + Math.max(0, brilOptim.dataSize - 1);
-          segments[2].start = 40960 + brilOptim.dataSize;
-          segments[2].end = res.heap_pointer - 1;
-        });
-      }
-
-      if (isRunUnoptim) {
-        setUnoptimLogs([]);
-        brilMemory = runInterpretor(bril, [], window.conout1, "un-optimised");
-      }
-      if (isRunOptim) {
-        setOptimLogs([]);
-        optimMemory = runInterpretor(brilOptim, [], window.conout2, "optimised");
-      }
+      run(true);
     }
   }, [bril, brilOptim, isRunAuto, isRunWasm, isRunUnoptim, isRunOptim]);
 
@@ -259,7 +270,14 @@ export const Output: React.FC = () => {
             <Divider orientation="vertical" size="sm"></Divider>
             {showMem ? <MemView mem={wasmMemory} segments={segments}></MemView> : memButton}
             <Divider orientation="vertical" size="sm"></Divider>
-            {showScreen ? <canvas id="wasmCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
+            <Grid templateRows="auto auto 1fr" gap="2" height="100%">
+              <HStack>
+                <IconButton size="xs" aria-label="main" icon={<VscDebugRerun />} onClick={() => run(true, 0)} />
+                <IconButton size="xs" aria-label="loop" icon={<VscDebugStepOver />} onClick={() => run(false, 1)} />
+              </HStack>
+              <Divider></Divider>
+              {showScreen ? <canvas id="wasmCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
+            </Grid>
           </Grid>
         </TabPanel>
       </TabPanels>

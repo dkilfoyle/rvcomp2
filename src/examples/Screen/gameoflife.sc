@@ -70,6 +70,7 @@ bool frame() {
 void main() {
   clear_screen();
   setup();
+  render();
   
   //print_int(count_neighbors(0,0));
   //print_int(count_neighbors(3,3));
