@@ -61,10 +61,18 @@ export class VNTable {
     this.var2num[varname] = num;
   }
   addValue(value: VNValue, canonvar: string, constval?: number) {
-    if (this.hasValue(value)) debugger; //throw new Error("LVNTable already has " + value.toString());
+    // const findValue = this.findValueIndex(value);
+    // if (findValue !== -1) return findValue
+    if (this.hasValue(value)) {
+      // throw new Error("LVNTable already has " + value.toString());
+    }
     this.rows.push({ value, canonvar, constval });
     this.addVar(canonvar, this.rows.length - 1);
     return this.rows.length - 1;
+  }
+
+  findValueIndex(value: VNValue) {
+    return this.rows.findIndex((r) => r.value.toString() == value.toString());
   }
 
   hasValue(value: VNValue) {

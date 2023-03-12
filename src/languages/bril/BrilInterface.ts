@@ -1,5 +1,20 @@
 import { IPos } from "../simpleC/ast";
 
+export const BrilTypeByteSize = (type: IBrilType) => {
+  if (typeof type == "object") throw new Error("BrilTypeByteSize: can't size pointer");
+  if (type == "void") throw new Error("BrilTypeByteSize: can't size void");
+  switch (type) {
+    case "int":
+    case "float":
+      return 4;
+    case "char":
+    case "bool":
+      return 1;
+    default:
+      throw new Error("BrilTypeByteSize: unknown type");
+  }
+};
+
 export type IBrilValueType = number | boolean | string;
 export type IBrilPrimType = "int" | "bool" | "float" | "char";
 export type IBrilParamType = { ptr: IBrilType };

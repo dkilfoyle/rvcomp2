@@ -243,10 +243,11 @@ class AstToBrilVisitor {
       case "functionCallExpression":
         n = node as IAstFunctionCallExpression;
         const params = n.params ? n.params.map((p) => this.expression(p)) : [];
+        const ntype = n.type as IBrilType;
         return this.builder.buildValueCall(
           n.id,
           params.map((p) => p.dest),
-          n.type as IBrilType,
+          n.size ? { ptr: ntype } : ntype,
           n.index,
           assignIDExpr
         );

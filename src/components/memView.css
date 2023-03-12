@@ -26,10 +26,26 @@
   font-size: 8pt !important;
 }
 
-.Data {
-  background-color: darkorange;
+.Data0 {
+  background-color: rgb(254, 202, 138);
 }
 
-.Heap {
-  background-color: #00bcd4;
+.Data1 {
+  background-color: rgb(255, 228, 195);
+}
+
+.Heap0 {
+  background-color: #59e4f6;
+}
+
+.Heap1 {
+  background-color: #baf7ff;
+}
+
+.byteBlack {
+  color: black;
+}
+
+.byteGrey {
+  color: lightgrey;
 }

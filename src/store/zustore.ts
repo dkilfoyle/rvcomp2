@@ -49,7 +49,7 @@ export interface SettingsState {
 export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Screen/setpixel.sc",
   // filename: "./Syntax/while.sc",
-  filename: "./Screen/gameoflife.sc",
+  filename: "./Syntax/strings.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
@@ -76,8 +76,8 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   },
   interp: {
     isRunUnoptim: false,
-    isRunOptim: false,
-    isRunWasm: true,
+    isRunOptim: true,
+    isRunWasm: false,
     isRunAuto: true,
     mainName: "main",
     mainArgs: "",

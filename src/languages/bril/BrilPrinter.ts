@@ -27,8 +27,13 @@ class BrilPrinter {
     return `${arg.name}: ${arg.type}`;
   }
   formatType(typ: IBrilType) {
-    if (typeof typ === "object" && typ.hasOwnProperty("ptr")) {
-      return `ptr<${typ.ptr}>`;
+    if (typeof typ === "object") {
+      if (typ.hasOwnProperty("ptr")) {
+        return `ptr<${typ.ptr}>`;
+      } else {
+        debugger;
+        throw new Error("invalid type");
+      }
     } else return `${typ}`;
   }
   printFunction(fn: IBrilFunction) {

@@ -5,7 +5,7 @@ import "overlayscrollbars/overlayscrollbars.css";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { Button, ButtonGroup, Divider, Flex, Grid, HStack, Icon, IconButton, Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
 import { useParseStore, ParseState, useSettingsStore, SettingsState } from "../store/zustore";
-import { runInterpretor } from "../languages/bril/interp";
+import { Env, IHeapVar, Pointer, runInterpretor } from "../languages/bril/interp";
 import { emitWasm } from "../languages/wasm/brilToWasm";
 import { MemView } from "./memView";
 import { IRuntimeOptions, runWasm } from "../languages/wasm/runWasm";
@@ -15,6 +15,7 @@ import { GiSlowBlob } from "react-icons/gi";
 import { FaRunning, FaShippingFast } from "react-icons/fa";
 import { SiWebassembly } from "react-icons/si";
 import { VscDebugRerun, VscDebugStepOver } from "react-icons/vsc";
+import { BrilTypeByteSize, IBrilDataSegment, IBrilPrimType } from "../languages/bril/BrilInterface";
 
 let brilMemory = new Uint8Array();
 let optimMemory = new Uint8Array();
@@ -30,10 +31,10 @@ const segments = [
   {
     name: "Screen",
     start: 0,
-    end: 100 * 100 - 1,
+    end: 100 * 100 * 4,
   },
-  { name: "Data", start: 10240, end: 10240 },
-  { name: "Heap", start: 10240, end: 10240 },
+  { name: "Data", start: 40960, end: 40960 },
+  { name: "Heap", start: 40960, end: 40960 },
 ];
 
 const paintScreen = (canvasId: string, mem: Uint8Array) => {
@@ -48,6 +49,11 @@ const paintScreen = (canvasId: string, mem: Uint8Array) => {
   }
   context!.putImageData(imgData, 0, 0);
 };
+
+let brilHeapVars: IHeapVar[] = [];
+let optimHeapVars: IHeapVar[] = [];
+let brilData: IBrilDataSegment;
+let optimData: IBrilDataSegment;
 
 export const Output: React.FC = () => {
   const bril = useParseStore((state: ParseState) => state.bril);
@@ -104,13 +110,25 @@ export const Output: React.FC = () => {
       });
     }
 
-    if (isRunUnoptim) {
+    if (isRunUnoptim && Object.keys(bril.functions).length) {
       setUnoptimLogs([]);
-      brilMemory = runInterpretor(bril, [], window.conout1, "un-optimised");
+      const res = runInterpretor(bril, [], window.conout0, window.conout1, "un-optimised");
+      brilMemory = new Uint8Array(res.memory.buffer);
+      brilHeapVars = res.heap;
+      brilData = res.data;
+      segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
+      segments[2].start = res.heap_start; // 40960 + bril.dataSize;
+      segments[2].end = res.heap_pointer - 1;
     }
-    if (isRunOptim) {
+    if (isRunOptim && Object.keys(brilOptim.functions).length) {
       setOptimLogs([]);
-      optimMemory = runInterpretor(brilOptim, [], window.conout2, "optimised");
+      const res = runInterpretor(brilOptim, [], window.conout0, window.conout2, "optimised");
+      optimMemory = new Uint8Array(res.memory.buffer);
+      optimHeapVars = res.heap;
+      optimData = res.data;
+      segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
+      segments[2].start = res.heap_start; // 40960 + bril.dataSize;
+      segments[2].end = res.heap_pointer - 1;
     }
   };
 
@@ -187,7 +205,7 @@ export const Output: React.FC = () => {
   );
 
   return (
-    <Tabs defaultIndex={2} size="sm" orientation="vertical" padding="4px" height="100%" overflow="hidden" borderColor="whitesmoke">
+    <Tabs defaultIndex={1} size="sm" orientation="vertical" padding="4px" height="100%" overflow="hidden" borderColor="whitesmoke">
       <TabList background="whitesmoke" width="40px">
         <Tab>
           <Icon as={GiSlowBlob} />
@@ -219,11 +237,12 @@ export const Output: React.FC = () => {
                 }}></Console>
             </OverlayScrollbarsComponent>
             <Divider orientation="vertical" size="sm"></Divider>
-            {showMem ? <MemView mem={brilMemory} segments={segments}></MemView> : memButton}
+            {showMem ? <MemView mem={brilMemory} segments={segments} heapVars={brilHeapVars}></MemView> : memButton}
             <Divider orientation="vertical" size="sm"></Divider>
             {showScreen ? <canvas id="brilCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
           </Grid>
         </TabPanel>
+
         <TabPanel height="100%">
           <Grid templateColumns="1fr auto auto auto auto" gap="2" height="100%">
             <OverlayScrollbarsComponent style={fullHeight} ref={optimOutputRef}>
@@ -243,11 +262,12 @@ export const Output: React.FC = () => {
                 }}></Console>
             </OverlayScrollbarsComponent>
             <Divider orientation="vertical" size="sm"></Divider>
-            {showMem ? <MemView mem={optimMemory} segments={segments}></MemView> : memButton}
+            {showMem ? <MemView mem={optimMemory} segments={segments} heapVars={optimHeapVars} dataSegment={optimData}></MemView> : memButton}
             <Divider orientation="vertical" size="sm"></Divider>
             {showScreen ? <canvas id="optimCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
           </Grid>
         </TabPanel>
+
         <TabPanel height="100%" padding="4px">
           <Grid templateColumns="1fr auto auto auto auto" gap="2" height="100%">
             <OverlayScrollbarsComponent style={fullHeight} ref={wasmOutputRef}>

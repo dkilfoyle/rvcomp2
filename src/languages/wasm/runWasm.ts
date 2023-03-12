@@ -47,6 +47,7 @@ export const runWasm = (wasmBuffer: Uint8Array, runtime: IRuntimeOptions) => {
     const importObject = {
       env: {
         print_int: (x: number) => window.conout3.info("print_int: ", x),
+        print_bool: (x: boolean) => window.conout3.info("print_bool: ", x ? "true" : "false"),
         print_float: (x: number) => window.conout3.info("print_float: ", x),
         print_string: (x: number) => window.conout3.info(`print_string @ 0x${x.toString(16)}: ${getStringFromMemory(x)}`),
         print_char: (x: number) => window.conout3.info(`print_char: ${x} = 0x${x.toString(16)} = ${String.fromCharCode(x)}`),
@@ -62,7 +63,7 @@ export const runWasm = (wasmBuffer: Uint8Array, runtime: IRuntimeOptions) => {
 
     return WebAssembly.instantiate(wasmModule.toBinary({}).buffer, importObject).then(function (res) {
       //run functions here
-      console.info(`Running Wasm...`, runtime);
+      window.conout0.info(`Running Wasm...`);
       const loopDelay = _.defaultTo(runtime.loopDelay, 1000);
       const loopTimes = _.defaultTo(runtime.loopTimes, (loopDelay / 1000) * 10); // 10 seconds
 
@@ -75,7 +76,7 @@ export const runWasm = (wasmBuffer: Uint8Array, runtime: IRuntimeOptions) => {
         window.conout3.info(` - Heap_pointer = ${res.instance.exports.heap_pointer.value}`);
       }
 
-      if (runtime.loopFn && loopTimes > 0) {
+      if (runtime.loopFn && runtime.loopFn in res.instance.exports && loopTimes > 0) {
         window.conout3.info(`Looping ${runtime.loopFn} n=${loopTimes}`);
         let loopCounter = 0;
         const loopInterval = setInterval(() => {
@@ -96,7 +97,7 @@ export const runWasm = (wasmBuffer: Uint8Array, runtime: IRuntimeOptions) => {
 
       const endTime = performance.now();
       // if (myresult != null)
-      console.info(`Wasm completed in ${(endTime - startTime).toFixed(1)}ms`);
+      window.conout0.info(` - Wasm completed in ${(endTime - startTime).toFixed(1)}ms`);
       // const data = new Uint8Array(memory.buffer, 0, 1024);
       // const screen = new Uint8ClampedArray(memory.buffer, 1024, 100 * 100);
       // const heap = new Uint8Array(memory.buffer, 1024 + 100 * 100, 1024 + 100 * 100 + 1024);

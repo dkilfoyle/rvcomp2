@@ -1,10 +1,12 @@
 import {
+  BrilTypeByteSize,
   IBrilArgument,
   IBrilFunction,
   IBrilInstruction,
   IBrilOpCode,
   IBrilOperation,
   IBrilParamType,
+  IBrilPrimType,
   IBrilProgram,
   IBrilType,
 } from "./BrilInterface";
@@ -23,80 +25,21 @@ function error(message: string): BriliError {
   return new BriliError(message);
 }
 
-export class Key {
-  readonly base: number;
-  readonly offset: number;
+let instrCount = 0;
+let memory: DataView;
+let heap_pointer: number = 0;
+let heap_start: number = 0;
+let data_start: number = 0;
 
-  constructor(b: number, o: number) {
-    this.base = b;
-    this.offset = o;
-  }
-
-  add(offset: number) {
-    return new Key(this.base, this.offset + offset);
-  }
+export interface IHeapVar {
+  address: number;
+  type: IBrilPrimType;
+  sizeInBytyes: number;
+  endAddress: number;
+  alive: boolean;
 }
+const heap: IHeapVar[] = [];
 
-const display = new Uint8Array(10000);
-
-// map a number (base+offset) to an array of type X
-export class Heap<X> {
-  private readonly storage: Map<number, X[]>;
-  constructor() {
-    this.storage = new Map();
-  }
-
-  isEmpty(): boolean {
-    return this.storage.size == 0;
-  }
-
-  private count = 0;
-  private getNewBase(): number {
-    let val = this.count;
-    this.count++;
-    return val;
-  }
-
-  private freeKey(key: Key) {
-    return;
-  }
-
-  alloc(amt: number): Key {
-    if (amt <= 0) {
-      throw error(`cannot allocate ${amt} entries`);
-    }
-    let base = this.getNewBase();
-    this.storage.set(base, new Array(amt));
-    return new Key(base, 0);
-  }
-
-  free(key: Key) {
-    if (this.storage.has(key.base) && key.offset == 0) {
-      this.freeKey(key);
-      this.storage.delete(key.base);
-    } else {
-      throw error(`Tried to free illegal memory location base: ${key.base}, offset: ${key.offset}. Offset must be 0.`);
-    }
-  }
-
-  write(key: Key, val: X) {
-    let data = this.storage.get(key.base);
-    if (data && data.length > key.offset && key.offset >= 0) {
-      data[key.offset] = val;
-    } else {
-      throw error(`Uninitialized heap location ${key.base} and/or illegal offset ${key.offset}`);
-    }
-  }
-
-  read(key: Key): X {
-    let data = this.storage.get(key.base);
-    if (data && data.length > key.offset && key.offset >= 0) {
-      return data[key.offset];
-    } else {
-      throw error(`Uninitialized heap location ${key.base} and/or illegal offset ${key.offset}`);
-    }
-  }
-}
 const argCounts: { [key in IBrilOpCode]: number | null } = {
   add: 2,
   mul: 2,
@@ -137,17 +80,18 @@ const argCounts: { [key in IBrilOpCode]: number | null } = {
   // commit: 0,
 };
 
-type Pointer = {
-  loc: Key;
+export type Pointer = {
+  loc: number; //Key;
   type: IBrilType;
+  size?: number;
 };
 
 type Value = boolean | BigInt | Pointer | number;
-type Env = Map<string, Value>;
+export type Env = Map<string, Value>;
 
 function typeCheck(val: Value, typ: IBrilType): boolean {
   if (typ === "int") {
-    return typeof val === "bigint";
+    return typeof val === "bigint" || Number.isInteger(val);
   } else if (typ === "bool") {
     return typeof val === "boolean";
   } else if (typ === "float") {
@@ -242,18 +186,47 @@ function getFunc(instr: IBrilOperation, index: number): string {
   return instr.funcs[index];
 }
 
-function alloc(ptrType: IBrilParamType, amt: number, heap: Heap<Value>): Pointer {
+// function alloc(ptrType: IBrilParamType, amt: number, heap: Heap<Value>): Pointer {
+//   if (typeof ptrType != "object") {
+//     throw error(`unspecified pointer type ${ptrType}`);
+//   } else if (amt <= 0) {
+//     throw error(`must allocate a positive amount of memory: ${amt} <= 0`);
+//   } else {
+//     let loc = heap.alloc(amt);
+//     let dataType = ptrType.ptr;
+//     return {
+//       loc: loc,
+//       type: dataType,
+//     };
+//   }
+// }
+
+function alloc(ptrType: IBrilParamType, amt: number, state: State): Pointer {
   if (typeof ptrType != "object") {
     throw error(`unspecified pointer type ${ptrType}`);
   } else if (amt <= 0) {
     throw error(`must allocate a positive amount of memory: ${amt} <= 0`);
   } else {
-    let loc = heap.alloc(amt);
-    let dataType = ptrType.ptr;
-    return {
-      loc: loc,
-      type: dataType,
+    const pointer = {
+      loc: heap_pointer,
+      type: ptrType.ptr,
+      size: amt,
     };
+    switch (ptrType.ptr) {
+      case "int":
+        if (heap_pointer + 4 * amt > memory.byteLength) throw new Error("Out of memeory");
+        heap_pointer += 4 * amt;
+        heap.push({ address: pointer.loc, type: "int", sizeInBytyes: 4 * amt, endAddress: pointer.loc + 4 * amt, alive: true });
+        break;
+      case "char":
+        if (heap_pointer + amt > memory.byteLength) throw new Error("Out of memeory");
+        heap_pointer += 1 * amt;
+        heap.push({ address: pointer.loc, type: "char", sizeInBytyes: amt, endAddress: pointer.loc + amt, alive: true });
+        break;
+      default:
+        throw new Error();
+    }
+    return pointer;
   }
 }
 
@@ -268,11 +241,8 @@ let NEXT: Action = { action: "next" };
 
 type State = {
   env: Env;
-  readonly heap: Heap<Value>;
+  // readonly heap: Heap<Value>;
   readonly funcs: Record<string, IBrilFunction>;
-
-  // For profiling: a total count of the number of instructions executed.
-  icount: bigint;
 
   // For SSA (phi-node) execution: keep track of recently-seen labels.j
   curlabel: string | null;
@@ -329,22 +299,49 @@ function evalCall(instr: IBrilOperation, state: State): Action {
 
   if (funcName == "set_pixel") {
     let args = instr.args || [];
-    if (args.length !== 3) {
-      throw error(`function expected 3 arguments, got ${args.length}`);
+    if (args.length !== 5) {
+      throw error(`function expected 5 arguments, got ${args.length}`);
     }
-    let x = get(state.env, args[0]);
-    let y = get(state.env, args[1]);
-    let c = get(state.env, args[2]);
-    if (!(typeCheck(x, "float") && typeCheck(y, "float") && typeCheck(c, "float"))) {
-      throw error(`function argument type mismatch - expected bool`);
+    let x = Number(get(state.env, args[0]));
+    let y = Number(get(state.env, args[1]));
+    let r = Number(get(state.env, args[2]));
+    let g = Number(get(state.env, args[3]));
+    let b = Number(get(state.env, args[4]));
+
+    // if (!(typeCheck(x, "float") || typeCheck(x, "int") && typeCheck(y, "float") && typeCheck(c, "float"))) {
+    //   throw error(`function argument type mismatch - expected bool`);
+    // }
+
+    // x = Number(x);
+    // y = y as number;
+    // r = r as number;
+    // g = g as number;
+    // b = b as number;
+
+    let offset = (y * 100 + x) * 4;
+    memory.setUint8(offset++, r);
+    memory.setUint8(offset++, g);
+    memory.setUint8(offset, b);
+
+    return NEXT;
+  }
+
+  if (funcName == "get_pixel") {
+    if ("dest" in instr) {
+      let args = instr.args || [];
+      if (args.length !== 2) {
+        throw error(`function expected 2 arguments, got ${args.length}`);
+      }
+      let x = Number(get(state.env, args[0]));
+      let y = Number(get(state.env, args[1]));
+      let offset = (y * 100 + x) * 4;
+      state.env.set(instr.dest, { loc: offset, type: "char" });
     }
+    return NEXT;
+  }
 
-    x = x as number;
-    y = y as number;
-    c = c as number;
-
-    display[y * 100 + x] = c;
-
+  if (funcName == "render") {
+    console.error("render() not impleted");
     return NEXT;
   }
 
@@ -360,7 +357,7 @@ function evalCall(instr: IBrilOperation, state: State): Action {
 
     let str = "";
     for (let i = 0; i < 100; i++) {
-      const byte = memory[Number(value) + i];
+      const byte = memory.getUint8(Number(value) + i);
       if (byte === 0) break;
       str += String.fromCharCode(byte);
     }
@@ -399,15 +396,12 @@ function evalCall(instr: IBrilOperation, state: State): Action {
   // Invoke the interpreter on the function.
   let newState: State = {
     env: newEnv,
-    heap: state.heap,
     funcs: state.funcs,
-    icount: state.icount,
     lastlabel: null,
     curlabel: null,
     specparent: null, // Speculation not allowed.
   };
   let retVal = evalFunc(func, newState);
-  state.icount = newState.icount;
 
   // Dynamically check the function's return value and type.
   if (!("dest" in instr)) {
@@ -447,7 +441,7 @@ function evalCall(instr: IBrilOperation, state: State): Action {
 
 // eval instruction and return jmp label or "next" or "end"
 function evalInstr(instr: IBrilInstruction, state: State): Action {
-  state.icount += BigInt(1);
+  instrCount += 1;
 
   // Check that we have the right number of arguments.
   if (instr.op !== "const") {
@@ -544,7 +538,7 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
     }
 
     case "eq": {
-      let val = getInt(instr, state.env, 0) === getInt(instr, state.env, 1);
+      let val = Number(getInt(instr, state.env, 0)) === Number(getInt(instr, state.env, 1));
       state.env.set(instr.dest, val);
       return NEXT;
     }
@@ -677,30 +671,55 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
       if (!(typeof typ === "object" && typ.hasOwnProperty("ptr"))) {
         throw error(`cannot allocate non-pointer type ${instr.type}`);
       }
-      let ptr = alloc(typ, Number(amt), state.heap);
+      let ptr = alloc(typ, Number(amt), state);
       state.env.set(instr.dest, ptr);
       return NEXT;
     }
 
     case "free": {
       let val = getPtr(instr, state.env, 0);
-      state.heap.free(val.loc);
+      const i = heap.findIndex((h) => h.address == val.loc);
+      if (i !== -1) heap[i].alive = false;
       return NEXT;
     }
 
     case "store": {
       let target = getPtr(instr, state.env, 0);
-      state.heap.write(target.loc, getArgument(instr, state.env, 1, target.type));
+      let val = getArgument(instr, state.env, 1, target.type);
+      // state.heap.write(target.loc, getArgument(instr, state.env, 1, target.type));
+      if (target.loc < 0 || target.loc >= memory.byteLength) throw new Error(`Pointer location ${target.loc} out of memory bounds`);
+      switch (target.type) {
+        case "int":
+          memory.setUint32(target.loc, Number(val));
+          // console.log(`Storing uint32 ${Number(val)} at ${target.loc}`);
+          // console.log(`uint32 at ${target.loc / 4} now = ${memory.getUint32(target.loc)}`);
+          break;
+        case "char":
+          memory.setUint8(target.loc, Number(val));
+          break;
+        default:
+          throw new Error(`Store type ${target.type} not implemented`);
+      }
       return NEXT;
     }
 
     case "load": {
       let ptr = getPtr(instr, state.env, 0);
-      let val = state.heap.read(ptr.loc);
-      if (val === undefined || val === null) {
+      let loadval;
+      switch (ptr.type) {
+        case "int":
+          loadval = memory.getUint32(ptr.loc);
+          break;
+        case "char":
+          loadval = memory.getUint8(ptr.loc);
+          break;
+        default:
+          throw new Error(`Load type ${ptr.type} not implemented`);
+      }
+      if (loadval === undefined || loadval === null) {
         throw error(`Pointer ${instr.args![0]} points to uninitialized data`);
       } else {
-        state.env.set(instr.dest, val);
+        state.env.set(instr.dest, loadval);
       }
       return NEXT;
     }
@@ -708,7 +727,8 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
     case "ptradd": {
       let ptr = getPtr(instr, state.env, 0);
       let val = getInt(instr, state.env, 1);
-      state.env.set(instr.dest, { loc: ptr.loc.add(Number(val)), type: ptr.type });
+      let byteSize = BrilTypeByteSize(ptr.type);
+      state.env.set(instr.dest, { loc: ptr.loc + Number(val) * byteSize, type: ptr.type });
       return NEXT;
     }
 
@@ -884,20 +904,27 @@ function parseMainArguments(expected: IBrilArgument[], args: string[]): Env {
   return newEnv;
 }
 
-let memory: Uint8Array;
-
 function evalProg(prog: IBrilProgram, args: string[]) {
-  let heap = new Heap<Value>();
+  // let heap = new Heap<Value>();
 
-  memory = new Uint8Array(32 * 1024); // 32k
+  // memory is 64k
+  // screen is 0..40000
+  // data is 40960....40960+datasize-1
+  // heap is 40960+datasize....
+  memory = new DataView(new Uint8Array(64 * 1024).buffer);
+  data_start = 40960;
+  heap_start = 40960;
+
   prog.data.forEach((data) => {
-    data.bytes.forEach((byte, i) => (memory[data.offset + i] = byte));
+    data.bytes.forEach((byte, i) => memory.setUint8(data.offset + i, byte));
+    heap_start += data.bytes.length;
   });
+  heap_pointer = heap_start;
 
   let main = prog.functions.main;
   if (!main || main === null) {
     logger.warn(`no main function defined, doing nothing`);
-    return { result: 0, state: { icount: 0 } };
+    return { result: 0, state: { icount: 0, env: new Map(), heap: [] } };
   }
 
   // Silly argument parsing to find the `-p` flag.
@@ -914,41 +941,39 @@ function evalProg(prog: IBrilProgram, args: string[]) {
 
   let state: State = {
     funcs: prog.functions,
-    heap,
     env: newEnv,
-    icount: BigInt(0),
     lastlabel: null,
     curlabel: null,
     specparent: null,
   };
+  heap.length = 0;
   const result = evalFunc(main, state);
 
-  if (!heap.isEmpty()) {
-    throw error(`Some memory locations have not been freed by end of execution.`);
-  }
-
-  if (profiling) {
-    logger.error(`total_dyn_inst: ${state.icount}`);
-  }
+  // if (!heap.isEmpty()) {
+  //   throw error(`Some memory locations have not been freed by end of execution.`);
+  // }
+  if (heap.some((h) => h.alive)) logger.warn(`Heap is not empty - ${heap.length} entries remain`);
 
   return { result, state };
 }
 
-export function runInterpretor(prog: IBrilProgram, args: string[], mylogger: Console, optimLevel = "Unknown") {
-  logger = mylogger;
+export function runInterpretor(prog: IBrilProgram, args: string[], consoleLogger: Console, outputLogger: Console, optimLevel = "Unknown") {
+  logger = outputLogger;
   try {
-    logger.info(`Running ${optimLevel}...`);
+    consoleLogger.info(`Running ${optimLevel}...`);
     const startTime = performance.now();
     const { result, state } = evalProg(prog, args);
     const endTime = performance.now();
     if (result != null) logger.info(`Returned ${result}`);
-    logger.info(`Completed ${state.icount} instructions in ${(endTime - startTime).toFixed(1)}ms`);
+    consoleLogger.info(` - Completed ${instrCount} instructions in ${(endTime - startTime).toFixed(1)}ms`);
+    console.log("State.env: ", state.env);
+    return { memory, env: state.env, data_start, heap_start, heap_pointer, heap, data: prog.data };
   } catch (e) {
     if (e instanceof BriliError) {
       logger.error(`error: ${e.message}`);
     } else {
       throw e;
     }
+    return { memory, env: new Map(), data_start, heap_start, heap_pointer, heap: [], data: prog.data };
   }
-  return display;
 }

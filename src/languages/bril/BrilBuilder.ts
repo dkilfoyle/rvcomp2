@@ -15,6 +15,8 @@ import {
   IBrilType,
   IBrilValueType,
   IBrilValueInstruction,
+  IBrilPrimType,
+  BrilTypeByteSize,
 } from "./BrilInterface";
 
 export class BrilBuilder {
@@ -96,6 +98,10 @@ export class BrilBuilder {
   }
 
   buildArrayReference(type: IBrilType, id: string, index: number) {
+    //
+    if (typeof type == "object") throw new Error("buildArrayRefrence: Expecting primitive type");
+    if (type == "void") throw new Error("buildArrayReference: invalid type void");
+
     const indexConst = this.buildConst(index, "int");
     const ptrDest = `p_${id}_${index}`;
     let instrPtr: IBrilValueOperation = { op: "ptradd", dest: ptrDest, type: { ptr: type }, args: [id, indexConst.dest] };
@@ -104,6 +110,9 @@ export class BrilBuilder {
   }
 
   buildArrayGetValue(type: IBrilType, id: string, index: number, assignIDExpr?: IAstIdentifierExpression) {
+    // input: x = y[0];
+    // p_y_0:ptr<primtype> = ptradd y 0
+    // dest:primtype = load ptr
     const ptr = this.buildArrayReference(type, id, index);
     const dest = assignIDExpr ? assignIDExpr.id : this.freshVar(id);
     let instrLoad: IBrilValueOperation = { op: "load", dest, type, args: [ptr] };
@@ -177,11 +186,11 @@ export class BrilBuilder {
 
   buildValueCall(func: string, args: string[], type: IBrilType, index?: number, assignIDExpr?: IAstIdentifierExpression): IBrilValueOperation {
     const instr = this.buildValue("call", type, args, [func], undefined, assignIDExpr);
-    this.insert(instr);
+    // this.insert(instr);
     if (!_.isUndefined(index)) {
       // eg myfunc()[0]
-      const indexinstr = this.buildArrayGetValue(type, instr.dest, index, assignIDExpr);
-      return indexinstr;
+      if (typeof type == "object" && "ptr" in type) return this.buildArrayGetValue(type.ptr, instr.dest, index, assignIDExpr);
+      else throw new Error("Indexing a non-pointer");
     } else return instr;
   }
 
@@ -251,7 +260,7 @@ export class BrilBuilder {
     if (type !== "char") throw new Error("Only string data supported");
     const stringvalue = value.toString();
     if (!this.program.data.has(stringvalue)) {
-      const lastentry = this.program.data.size ? Array.from(this.program.data)[this.program.data.size - 1][1] : { offset: 10240, size: 0 };
+      const lastentry = this.program.data.size ? Array.from(this.program.data)[this.program.data.size - 1][1] : { offset: 40960, size: 0 };
       const bytes = new TextEncoder().encode(stringvalue + "\0");
       this.program.data.set(stringvalue, { offset: lastentry.offset + lastentry.size, size: bytes.length, bytes });
     }

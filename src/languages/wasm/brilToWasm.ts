@@ -73,6 +73,7 @@ const encodeConstI32_UnSigned = (i32: number) => {
 
 const importedFunctions = [
   { name: "print_int", argTypes: [Valtype.i32], retType: Valtype.void },
+  { name: "print_bool", argTypes: [Valtype.i32], retType: Valtype.void },
   { name: "print_float", argTypes: [Valtype.f32], retType: Valtype.void },
   { name: "print_string", argTypes: [Valtype.i32], retType: Valtype.void },
   { name: "print_char", argTypes: [Valtype.i32], retType: Valtype.void },
@@ -385,6 +386,7 @@ const emitWasmFunction = (
                 code.push(Opcodes.i32_load8_u, 0, 0);
                 break;
               default:
+                debugger;
                 throw new Error("Unsupported load ptr type");
             }
             // pop the stack to local dest
