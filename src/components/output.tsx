@@ -87,6 +87,10 @@ export const Output: React.FC = () => {
     // return () => Unhook((window as any).console);
   }, []);
 
+  const brilInterpWorker: Worker = useMemo(() => {
+    return new Worker(new URL("../languages/bril/interp.ts", import.meta.url), { type: "module" });
+  }, []);
+
   const run = (runMain: boolean = true, loops: number | undefined = undefined) => {
     if (isRunWasm && Object.keys(brilOptim.functions).length && wasmByteCode) {
       setWasmLogs([]);
@@ -112,25 +116,57 @@ export const Output: React.FC = () => {
 
     if (isRunUnoptim && Object.keys(bril.functions).length) {
       setUnoptimLogs([]);
-      const res = runInterpretor(bril, [], window.conout0, window.conout1, "un-optimised");
-      brilMemory = new Uint8Array(res.memory.buffer);
-      brilHeapVars = res.heap;
-      brilData = res.data;
-      segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
-      segments[2].start = res.heap_start; // 40960 + bril.dataSize;
-      segments[2].end = res.heap_pointer - 1;
+      brilInterpWorker.postMessage({
+        action: "main",
+        payload: { prog: bril, args: [], optimLevel: "un-optimised" },
+      });
     }
     if (isRunOptim && Object.keys(brilOptim.functions).length) {
       setOptimLogs([]);
-      const res = runInterpretor(brilOptim, [], window.conout0, window.conout2, "optimised");
-      optimMemory = new Uint8Array(res.memory.buffer);
-      optimHeapVars = res.heap;
-      optimData = res.data;
-      segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
-      segments[2].start = res.heap_start; // 40960 + bril.dataSize;
-      segments[2].end = res.heap_pointer - 1;
+      brilInterpWorker.postMessage({
+        action: "main",
+        payload: { prog: brilOptim, args: [], optimLevel: "optimised" },
+      });
     }
   };
+
+  useEffect(() => {
+    brilInterpWorker.onmessage = ({ data }) => {
+      const { action, payload } = data;
+      switch (action) {
+        case "done":
+          const { res, optimLevel } = payload;
+          if (optimLevel == "optimised") {
+            optimMemory = new Uint8Array(res.memory.buffer);
+            optimHeapVars = res.heap;
+            optimData = res.data;
+            segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
+            segments[2].start = res.heap_start; // 40960 + bril.dataSize;
+            segments[2].end = res.heap_pointer - 1;
+          } else if (optimLevel == "un-optimised") {
+            brilMemory = new Uint8Array(res.memory.buffer);
+            brilHeapVars = res.heap;
+            brilData = res.data;
+            segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
+            segments[2].start = res.heap_start; // 40960 + bril.dataSize;
+            segments[2].end = res.heap_pointer - 1;
+          }
+          break;
+        case "log":
+          const { id, level, logmsg } = payload;
+          const con = id == "console" ? window.conout0 : window.conout2;
+          switch (level) {
+            case "warn":
+              con.warn(logmsg);
+              break;
+            case "info":
+              con.info(logmsg);
+              break;
+          }
+          break;
+      }
+    };
+  }, [brilInterpWorker]);
 
   const wasmByteCode = useMemo(() => {
     if (Object.keys(brilOptim.functions).length == 0) return;

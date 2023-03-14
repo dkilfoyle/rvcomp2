@@ -11,8 +11,6 @@ import {
   IBrilType,
 } from "./BrilInterface";
 
-let logger: Console;
-
 class BriliError extends Error {
   constructor(message?: string) {
     super(message);
@@ -957,8 +955,22 @@ function evalProg(prog: IBrilProgram, args: string[]) {
   return { result, state };
 }
 
-export function runInterpretor(prog: IBrilProgram, args: string[], consoleLogger: Console, outputLogger: Console, optimLevel = "Unknown") {
-  logger = outputLogger;
+interface ILogger {
+  warn: (msg: string) => void;
+  info: (msg: string) => void;
+}
+
+const consoleLogger: ILogger = {
+  warn: (msg: any) => postMessage({ action: "log", payload: { id: "console", level: "warn", logmsg: msg } }),
+  info: (msg: any) => postMessage({ action: "log", payload: { id: "console", level: "info", logmsg: msg } }),
+};
+
+const logger: ILogger = {
+  warn: (msg: any) => postMessage({ action: "log", payload: { id: "output", level: "warn", logmsg: msg } }),
+  info: (msg: any) => postMessage({ action: "log", payload: { id: "output", level: "info", logmsg: msg } }),
+};
+
+export function runInterpretor(prog: IBrilProgram, args: string[], optimLevel = "Unknown") {
   try {
     consoleLogger.info(`Running ${optimLevel}...`);
     const startTime = performance.now();
@@ -977,3 +989,13 @@ export function runInterpretor(prog: IBrilProgram, args: string[], consoleLogger
     return { memory, env: new Map(), data_start, heap_start, heap_pointer, heap: [], data: prog.data };
   }
 }
+
+self.onmessage = async ({ data }) => {
+  const { action, payload } = data;
+  switch (action) {
+    case "main":
+      const res = runInterpretor(payload.prog, payload.args, payload.optimLevel);
+      postMessage({ action: "done", payload: { res, optimLevel: payload.optimLevel } });
+      break;
+  }
+};
