@@ -319,7 +319,8 @@ function evalCall(instr: IBrilOperation, state: State): Action {
     let offset = (y * 100 + x) * 4;
     memory.setUint8(offset++, r);
     memory.setUint8(offset++, g);
-    memory.setUint8(offset, b);
+    memory.setUint8(offset++, b);
+    memory.setUint8(offset++, 255);
 
     return NEXT;
   }
@@ -958,21 +959,28 @@ function evalProg(prog: IBrilProgram, args: string[]) {
 interface ILogger {
   warn: (msg: string) => void;
   info: (msg: string) => void;
+  log: (msg: string) => void;
+  error: (msg: string) => void;
 }
 
 const consoleLogger: ILogger = {
   warn: (msg: any) => postMessage({ action: "log", payload: { id: "console", level: "warn", logmsg: msg } }),
   info: (msg: any) => postMessage({ action: "log", payload: { id: "console", level: "info", logmsg: msg } }),
+  log: (msg: any) => postMessage({ action: "log", payload: { id: "console", level: "log", logmsg: msg } }),
+  error: (msg: any) => postMessage({ action: "log", payload: { id: "console", level: "error", logmsg: msg } }),
 };
 
 const logger: ILogger = {
   warn: (msg: any) => postMessage({ action: "log", payload: { id: "output", level: "warn", logmsg: msg } }),
   info: (msg: any) => postMessage({ action: "log", payload: { id: "output", level: "info", logmsg: msg } }),
+  log: (msg: any) => postMessage({ action: "log", payload: { id: "output", level: "log", logmsg: msg } }),
+  error: (msg: any) => postMessage({ action: "log", payload: { id: "output", level: "error", logmsg: msg } }),
 };
 
 export function runInterpretor(prog: IBrilProgram, args: string[], optimLevel = "Unknown") {
   try {
     consoleLogger.info(`Running ${optimLevel}...`);
+    instrCount = 0;
     const startTime = performance.now();
     const { result, state } = evalProg(prog, args);
     const endTime = performance.now();

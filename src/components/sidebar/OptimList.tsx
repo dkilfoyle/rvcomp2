@@ -1,4 +1,4 @@
-import { Checkbox } from "@chakra-ui/react";
+import { Checkbox, Text } from "@chakra-ui/react";
 import "rc-tree/assets/index.css";
 import { useSettingsStore, SettingsState } from "../../store/zustore";
 
@@ -81,6 +81,9 @@ export const OptimList = () => {
       <Droppable droppableId="selected">
         {(provided, snapshot) => (
           <div {...provided.droppableProps} ref={provided.innerRef} style={getListStyle(snapshot.isDraggingOver, true)}>
+            <Text textAlign={"center"} mb={1.5}>
+              Active
+            </Text>
             {optimisations.selected.map((item, index) => (
               <Draggable key={item} draggableId={item} index={index}>
                 {(provided, snapshot) => (
@@ -117,6 +120,9 @@ export const OptimList = () => {
       <Droppable droppableId="available">
         {(provided, snapshot) => (
           <div {...provided.droppableProps} ref={provided.innerRef} style={getListStyle(snapshot.isDraggingOver, false)}>
+            <Text textAlign={"center"} mb={1.5}>
+              Available
+            </Text>
             {optimisations.available.map((item, index) => (
               <Draggable key={item} draggableId={item} index={index}>
                 {(provided, snapshot) => (

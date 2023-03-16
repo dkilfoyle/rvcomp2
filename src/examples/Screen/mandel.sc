@@ -2,6 +2,7 @@ void main() {
   float y = 0f;
   while (y < 100f) {
     y = y + 1f;
+    print_float(y);
     float x  = 0f;
     while (x < 100f) {
       x = x + 1f;

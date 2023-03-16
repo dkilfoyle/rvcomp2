@@ -31,12 +31,14 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
    - [x] uf (cond) instead of if (cond == true) where cond is boolean function call
    - [x] arrays
    - [x] stdlib (print_int, print_string)  
+   - [ ] add modulo operator to SimpleC and Bril
 2. Improve UI
-   - [ ] CFG node selection shows DFA for that node
+   - [x] CFG node selection shows DFA for that node
    - [x] Bril IR diffeditor - plain vs SSA and SSA vs optimisations
+   - [ ] Use ReactFlow and Elk.js instead of vis.js?
 3. Refactor
    - [x] Switch from redux-toolkit to zustand
-   - [ ] Use Map instead of Record<string,>
+   - [x] Move interp.ts into a webworker so ui doesn't stall
 4. Optimisations
    1. CFG optimisations
       - [ ] Branch removal
@@ -50,7 +52,8 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
       - [x] Strength reduction 
 5. Many more examples
    - [x] Mandelbrot
-   - [ ] Game of Life
+   - [ ] Color Mandelbrot
+   - [x] Game of Life
 6. Code generators
    - [ ] IR to RiscV
    - [x] IR to WebAssembly

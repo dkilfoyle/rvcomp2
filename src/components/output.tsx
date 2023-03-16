@@ -17,9 +17,9 @@ import { SiWebassembly } from "react-icons/si";
 import { VscDebugRerun, VscDebugStepOver } from "react-icons/vsc";
 import { BrilTypeByteSize, IBrilDataSegment, IBrilPrimType } from "../languages/bril/BrilInterface";
 
-let brilMemory = new Uint8Array();
-let optimMemory = new Uint8Array();
-let wasmMemory = new Uint8Array();
+let brilMemory = new Uint8ClampedArray();
+let optimMemory = new Uint8ClampedArray();
+let wasmMemory = new Uint8ClampedArray();
 
 window.conout1 = { ...window.console };
 window.conout2 = { ...window.console };
@@ -37,16 +37,17 @@ const segments = [
   { name: "Heap", start: 40960, end: 40960 },
 ];
 
-const paintScreen = (canvasId: string, mem: Uint8Array) => {
+const paintScreen = (canvasId: string, mem: Uint8ClampedArray) => {
   const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
   const context = canvas.getContext("2d");
   const imgData = context!.createImageData(100, 100);
-  for (let i = 0; i < 100 * 100; i++) {
-    imgData.data[i * 4] = mem[i];
-    imgData.data[i * 4 + 1] = mem[i];
-    imgData.data[i * 4 + 2] = mem[i];
-    imgData.data[i * 4 + 3] = 255;
-  }
+  // for (let i = 0; i < 100 * 100; i++) {
+  //   imgData.data[i * 4] = mem[i * 4];
+  //   imgData.data[i * 4 + 1] = mem[i * 4 + 1];
+  //   imgData.data[i * 4 + 2] = mem[i * 4 + 2];
+  //   imgData.data[i * 4 + 3] = 255;
+  // }
+  imgData.data.set(mem.slice(0, imgData.data.length));
   context!.putImageData(imgData, 0, 0);
 };
 
@@ -137,14 +138,14 @@ export const Output: React.FC = () => {
         case "done":
           const { res, optimLevel } = payload;
           if (optimLevel == "optimised") {
-            optimMemory = new Uint8Array(res.memory.buffer);
+            optimMemory = new Uint8ClampedArray(res.memory.buffer);
             optimHeapVars = res.heap;
             optimData = res.data;
             segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
             segments[2].start = res.heap_start; // 40960 + bril.dataSize;
             segments[2].end = res.heap_pointer - 1;
           } else if (optimLevel == "un-optimised") {
-            brilMemory = new Uint8Array(res.memory.buffer);
+            brilMemory = new Uint8ClampedArray(res.memory.buffer);
             brilHeapVars = res.heap;
             brilData = res.data;
             segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
@@ -161,6 +162,9 @@ export const Output: React.FC = () => {
               break;
             case "info":
               con.info(logmsg);
+              break;
+            case "log":
+              con.log(logmsg);
               break;
           }
           break;
@@ -187,11 +191,11 @@ export const Output: React.FC = () => {
   }, [bril, brilOptim, isRunAuto, isRunWasm, isRunUnoptim, isRunOptim]);
 
   useEffect(() => {
-    if (showScreen) paintScreen("brilCanvas", brilMemory);
+    if (showScreen && brilMemory.byteLength > 0) paintScreen("brilCanvas", brilMemory);
   }, [brilMemory, showScreen]);
 
   useEffect(() => {
-    if (showScreen) paintScreen("optimCanvas", optimMemory);
+    if (showScreen && optimMemory.byteLength > 0) paintScreen("optimCanvas", optimMemory);
   }, [optimMemory, showScreen]);
 
   // useEffect(() => {
