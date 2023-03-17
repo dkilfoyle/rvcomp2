@@ -249,6 +249,7 @@ class SimpleCParser extends CstParser {
   public atomicExpression = this.RULE("atomicExpression", () => {
     this.OR([
       { ALT: () => this.SUBRULE(this.unaryExpression) },
+      { ALT: () => this.SUBRULE(this.castExpression) },
       { GATE: this.BACKTRACK(this.functionCallExpression), ALT: () => this.SUBRULE(this.functionCallExpression) },
       { ALT: () => this.SUBRULE(this.identifierExpression) },
       { ALT: () => this.SUBRULE(this.literalExpression) },
@@ -287,6 +288,13 @@ class SimpleCParser extends CstParser {
 
   public unaryExpression = this.RULE("unaryExpression", () => {
     this.CONSUME(tokens.Plus);
+    this.SUBRULE(this.additionExpression);
+  });
+
+  public castExpression = this.RULE("castExpression", () => {
+    this.CONSUME(tokens.LParen);
+    this.OR([{ ALT: () => this.CONSUME(tokens.Int) }, { ALT: () => this.CONSUME(tokens.Float) }]);
+    this.CONSUME(tokens.RParen);
     this.SUBRULE(this.additionExpression);
   });
 

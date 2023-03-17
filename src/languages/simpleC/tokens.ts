@@ -86,6 +86,7 @@ const MinusMinus = createToken({ name: "MinusMinus", pattern: /--/, categories: 
 const Minus = createToken({ name: "Minus", pattern: /-/, categories: AdditionOperator });
 const Times = createToken({ name: "Times", pattern: /\*/, categories: MultiplicationOperator });
 const Divide = createToken({ name: "Divide", pattern: /\//, categories: MultiplicationOperator });
+const Percent = createToken({ name: "Percent", pattern: /%/, categories: MultiplicationOperator });
 const Comma = createToken({ name: "Comma", pattern: /,/ });
 
 // literals
@@ -132,6 +133,7 @@ export const tokens = {
   Minus,
   Times,
   Divide,
+  Percent,
   Comma,
   Keyword,
   DocComment,

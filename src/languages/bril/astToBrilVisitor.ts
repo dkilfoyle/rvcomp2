@@ -5,6 +5,7 @@ import {
   IAstBinaryExpression,
   IAstBlock,
   IAstBoolLiteralExpression,
+  IAstCastExpression,
   IAstComparisonExpression,
   IAstExpression,
   IAstForStatement,
@@ -251,9 +252,18 @@ class AstToBrilVisitor {
           n.index,
           assignIDExpr
         );
+      case "castExpression":
+        n = node as IAstCastExpression;
+        lhs = this.expression(n.lhs);
+        if (lhs.type == "int" && n.type == "float")
+          return this.builder.buildValue("sittof", "float", [lhs.dest], undefined, undefined, assignIDExpr);
+        else if (lhs.type == "float" && n.type == "int")
+          return this.builder.buildValue("ftosit", "int", [lhs.dest], undefined, undefined, assignIDExpr);
+        else throw new Error(`Casting ${lhs.type} to ${n.type} not supported`);
       case "invalidExpression":
         return this.builder.buildConst(0, "int");
       default:
+        debugger;
         throw new Error(node.toString());
     }
   }

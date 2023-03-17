@@ -219,6 +219,7 @@ export interface AtomicExpressionCstNode extends CstNode {
 
 export type AtomicExpressionCstChildren = {
   unaryExpression?: UnaryExpressionCstNode[];
+  castExpression?: CastExpressionCstNode[];
   functionCallExpression?: FunctionCallExpressionCstNode[];
   identifierExpression?: IdentifierExpressionCstNode[];
   literalExpression?: LiteralExpressionCstNode[];
@@ -268,6 +269,19 @@ export interface UnaryExpressionCstNode extends CstNode {
 
 export type UnaryExpressionCstChildren = {
   Plus: IToken[];
+  additionExpression: AdditionExpressionCstNode[];
+};
+
+export interface CastExpressionCstNode extends CstNode {
+  name: "castExpression";
+  children: CastExpressionCstChildren;
+}
+
+export type CastExpressionCstChildren = {
+  LParen: IToken[];
+  Int?: IToken[];
+  Float?: IToken[];
+  RParen: IToken[];
   additionExpression: AdditionExpressionCstNode[];
 };
 
@@ -382,6 +396,7 @@ export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   functionCallExpression(children: FunctionCallExpressionCstChildren, param?: IN): OUT;
   parenExpression(children: ParenExpressionCstChildren, param?: IN): OUT;
   unaryExpression(children: UnaryExpressionCstChildren, param?: IN): OUT;
+  castExpression(children: CastExpressionCstChildren, param?: IN): OUT;
   identifierExpression(children: IdentifierExpressionCstChildren, param?: IN): OUT;
   literalExpression(children: LiteralExpressionCstChildren, param?: IN): OUT;
   integerLiteralExpression(children: IntegerLiteralExpressionCstChildren, param?: IN): OUT;

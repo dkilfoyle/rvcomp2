@@ -9,6 +9,7 @@ import {
   AtomicExpressionCstChildren,
   BlockStatementCstChildren,
   BoolLiteralExpressionCstChildren,
+  CastExpressionCstChildren,
   ComparisonExpressionCstChildren,
   EqualsExpressionCstChildren,
   ExpressionListCstChildren,
@@ -41,6 +42,7 @@ import {
   IAstAssignStatement,
   IAstAtomicExpression,
   IAstBoolLiteralExpression,
+  IAstCastExpression,
   IAstExpression,
   IAstForStatement,
   IAstFunctionCallExpression,
@@ -346,6 +348,9 @@ class CstVisitor extends CstBaseVisitor {
       case "/":
         res = "div";
         break;
+      case "%":
+        res = "mod";
+        break;
       case ">":
         res = "gt";
         break;
@@ -376,25 +381,17 @@ class CstVisitor extends CstBaseVisitor {
   getOperationType(op: string, type: string) {
     switch (op) {
       case "+":
-        return type;
       case "-":
-        return type;
       case "*":
-        return type;
       case "/":
+      case "%":
         return type;
       case ">":
-        return "bool";
       case ">=":
-        return "bool";
       case "<":
-        return "bool";
       case "<=":
-        return "bool";
       case "==":
-        return "bool";
       case "&&":
-        return "bool";
       case "||":
         return "bool";
       default:
@@ -411,6 +408,7 @@ class CstVisitor extends CstBaseVisitor {
 
   binaryExpression(ctx: AdditionExpressionCstChildren | MultiplicationExpressionCstChildren | ComparisonExpressionCstChildren) {
     const typeError = (node: IAstExpression): IAstInvalidExpression => {
+      debugger;
       this.errors.push({ ...node.pos, code: "2", message: "Expression operands must be all of same type" });
       return { _name: "invalidExpression", type: "int", pos: node.pos };
     };
@@ -461,12 +459,20 @@ class CstVisitor extends CstBaseVisitor {
     if (ctx.functionCallExpression) return this.visit(ctx.functionCallExpression);
     if (ctx.parenExpression) return this.visit(ctx.parenExpression);
     if (ctx.unaryExpression) return this.visit(ctx.unaryExpression);
+    if (ctx.castExpression) return this.visit(ctx.castExpression);
     throw Error();
   }
 
   unaryExpression(ctx: UnaryExpressionCstChildren) {
     const lhs = this.visit(ctx.additionExpression);
     return { name: "unaryExpression", lhs, type: lhs.type };
+  }
+
+  castExpression(ctx: CastExpressionCstChildren): IAstCastExpression {
+    const lhs = this.visit(ctx.additionExpression);
+    if (ctx.Float) return { _name: "castExpression", lhs, type: "float", pos: this.getTokenPos(ctx.Float[0]) };
+    else if (ctx.Int) return { _name: "castExpression", lhs, type: "int", pos: this.getTokenPos(ctx.Int[0]) };
+    else throw new Error();
   }
 
   functionCallExpression(ctx: FunctionCallExpressionCstChildren) {

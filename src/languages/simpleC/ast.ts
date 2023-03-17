@@ -87,7 +87,8 @@ export interface IAstExpression extends IAstNode {
     | "functionCallExpression"
     | "floatBinaryExpression"
     | "intBinaryExpression"
-    | "invalidExpression";
+    | "invalidExpression"
+    | "castExpression";
   type: IDeclarationType;
   pos: IPos;
 }
@@ -115,6 +116,11 @@ export interface IAstFunctionCallExpression extends IAstExpression {
 }
 
 export interface IAstUnaryExpression extends IAstExpression {}
+export interface IAstCastExpression extends IAstExpression {
+  _name: "castExpression";
+  lhs: IAstExpression;
+  type: "float" | "int";
+}
 
 export interface IAstLiteralExpression extends IAstExpression {
   value: number | boolean | string;

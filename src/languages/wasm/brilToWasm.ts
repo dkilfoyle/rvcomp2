@@ -206,6 +206,7 @@ const emitWasmFunction = (
           case "sub":
           case "mul":
           case "div":
+          case "mod":
           // binary comparison operations
           case "lt":
           case "le":
@@ -219,6 +220,7 @@ const emitWasmFunction = (
           case "fsub":
           case "fmul":
           case "fdiv":
+          case "fmod":
           // float comparison operations
           case "flt":
           case "fle":

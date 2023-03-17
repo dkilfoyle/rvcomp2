@@ -74,6 +74,7 @@ export type IWasmOpCode =
   | "i32_sub"
   | "i32_mul"
   | "i32_div"
+  | "i32_rem"
   | "f32_add"
   | "f32_sub"
   | "f32_mul"
@@ -127,11 +128,13 @@ export const Opcodes: Record<IWasmOpCode, number> = {
   // i32 logical
   i32_and: 0x71,
   i32_or: 0x72,
+
   // i32 arthimetic
   i32_add: 0x6a,
   i32_sub: 0x6b,
   i32_mul: 0x6c,
   i32_div: 0x6d,
+  i32_rem: 0x6f,
 
   i32_shl: 0x74,
 

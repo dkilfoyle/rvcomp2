@@ -37,10 +37,12 @@ export interface IBrilValueOperation extends IBrilOp {
     | "sub"
     | "mul"
     | "div"
+    | "mod"
     | "fadd"
     | "fsub"
     | "fmul"
     | "fdiv"
+    | "fmod"
     | "call"
     | "id"
     | "nop"
@@ -60,7 +62,9 @@ export interface IBrilValueOperation extends IBrilOp {
     | "or"
     | "load"
     | "ptradd"
-    | "alloc";
+    | "alloc"
+    | "ftosit"
+    | "sittof";
   dest: string;
   type: IBrilType;
   args: string[];
