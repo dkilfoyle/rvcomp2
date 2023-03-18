@@ -49,8 +49,8 @@ export interface SettingsState {
 export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Screen/setpixel.sc",
   // filename: "./Syntax/while.sc",
-  // filename: "./Screen/mandel.sc",
-  filename: "./Syntax/cast.sc",
+  filename: "./Screen/mandel.sc",
+  // filename: "./Syntax/cast.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

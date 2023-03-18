@@ -17,10 +17,6 @@ import { SiWebassembly } from "react-icons/si";
 import { VscDebugRerun, VscDebugStepOver } from "react-icons/vsc";
 import { BrilTypeByteSize, IBrilDataSegment, IBrilPrimType } from "../languages/bril/BrilInterface";
 
-let brilMemory = new Uint8ClampedArray();
-let optimMemory = new Uint8ClampedArray();
-let wasmMemory = new Uint8ClampedArray();
-
 window.conout1 = { ...window.console };
 window.conout2 = { ...window.console };
 window.conout3 = { ...window.console };
@@ -66,6 +62,10 @@ export const Output: React.FC = () => {
     state.interp.isRunAuto,
   ]);
 
+  const [brilMemory, setBrilMemory] = useState<Uint8ClampedArray>(new Uint8ClampedArray(64 * 1024));
+  const [optimMemory, setOptimMemory] = useState<Uint8ClampedArray>(new Uint8ClampedArray(64 * 1024));
+  const [wasmMemory, setWasmMemory] = useState<Uint8ClampedArray>(new Uint8ClampedArray(64 * 1024));
+
   const [unoptimlogs, setUnoptimLogs] = useState<any[]>([]);
   const [optimlogs, setOptimLogs] = useState<any[]>([]);
   const [wasmlogs, setWasmLogs] = useState<any[]>([]);
@@ -108,7 +108,7 @@ export const Output: React.FC = () => {
         loopTimes: typeof loops == "undefined" ? loopTimes : loops,
       };
       runWasm(wasmByteCode, runtime).then((res) => {
-        wasmMemory = new Uint8Array(res.memory.buffer, 0, res.heap_pointer);
+        setWasmMemory(new Uint8ClampedArray(res.memory.buffer, 0, res.heap_pointer));
         segments[1].end = 40960 + Math.max(0, brilOptim.dataSize - 1);
         segments[2].start = 40960 + brilOptim.dataSize;
         segments[2].end = res.heap_pointer - 1;
@@ -137,15 +137,16 @@ export const Output: React.FC = () => {
       switch (action) {
         case "done":
           const { res, optimLevel } = payload;
+          console.log("done", res);
           if (optimLevel == "optimised") {
-            optimMemory = new Uint8ClampedArray(res.memory.buffer);
+            setOptimMemory(new Uint8ClampedArray(res.memory.buffer));
             optimHeapVars = res.heap;
             optimData = res.data;
             segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
             segments[2].start = res.heap_start; // 40960 + bril.dataSize;
             segments[2].end = res.heap_pointer - 1;
           } else if (optimLevel == "un-optimised") {
-            brilMemory = new Uint8ClampedArray(res.memory.buffer);
+            setBrilMemory(new Uint8ClampedArray(res.memory.buffer));
             brilHeapVars = res.heap;
             brilData = res.data;
             segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
@@ -153,6 +154,18 @@ export const Output: React.FC = () => {
             segments[2].end = res.heap_pointer - 1;
           }
           break;
+        case "render": {
+          const { memory, optimLevel } = payload;
+          switch (optimLevel) {
+            case "optimised":
+              setOptimMemory(new Uint8ClampedArray(memory.buffer));
+              break;
+            case "un-optimised":
+              setBrilMemory(new Uint8ClampedArray(memory.buffer));
+              break;
+          }
+          break;
+        }
         case "log":
           const { id, level, logmsg } = payload;
           const con = id == "console" ? window.conout0 : window.conout2;
@@ -165,6 +178,9 @@ export const Output: React.FC = () => {
               break;
             case "log":
               con.log(logmsg);
+              break;
+            case "error":
+              con.error(logmsg);
               break;
           }
           break;

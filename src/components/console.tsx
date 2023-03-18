@@ -126,7 +126,7 @@ export const Consoler: React.FC = () => {
         <Console
           logs={logs}
           variant="light"
-          filter={["info"]}
+          filter={["info", "error", "warn"]}
           styles={{
             BASE_FONT_SIZE: 10,
             BASE_LINE_HEIGHT: 0.8,

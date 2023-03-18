@@ -268,6 +268,9 @@ const emitWasmFunction = (
             code.push(...unsignedLEB128(idlhsIndex));
             // console.log(`(set_local ${idlhsIndex} (get_local ${idrhsIndex}))`);
             break;
+          case "ftosit":
+            // console.error("brilToWasm: ftosit not implemented yet");
+            break;
           case "br":
             if (!instr.labels) throw new Error("Instr missing labels - badly formed bril");
             const brInstr = instr as IBrilEffectOperation;

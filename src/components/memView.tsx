@@ -10,7 +10,7 @@ import "./memView.css";
 const zeroTo15 = _.range(0, 16);
 
 interface MemViewProps {
-  mem: Uint8Array;
+  mem: Uint8ClampedArray;
   segments: { name: string; start: number; end: number }[];
   heapVars?: IHeapVar[];
   dataSegment?: IBrilDataSegment;

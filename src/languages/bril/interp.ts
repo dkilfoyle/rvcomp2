@@ -28,6 +28,7 @@ let memory: DataView;
 let heap_pointer: number = 0;
 let heap_start: number = 0;
 let data_start: number = 0;
+let optimLevel: string;
 
 export interface IHeapVar {
   address: number;
@@ -61,10 +62,10 @@ const argCounts: { [key in IBrilOpCode]: number | null } = {
   fgt: 2,
   fge: 2,
   feq: 2,
-  print: null, // Any number of arguments.
+  print: null,
   br: 1,
   jmp: 0,
-  ret: null, // (Should be 0 or 1.)
+  ret: null,
   nop: 0,
   call: null,
   alloc: 1,
@@ -73,9 +74,10 @@ const argCounts: { [key in IBrilOpCode]: number | null } = {
   load: 1,
   ptradd: 2,
   phi: null,
-  // speculate: 0,
-  // guard: 1,
-  // commit: 0,
+  ftosit: 1,
+  sittof: 1,
+  mod: 2,
+  fmod: 2,
 };
 
 export type Pointer = {
@@ -340,7 +342,7 @@ function evalCall(instr: IBrilOperation, state: State): Action {
   }
 
   if (funcName == "render") {
-    console.error("render() not impleted");
+    postMessage({ action: "render", payload: { memory, optimLevel } });
     return NEXT;
   }
 
@@ -479,6 +481,18 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
       return NEXT;
     }
 
+    case "ftosit": {
+      let val = getFloat(instr, state.env, 0);
+      state.env.set(instr.dest, BigInt(val));
+      return NEXT;
+    }
+
+    case "sittof": {
+      let val = getInt(instr, state.env, 0);
+      state.env.set(instr.dest, Number(val));
+      return NEXT;
+    }
+
     case "add": {
       let val = getInt(instr, state.env, 0) + getInt(instr, state.env, 1);
       val = BigInt.asIntN(64, val);
@@ -507,6 +521,18 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
         throw error(`division by zero`);
       }
       let val = lhs / rhs;
+      val = BigInt.asIntN(64, val);
+      state.env.set(instr.dest, val);
+      return NEXT;
+    }
+
+    case "mod": {
+      let lhs = getInt(instr, state.env, 0);
+      let rhs = getInt(instr, state.env, 1);
+      if (rhs === BigInt(0)) {
+        throw error(`division by zero`);
+      }
+      let val = lhs % rhs;
       val = BigInt.asIntN(64, val);
       state.env.set(instr.dest, val);
       return NEXT;
@@ -760,6 +786,9 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
       return NEXT;
     }
 
+    default:
+      throw error(`unknown op ${instr.op}`);
+
     // Begin speculation.
     /* case "speculate": {
       return { action: "speculate" };
@@ -787,6 +816,7 @@ function evalFunc(func: IBrilFunction, state: State): Value | null {
     if ("op" in line) {
       // Run an instruction.
       let action = evalInstr(line, state);
+      if (!action) debugger;
 
       // Take the prescribed action.
       switch (action.action) {
@@ -977,15 +1007,17 @@ const logger: ILogger = {
   error: (msg: any) => postMessage({ action: "log", payload: { id: "output", level: "error", logmsg: msg } }),
 };
 
-export function runInterpretor(prog: IBrilProgram, args: string[], optimLevel = "Unknown") {
+export function runInterpretor(prog: IBrilProgram, args: string[], myoptimLevel = "Unknown") {
   try {
     consoleLogger.info(`Running ${optimLevel}...`);
     instrCount = 0;
+    optimLevel = myoptimLevel;
     const startTime = performance.now();
     const { result, state } = evalProg(prog, args);
     const endTime = performance.now();
     if (result != null) logger.info(`Returned ${result}`);
-    consoleLogger.info(` - Completed ${instrCount} instructions in ${(endTime - startTime).toFixed(1)}ms`);
+    consoleLogger.info(` - Completed ${instrCount} instructions`);
+    consoleLogger.info(` - Elapsed ${(endTime - startTime).toFixed(1)}ms`);
     console.log("State.env: ", state.env);
     return { memory, env: state.env, data_start, heap_start, heap_pointer, heap, data: prog.data };
   } catch (e) {
