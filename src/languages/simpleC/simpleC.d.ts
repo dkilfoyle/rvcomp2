@@ -45,7 +45,7 @@ export type VariableDeclarationCstChildren = {
   RSquare?: IToken[];
   ID: IToken[];
   Equals?: IToken[];
-  additionExpression?: AdditionExpressionCstNode[];
+  expression?: ExpressionCstNode[];
 };
 
 export interface StatementCstNode extends CstNode {
@@ -179,7 +179,19 @@ export interface EqualsExpressionCstNode extends CstNode {
 
 export type EqualsExpressionCstChildren = {
   Equals: IToken[];
+  expression: ExpressionCstNode[];
+};
+
+export interface ExpressionCstNode extends CstNode {
+  name: "expression";
+  children: ExpressionCstChildren;
+}
+
+export type ExpressionCstChildren = {
   additionExpression: AdditionExpressionCstNode[];
+  Question?: IToken[];
+  expression?: ExpressionCstNode[];
+  Colon?: IToken[];
 };
 
 export interface AdditionExpressionCstNode extends CstNode {
@@ -388,6 +400,7 @@ export interface ICstNodeVisitor<IN, OUT> extends ICstVisitor<IN, OUT> {
   assignStatement(children: AssignStatementCstChildren, param?: IN): OUT;
   postFixOperation(children: PostFixOperationCstChildren, param?: IN): OUT;
   equalsExpression(children: EqualsExpressionCstChildren, param?: IN): OUT;
+  expression(children: ExpressionCstChildren, param?: IN): OUT;
   additionExpression(children: AdditionExpressionCstChildren, param?: IN): OUT;
   comparisonExpression(children: ComparisonExpressionCstChildren, param?: IN): OUT;
   multiplicationExpression(children: MultiplicationExpressionCstChildren, param?: IN): OUT;

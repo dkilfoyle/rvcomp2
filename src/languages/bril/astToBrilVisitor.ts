@@ -20,8 +20,10 @@ import {
   IAstReturnStatement,
   IAstStatement,
   IAstStringLiteralExpression,
+  IAstTernExpression,
   IAstVariableDeclaration,
   IAstWhileStatement,
+  IDeclarationType,
   IPos,
 } from "../simpleC/ast";
 import { BrilBuilder } from "./BrilBuilder";
@@ -260,6 +262,38 @@ class AstToBrilVisitor {
         else if (lhs.type == "float" && n.type == "int")
           return this.builder.buildValue("ftosit", "int", [lhs.dest], undefined, undefined, assignIDExpr);
         else throw new Error(`Casting ${lhs.type} to ${n.type} not supported`);
+      case "ternExpression": {
+        n = node as IAstTernExpression;
+
+        // Label names.
+        let sfx = this.builder.freshSuffix();
+        let thenLab = "ternthen" + sfx;
+        let elseLab = "ternelse" + sfx;
+        let endLab = "endtern" + sfx;
+
+        const ternResult: IAstIdentifierExpression = {
+          _name: "identifierExpression",
+          id: "ternRes" + sfx,
+          type: n.type,
+          pos: n.pos,
+        };
+
+        // branch
+        const cond = this.expression(n.cond);
+        this.builder.buildEffect("br", [cond.dest], undefined, [thenLab, elseLab]);
+
+        // e0
+        this.builder.buildLabel(thenLab);
+        const e0 = this.expression(n.e0, ternResult);
+        if (!this.builder.lastInstructionIsRet()) this.builder.buildEffect("jmp", [], undefined, [endLab]);
+
+        this.builder.buildLabel(elseLab);
+        const e1 = this.expression(n.e1, ternResult);
+
+        this.builder.buildLabel(endLab);
+        return this.builder.buildIdentifier(ternResult.id, ternResult.type as IBrilType, undefined, assignIDExpr);
+      }
+
       case "invalidExpression":
         return this.builder.buildConst(0, "int");
       default:

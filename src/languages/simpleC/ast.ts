@@ -88,7 +88,8 @@ export interface IAstExpression extends IAstNode {
     | "floatBinaryExpression"
     | "intBinaryExpression"
     | "invalidExpression"
-    | "castExpression";
+    | "castExpression"
+    | "ternExpression";
   type: IDeclarationType;
   pos: IPos;
 }
@@ -120,6 +121,14 @@ export interface IAstCastExpression extends IAstExpression {
   _name: "castExpression";
   lhs: IAstExpression;
   type: "float" | "int";
+}
+
+export interface IAstTernExpression extends IAstExpression {
+  _name: "ternExpression";
+  cond: IAstExpression;
+  e0: IAstExpression;
+  e1: IAstExpression;
+  type: "float" | "int" | "bool";
 }
 
 export interface IAstLiteralExpression extends IAstExpression {

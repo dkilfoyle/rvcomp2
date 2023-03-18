@@ -12,6 +12,7 @@ import {
   CastExpressionCstChildren,
   ComparisonExpressionCstChildren,
   EqualsExpressionCstChildren,
+  ExpressionCstChildren,
   ExpressionListCstChildren,
   FloatLiteralExpressionCstChildren,
   ForStatementCstChildren,
@@ -322,7 +323,7 @@ class CstVisitor extends CstBaseVisitor {
   }
 
   equalsExpression(ctx: EqualsExpressionCstChildren) {
-    return this.visit(ctx.additionExpression);
+    return this.visit(ctx.expression);
   }
 
   postFixOperation(ctx: PostFixOperationCstChildren) {
@@ -406,9 +407,34 @@ class CstVisitor extends CstBaseVisitor {
     return false;
   }
 
+  expression(ctx: ExpressionCstChildren) {
+    const lhs: IAstExpression = this.visit(ctx.additionExpression);
+    if (ctx.Question) {
+      // ternary expression lhs:bool ? o1:T o2:T
+      if (lhs.type !== "bool") {
+        this.errors.push({ ...lhs.pos, code: "2", message: "Expecting type bool" });
+        return { _name: "invalidExpression", type: "int", pos: lhs.pos };
+      }
+      if (ctx.expression) {
+        const e0 = this.visit(ctx.expression[0]);
+        const e1 = this.visit(ctx.expression[1]);
+        if (e0.type != e1.type) {
+          this.errors.push({ ...e1.pos, code: "2", message: `Expecting type ${e0.type}` });
+          return { _name: "invalidExpression", type: "int", pos: e1.pos };
+        }
+        return {
+          _name: "ternExpression",
+          cond: lhs,
+          e0,
+          e1,
+          type: e0.type,
+        };
+      } else throw new Error("cstToast expression - shouldn't be here");
+    } else return lhs;
+  }
+
   binaryExpression(ctx: AdditionExpressionCstChildren | MultiplicationExpressionCstChildren | ComparisonExpressionCstChildren) {
     const typeError = (node: IAstExpression): IAstInvalidExpression => {
-      debugger;
       this.errors.push({ ...node.pos, code: "2", message: "Expression operands must be all of same type" });
       return { _name: "invalidExpression", type: "int", pos: node.pos };
     };
@@ -581,7 +607,7 @@ class CstVisitor extends CstBaseVisitor {
     let type = this.visit(ctx.typeSpecifier).type;
     const arraySize = ctx.arraySize ? this.visit(ctx.arraySize[0]).value : undefined;
 
-    let initExpr = ctx.additionExpression ? this.visit(ctx.additionExpression) : undefined;
+    let initExpr = ctx.expression ? this.visit(ctx.expression) : undefined;
     if (initExpr) {
       if (initExpr.type !== type)
         this.errors.push({

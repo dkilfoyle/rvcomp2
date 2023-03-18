@@ -116,7 +116,7 @@ class SimpleCParser extends CstParser {
     this.CONSUME(tokens.ID);
     this.OPTION2(() => {
       this.CONSUME(tokens.Equals);
-      this.SUBRULE(this.additionExpression);
+      this.SUBRULE(this.expression);
     });
   });
 
@@ -215,12 +215,22 @@ class SimpleCParser extends CstParser {
 
   public equalsExpression = this.RULE("equalsExpression", () => {
     this.CONSUME(tokens.Equals);
-    this.SUBRULE(this.additionExpression);
+    this.SUBRULE(this.expression);
   });
 
   // ==========================================================================================================
   // Expressions
   // ==========================================================================================================
+
+  public expression = this.RULE("expression", () => {
+    this.SUBRULE(this.additionExpression);
+    this.OPTION(() => {
+      this.CONSUME(tokens.Question);
+      this.SUBRULE2(this.expression);
+      this.CONSUME(tokens.Colon);
+      this.SUBRULE3(this.expression);
+    });
+  });
 
   public additionExpression = this.RULE("additionExpression", () => {
     this.SUBRULE(this.comparisonExpression, { LABEL: "operands" });

@@ -70,6 +70,8 @@ const RParen = createToken({ name: "RParen", pattern: /\)/ });
 const LSquare = createToken({ name: "LSquare", pattern: /\[/ });
 const RSquare = createToken({ name: "RSquare", pattern: /\]/ });
 const SemiColon = createToken({ name: "SemiColon", pattern: /;/ });
+const Colon = createToken({ name: "Colon", pattern: /:/ });
+const Question = createToken({ name: "Question", pattern: /\?/ });
 
 const LessThanEqual = createToken({ name: "LessThanEqual", pattern: /<=/, categories: ComparisonOperator });
 const LessThan = createToken({ name: "LessThan", pattern: /</, categories: ComparisonOperator });
@@ -119,6 +121,8 @@ export const tokens = {
   LSquare,
   RSquare,
   SemiColon,
+  Colon,
+  Question,
   LessThan,
   LessThanEqual,
   GreaterThan,
