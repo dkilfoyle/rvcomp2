@@ -38,6 +38,7 @@ export class CfgBuilder {
   }
 
   endBlock() {
+    if (this.cur_block.name == "") console.error("Blockname is empty: ", this.cur_block);
     this.blocks.push({ ...this.cur_block });
     this.cur_block.instructions = [];
   }
@@ -120,6 +121,8 @@ export const addCfgEntry = (blockMap: ICFGBlockMap) => {
     blocks.map((block) => block.name)
   );
 
+  // console.log(`Adding label ${newLabel} before block ${blocks[0].name}`);
+
   return {
     [newLabel]: { name: newLabel, instructions: [], out: [blocks[0].name], keyEnd: -1, keyStart: -1, live: [], defined: [] } as ICFGBlock,
     ...blockMap,
@@ -141,10 +144,15 @@ export const addCfgTerminators = (blockMap: ICFGBlockMap) => {
       // not last block, so if not explicity terminated then jmp to next block
       const dest = blocks[i + 1].name;
 
-      if (block.instructions.length == 0) block.instructions.push({ op: "jmp", labels: [dest] });
-      else {
+      if (block.instructions.length == 0) {
+        block.instructions.push({ op: "jmp", labels: [dest] });
+        console.log(`Adding jmp ${dest} to block ${block.name}`);
+      } else {
         const lastIns = block.instructions[block.instructions.length - 1] as IBrilInstruction;
-        if (["br", "jmp", "ret"].includes(lastIns.op) === false) block.instructions.push({ op: "jmp", labels: [dest] });
+        if (["br", "jmp", "ret"].includes(lastIns.op) === false) {
+          // console.log(`Adding jmp ${dest} to block ${block.name}`);
+          block.instructions.push({ op: "jmp", labels: [dest] });
+        }
       }
     }
   });

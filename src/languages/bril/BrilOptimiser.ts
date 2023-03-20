@@ -17,6 +17,8 @@ export const optimiseBril = (bril: IBrilProgram, optimisations: string[], logger
   Object.values(bril.functions).forEach((func) => {
     let blockMap = getFunctionBlockMap(func);
 
+    if (optimisations.length == 0) if (logger) logger.info(` - No optimisations`);
+
     if (Object.keys(blockMap).length > 0) {
       optimisations.forEach((optim) => {
         switch (optim) {

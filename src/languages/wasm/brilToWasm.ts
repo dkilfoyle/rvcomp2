@@ -149,9 +149,18 @@ const emitWasmFunction = (
       emitInstructions(block.instructions, false);
 
       // end if block will be where the if and else paths converge
-      const endIfBlock = findCommonSuccessor(successorsMap, backEdges, block.out[0], block.out[1]);
-      if (endIfBlock == "") throw new Error(`findCommonSuccessor found no result for ${block.out[0]}, ${block.out[1]}`);
+      // const endIfBlock = findCommonSuccessor(successorsMap, backEdges, block.out[0], block.out[1]);
+      // if (endIfBlock == "") throw new Error(`findCommonSuccessor found no result for ${block.out[0]}, ${block.out[1]}`);
       // console.log("  endif block = ", endIfBlock);
+
+      // convergence didn't work when then or else blocks terminated in a return
+      // hack is to store endiflabel in the if br instructions as third label
+      const lastInstr = _.last(block.instructions);
+
+      let endIfBlock;
+      if (lastInstr && lastInstr.op == "br" && lastInstr.labels?.length == 3) {
+        endIfBlock = lastInstr.labels[2];
+      } else throw Error("if br should have endif label in labels[2");
 
       // traverse then blocks until reach endif
       // console.log("  traversing then for ", block.name);

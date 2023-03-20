@@ -134,7 +134,7 @@ class AstToBrilVisitor {
 
     // branch
     const cond = this.expression(node.cond);
-    this.builder.buildEffect("br", [cond.dest], undefined, [thenLab, elseLab]);
+    this.builder.buildEffect("br", [cond.dest], undefined, [thenLab, elseLab, endLab]); // hack: store endLab in funcs so wasm can detect if blocks
 
     this.builder.buildLabel(thenLab);
     this.statement(node.then);
