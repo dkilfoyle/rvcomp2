@@ -20,8 +20,8 @@ export enum Section {
 
 // https://webassembly.github.io/spec/core/binary/types.html
 export enum Valtype {
-  i32 = 0x7f,
-  f32 = 0x7d,
+  i32 = 0x7f, //127
+  f32 = 0x7d, //125
   void = 0x0,
 }
 

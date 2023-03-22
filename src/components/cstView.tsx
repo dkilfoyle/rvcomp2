@@ -4,13 +4,19 @@ import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 
 import { Icon } from "@chakra-ui/react";
-import { VscSymbolClass } from "react-icons/vsc";
+import { VscListOrdered, VscSymbolArray, VscSymbolClass } from "react-icons/vsc";
 
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import "overlayscrollbars/overlayscrollbars.css";
 import { ParseState, useParseStore } from "../store/zustore";
-import { FunctionDeclarationCstNode, IdentifierExpressionCstNode, VariableDeclarationCstNode } from "../languages/simpleC/simpleC";
+import {
+  FunctionDeclarationCstNode,
+  IdentifierExpressionCstNode,
+  TypeSpecifierCstNode,
+  VariableDeclarationCstNode,
+} from "../languages/simpleC/simpleC";
 import { CstElement, CstNode, IToken, tokenLabel } from "chevrotain";
+import { BiText } from "react-icons/bi";
 
 const fullHeight = { height: "100%" };
 
@@ -23,15 +29,14 @@ export const CstView: React.FC = () => {
       let title: React.ReactElement = <span>Unknown Node</span>;
       let objDisplayName = objName !== "" ? `(${objName})` : "";
       let children;
-
-      debugger;
+      let icon;
 
       if (nodeAny.name) {
         const cstNode = nodeAny as CstNode;
+        icon = <Icon as={VscSymbolClass}></Icon>;
         console.log(cstNode);
         switch (cstNode.name) {
           case "functionDeclaration":
-            debugger;
             const fdnode = nodeAny as FunctionDeclarationCstNode;
             title = (
               <span>
@@ -52,6 +57,14 @@ export const CstView: React.FC = () => {
             title = (
               <span>
                 IdentifierExpression: <strong>{idnode.children.ID[0].image}</strong>
+              </span>
+            );
+            break;
+          case "typeSpecifier":
+            const tnode = nodeAny as TypeSpecifierCstNode;
+            title = (
+              <span>
+                typeSpecifier: <strong>{Object.values(tnode.children)[0][0].image}</strong>
               </span>
             );
             break;
@@ -78,27 +91,8 @@ export const CstView: React.FC = () => {
             );
             break;
         }
-      } else {
-        // node does not have _name and is not an ast node
-        // it might be array of nodes or a non-ast object
-        if (nodeAny instanceof Array) {
-          const nodeArray = nodeAny as CstElement[];
-          title = (
-            <span style={{ color: "green" }}>
-              {objName}[{nodeArray.length}]
-            </span>
-          );
-        } else if ("image" in nodeAny) {
-          const nodeToken = nodeAny as IToken;
-          title = <span style={{ color: "red" }}>{tokenLabel(nodeToken.tokenType)}</span>;
-        } else title = <span>{objName}</span>;
-      }
 
-      const res: any = { key: i++, title, icon: nodeAny.name ? <Icon as={VscSymbolClass}></Icon> : undefined };
-
-      if (nodeAny.children) {
-        const node = nodeAny as CstNode;
-        res.children = Object.entries(node.children).map(([key, value]) => {
+        children = Object.entries(cstNode.children).map(([key, value]) => {
           return loop(value, key);
           // return {
           //   key: i++,
@@ -109,7 +103,28 @@ export const CstView: React.FC = () => {
           //   ),
           // };
         });
-      }
+      } else if (nodeAny instanceof Array) {
+        const nodeArray = nodeAny as CstElement[];
+        if (nodeArray.length == 1) return loop(nodeArray[0]);
+        title = (
+          <span style={{ color: "green" }}>
+            {objName}[{nodeArray.length}]
+          </span>
+        );
+        children = nodeArray.map((n) => loop(n));
+      } else if ("image" in nodeAny) {
+        const nodeToken = nodeAny as IToken;
+        title = (
+          <div>
+            <span style={{ color: "blue" }}>{tokenLabel(nodeToken.tokenType)}: </span>
+            <span> "{nodeToken.image}"</span>
+          </div>
+        );
+        icon = <Icon as={BiText}></Icon>;
+      } else title = <span>{objName}</span>;
+
+      const res: any = { key: i++, title, children, icon };
+
       return res;
     };
     return loop(cst, "root");

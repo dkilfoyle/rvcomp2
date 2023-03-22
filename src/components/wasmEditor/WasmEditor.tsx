@@ -46,8 +46,9 @@ export const WasmEditor: VFC = () => {
       // link.click();
 
       WabtModule().then((wabtModule) => {
+        let wasmModule;
         try {
-          const wasmModule = wabtModule.readWasm(wasmBuffer, { readDebugNames: true });
+          wasmModule = wabtModule.readWasm(wasmBuffer, { readDebugNames: true });
           wasmModule.validate();
           wasmModule.generateNames();
           wasmModule.applyNames();
@@ -61,6 +62,11 @@ export const WasmEditor: VFC = () => {
           setParse((state) => {
             state.wasm = new Uint8Array();
           });
+          // var blob = new Blob([wasmBuffer]); // change resultByte to bytes
+          // var link = document.createElement("a");
+          // link.href = window.URL.createObjectURL(blob);
+          // link.download = "dean.wasm";
+          // link.click();
           const wasmModel = monaco.editor.createModel(e.toString());
           editor.setModel(wasmModel);
           console.info("Wasm parse errors:");

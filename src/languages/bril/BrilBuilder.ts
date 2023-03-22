@@ -227,7 +227,7 @@ export class BrilBuilder {
   }
 
   buildConst(value: IBrilValueType, type: IBrilType, assignIDExpr?: IAstIdentifierExpression) {
-    const constInstr: IBrilConst = { op: "const", value, dest: `c${value}`, type };
+    const constInstr: IBrilConst = { op: "const", value, dest: `c${value}${type == "float" ? "f" : ""}`, type };
     this.insertValueInstruction(constInstr, assignIDExpr);
     return constInstr;
   }

@@ -131,7 +131,23 @@ export const OptimList = () => {
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
                     style={getItemStyle(snapshot.isDragging, provided.draggableProps.style, false)}>
-                    <Checkbox> {item}</Checkbox>
+                    <Checkbox
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const result = move(
+                            optimisations.available,
+                            optimisations.selected,
+                            { droppableId: "available", index },
+                            { droppableId: "selected", index: optimisations.selected.length }
+                          );
+                          setSettings((state: SettingsState) => {
+                            state.optimisations = result;
+                          });
+                        }
+                      }}>
+                      {" "}
+                      {item}
+                    </Checkbox>
                   </div>
                 )}
               </Draggable>

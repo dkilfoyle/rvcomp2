@@ -74,6 +74,9 @@ export class CfgBuilder {
         }
       } else {
         ins = <IBrilLabel>ins;
+        if (i == 0) {
+          this.cur_block.name = ins.label;
+        }
         if (i != 0) {
           // if i == 0 then don't create a block as already done
           if (this.cur_block.out.length == 0) this.cur_block.out = [ins.label];

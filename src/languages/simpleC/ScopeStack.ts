@@ -57,6 +57,9 @@ export class ScopeStack {
   // }
 
   addToScope(signature: ISignature) {
+    if (this.currentScope.signatures.find((s) => s.id == signature.id)) {
+      throw new Error(`Cannot redefine scope variable ${signature.id}`);
+    }
     this.currentScope.signatures.push(signature);
   }
 

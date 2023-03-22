@@ -292,7 +292,11 @@ class CstVisitor extends CstBaseVisitor {
 
   variableDeclarationStatement(ctx: VariableDeclarationStatementCstChildren) {
     const decl = this.visit(ctx.variableDeclaration);
-    this.scopeStack.addToScope(decl);
+    try {
+      this.scopeStack.addToScope(decl);
+    } catch (e: any) {
+      this.errors.push({ ...decl.pos, code: "2", message: e.toString() });
+    }
     return decl;
   }
 

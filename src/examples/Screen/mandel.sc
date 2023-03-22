@@ -37,9 +37,9 @@ void main() {
 
       int r = iteration == 255 ? 0 : color(iteration, 0, 4);
       int g = iteration == 255 ? 0 : color(iteration, 128, 4);
-      int b = iteration == 255 ? 0 : color(iteration, 356, 4);
+      int bb = iteration == 255 ? 0 : color(iteration, 356, 4);
 
-      set_pixel(x, y, r, g, b);
+      set_pixel(x, y, r, g, bb);
     }
   }
   render();

@@ -280,7 +280,7 @@ class AstToBrilVisitor {
 
         // branch
         const cond = this.expression(n.cond);
-        this.builder.buildEffect("br", [cond.dest], undefined, [thenLab, elseLab]);
+        this.builder.buildEffect("br", [cond.dest], undefined, [thenLab, elseLab, endLab]);
 
         // e0
         this.builder.buildLabel(thenLab);

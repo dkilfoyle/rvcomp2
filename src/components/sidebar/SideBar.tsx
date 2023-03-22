@@ -3,7 +3,7 @@ import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 import { examples } from "../../examples/examples";
 import { useSettingsStore, SettingsState } from "../../store/zustore";
-import shallow from "zustand/shallow";
+import { shallow } from "zustand/shallow";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import { GiSlowBlob } from "react-icons/gi";

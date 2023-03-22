@@ -4,7 +4,7 @@ import { parse } from "../simpleC/parser";
 import { astToBrilVisitor } from "./astToBrilVisitor";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges } from "./cfg";
 import { getDominatorMap, invertMap, postOrder, IStringsMap } from "./dom";
-import domCode from "../../examples/dom.sc?raw";
+import domCode from "./examples/Optimisation/dom.sc?raw";
 
 test("invertMap inverts string array maps", () => {
   const mymap = {

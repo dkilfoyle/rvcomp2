@@ -4,7 +4,7 @@ import { parse } from "../simpleC/parser";
 import { astToBrilVisitor } from "./astToBrilVisitor";
 import { addCfgEntry, addCfgTerminators, cfgBuilder, getCfgBlockMap, getCfgEdges, ICFG, ICFGBlock, ICFGBlockMap } from "./cfg";
 import { getDominanceFrontierMap, getDominanceTree, getDominatorMap, invertMap, postOrder, IStringsMap } from "./dom";
-import domCode from "../../examples/ssaif.sc?raw";
+import domCode from "./examples/Optimisation/ssaif.sc?raw";
 import { getBlockToPhiVariablesMap, getVariableDefinitionToBlocksMap, renameVars } from "./ssa";
 import { IBrilProgram } from "./BrilInterface";
 import { getBrilFunctionArgs, getBrilFunctionVarTypes } from "./utils";

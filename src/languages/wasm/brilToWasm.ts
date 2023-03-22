@@ -160,7 +160,10 @@ const emitWasmFunction = (
       let endIfBlock;
       if (lastInstr && lastInstr.op == "br" && lastInstr.labels?.length == 3) {
         endIfBlock = lastInstr.labels[2];
-      } else throw Error("if br should have endif label in labels[2");
+      } else {
+        debugger;
+        throw Error(`if br should have endif label in labels[2]`);
+      }
 
       // traverse then blocks until reach endif
       // console.log("  traversing then for ", block.name);
@@ -251,10 +254,15 @@ const emitWasmFunction = (
               code.push(Opcodes.i32_const, ...signedLEB128(ptrVarSize));
               code.push(Opcodes.i32_mul);
             }
-            if (binarg0.type != binarg1.type) throw new Error(`Binary operands must be of same type: ${binarg0.type} != ${binarg1.type}`);
-            if (instr.op.startsWith("f") && binarg0.type !== Valtype.f32)
+            if (binarg0.type != binarg1.type) {
+              console.log(instr);
+              debugger;
+              throw new Error(`Binary operands must be of same type: ${binarg0.type} != ${binarg1.type}`);
+            }
+            if (instr.op.startsWith("f") && binarg0.type !== Valtype.f32) {
+              console.log(instr);
               throw new Error(`Binary float operation ${instr.op} expects float operands, got ${binarg0.type}`);
-
+            }
             const instrop = instr.op == "ptradd" ? "add" : instr.op;
             const binopcode = binarg0.type == Valtype.i32 ? (`i32_${instrop}` as IWasmOpCode) : (`f32_${instrop.slice(1)}` as IWasmOpCode);
             code.push(Opcodes[binopcode]);
