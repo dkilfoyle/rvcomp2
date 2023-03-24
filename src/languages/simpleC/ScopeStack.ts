@@ -21,7 +21,7 @@ export class ScopeStack {
   }
 
   reset(location: CstNodeLocation) {
-    this.stack = this.getGlobalScope(location);
+    this.stack = { ...this.getGlobalScope(location) };
     this.currentScope = this.stack;
   }
 
@@ -37,7 +37,7 @@ export class ScopeStack {
       location,
       parent: undefined,
       children: [],
-      signatures: libraryFunctions,
+      signatures: [...libraryFunctions],
     };
   }
 
