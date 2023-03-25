@@ -149,7 +149,7 @@ export const addCfgTerminators = (blockMap: ICFGBlockMap) => {
 
       if (block.instructions.length == 0) {
         block.instructions.push({ op: "jmp", labels: [dest] });
-        console.log(`Adding jmp ${dest} to block ${block.name}`);
+        // console.log(`Adding jmp ${dest} to block ${block.name}`);
       } else {
         const lastIns = block.instructions[block.instructions.length - 1] as IBrilInstruction;
         if (["br", "jmp", "ret"].includes(lastIns.op) === false) {

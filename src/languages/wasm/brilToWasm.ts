@@ -77,6 +77,7 @@ const importedFunctions = [
   { name: "print_float", argTypes: [Valtype.f32], retType: Valtype.void },
   { name: "print_string", argTypes: [Valtype.i32], retType: Valtype.void },
   { name: "print_char", argTypes: [Valtype.i32], retType: Valtype.void },
+  { name: "assert", argTypes: [Valtype.i32, Valtype.i32], retType: Valtype.void },
   { name: "render", argTypes: [], retType: Valtype.void },
   { name: "random", argTypes: [], retType: Valtype.f32 },
 ];

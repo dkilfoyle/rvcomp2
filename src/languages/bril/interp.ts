@@ -266,7 +266,7 @@ function evalCall(instr: IBrilOperation, state: State): Action {
     if (!typeCheck(value, "int")) {
       throw error(`function argument type mismatch - expected int`);
     }
-    logger.info(value);
+    logger.info("output", "", value);
     return NEXT;
   }
 
@@ -279,7 +279,7 @@ function evalCall(instr: IBrilOperation, state: State): Action {
     if (!typeCheck(value, "float")) {
       throw error(`function argument type mismatch - expected float`);
     }
-    logger.info(value);
+    logger.info("output", "", value);
     return NEXT;
   }
 
@@ -293,7 +293,7 @@ function evalCall(instr: IBrilOperation, state: State): Action {
     if (!typeCheck(value, "bool")) {
       throw error(`function argument type mismatch - expected bool`);
     }
-    logger.info(value);
+    logger.info("output", "", value);
     return NEXT;
   }
 
@@ -363,7 +363,30 @@ function evalCall(instr: IBrilOperation, state: State): Action {
       str += String.fromCharCode(byte);
     }
 
-    logger.info(str);
+    logger.info("output", str);
+    return NEXT;
+  }
+
+  if (funcName == "assert") {
+    let args = instr.args || [];
+    if (args.length !== 2) {
+      throw error(`function expected 2 arguments, got ${args.length}`);
+    }
+    let test = get(state.env, args[0]);
+    if (!typeCheck(test, "bool")) {
+      throw error(`function argument type mismatch - expected bool`);
+    }
+    let pmsg = get(state.env, args[1]);
+    if (!typeCheck(pmsg, "char")) {
+      throw error(`function argument type mismatch - expected char`);
+    }
+    let msg = "";
+    for (let i = 0; i < 100; i++) {
+      const byte = memory.getUint8(Number(pmsg) + i);
+      if (byte === 0) break;
+      msg += String.fromCharCode(byte);
+    }
+    logger.info("output", `ASSERT: ${msg} is ${test.toString().toUpperCase()}`);
     return NEXT;
   }
 
@@ -653,7 +676,7 @@ function evalInstr(instr: IBrilInstruction, state: State): Action {
           return val.toString();
         }
       });
-      logger.log(...values);
+      logger.log("output", "values", ...values);
       return NEXT;
     }
 
@@ -952,7 +975,7 @@ function evalProg(prog: IBrilProgram, args: string[]) {
 
   let main = prog.functions.main;
   if (!main || main === null) {
-    logger.warn(`no main function defined, doing nothing`);
+    logger.warn("output", `no main function defined, doing nothing`);
     return { result: 0, state: { icount: 0, env: new Map(), heap: [] } };
   }
 
@@ -981,48 +1004,41 @@ function evalProg(prog: IBrilProgram, args: string[]) {
   // if (!heap.isEmpty()) {
   //   throw error(`Some memory locations have not been freed by end of execution.`);
   // }
-  if (heap.some((h) => h.alive)) logger.warn(`Heap is not empty - ${heap.length} entries remain`);
+  if (heap.some((h) => h.alive)) logger.warn("output", `Heap is not empty - ${heap.length} entries remain`);
 
   return { result, state };
 }
 
 interface ILogger {
-  warn: (msg: string) => void;
-  info: (msg: string) => void;
-  log: (msg: string) => void;
-  error: (msg: string) => void;
+  warn: (id: "console" | "output", msg: string, dump?: any) => void;
+  info: (id: "console" | "output", msg: string, dump?: any) => void;
+  log: (id: "console" | "output", msg: string, dump?: any) => void;
+  error: (id: "console" | "output", msg: string, dump?: any) => void;
 }
 
-const consoleLogger: ILogger = {
-  warn: (msg: any) => postMessage({ action: "log", payload: { id: "console", level: "warn", logmsg: msg } }),
-  info: (msg: any) => postMessage({ action: "log", payload: { id: "console", level: "info", logmsg: msg } }),
-  log: (msg: any) => postMessage({ action: "log", payload: { id: "console", level: "log", logmsg: msg } }),
-  error: (msg: any) => postMessage({ action: "log", payload: { id: "console", level: "error", logmsg: msg } }),
-};
-
 const logger: ILogger = {
-  warn: (msg: any) => postMessage({ action: "log", payload: { id: "output", level: "warn", logmsg: msg } }),
-  info: (msg: any) => postMessage({ action: "log", payload: { id: "output", level: "info", logmsg: msg } }),
-  log: (msg: any) => postMessage({ action: "log", payload: { id: "output", level: "log", logmsg: msg } }),
-  error: (msg: any) => postMessage({ action: "log", payload: { id: "output", level: "error", logmsg: msg } }),
+  warn: (id, msg, dump) => postMessage({ action: "log", payload: { id, level: "warn", logmsg: msg, dump } }),
+  info: (id, msg, dump) => postMessage({ action: "log", payload: { id, level: "info", logmsg: msg, dump } }),
+  log: (id, msg, dump) => postMessage({ action: "log", payload: { id, level: "log", logmsg: msg, dump } }),
+  error: (id, msg, dump) => postMessage({ action: "log", payload: { id, level: "error", logmsg: msg, dump } }),
 };
 
 export function runInterpretor(prog: IBrilProgram, args: string[], myoptimLevel = "Unknown") {
   try {
-    consoleLogger.info(`Running ${optimLevel}...`);
+    logger.info("console", `Running ${myoptimLevel}...`);
     instrCount = 0;
     optimLevel = myoptimLevel;
     const startTime = performance.now();
     const { result, state } = evalProg(prog, args);
     const endTime = performance.now();
-    if (result != null) logger.info(`Returned ${result}`);
-    consoleLogger.info(` - Completed ${instrCount} instructions`);
-    consoleLogger.info(` - Elapsed ${(endTime - startTime).toFixed(1)}ms`);
-    console.log("State.env: ", state.env);
+    if (result != null) logger.info("console", `Returned ${result}`);
+    logger.info("console", ` - Completed ${instrCount} instructions`);
+    logger.info("console", ` - Elapsed ${(endTime - startTime).toFixed(1)}ms`);
+    // logger.info("console", " - State.env: ", state.env);
     return { memory, env: state.env, data_start, heap_start, heap_pointer, heap, data: prog.data };
   } catch (e) {
     if (e instanceof BriliError) {
-      logger.error(`error: ${e.message}`);
+      logger.error("output", `error: ${e.message}`);
     } else {
       throw e;
     }

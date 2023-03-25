@@ -77,17 +77,25 @@ export const WasmEditor: VFC = () => {
   }, [brilOptim, foldExprs]);
 
   useEffect(() => {
-    if (monacoEl && !editor) {
+    if (!editor) {
       setupLanguage();
-      setEditor(monaco.editor.create(monacoEl.current!, { automaticLayout: true, language: "wasm" }));
+      setEditor(monaco.editor.create(document.getElementById("wasmEditorContainer")!, { automaticLayout: true, language: "wasm" }));
     }
     return () => editor?.dispose();
-  }, [monacoEl.current]);
+  }, []);
+
+  // useEffect(() => {
+  //   if (monacoEl && !editor) {
+  //     setupLanguage();
+  //     setEditor(monaco.editor.create(monacoEl.current!, { automaticLayout: true, language: "wasm" }));
+  //   }
+  //   return () => editor?.dispose();
+  // }, [monacoEl.current]);
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <VStack height="100%" align="left" spacing="0px">
-        <div className={styles.Editor} ref={monacoEl}></div>
+        <div className={styles.Editor} id="wasmEditorContainer" ref={monacoEl}></div>
       </VStack>
     </ErrorBoundary>
   );

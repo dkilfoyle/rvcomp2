@@ -16,6 +16,7 @@ import { FaRunning, FaShippingFast } from "react-icons/fa";
 import { SiWebassembly } from "react-icons/si";
 import { VscDebugRerun, VscDebugStepOver } from "react-icons/vsc";
 import { BrilTypeByteSize, IBrilDataSegment, IBrilPrimType } from "../languages/bril/BrilInterface";
+import _ from "lodash";
 
 window.conout1 = { ...window.console };
 window.conout2 = { ...window.console };
@@ -92,8 +93,8 @@ export const Output: React.FC = () => {
     return new Worker(new URL("../languages/bril/interp.ts", import.meta.url), { type: "module" });
   }, []);
 
-  const run = (runMain: boolean = true, loops: number | undefined = undefined) => {
-    if (isRunWasm && Object.keys(brilOptim.functions).length && wasmByteCode) {
+  const run = (runMain: boolean = true, optimLevel: string, loops: number | undefined = undefined) => {
+    if (optimLevel == "optim" && isRunWasm && Object.keys(brilOptim.functions).length && wasmByteCode) {
       setWasmLogs([]);
 
       const runtime: IRuntimeOptions = {
@@ -115,14 +116,15 @@ export const Output: React.FC = () => {
       });
     }
 
-    if (isRunUnoptim && Object.keys(bril.functions).length) {
+    if (optimLevel == "unoptim" && isRunUnoptim && Object.keys(bril.functions).length) {
       setUnoptimLogs([]);
       brilInterpWorker.postMessage({
         action: "main",
         payload: { prog: bril, args: [], optimLevel: "un-optimised" },
       });
     }
-    if (isRunOptim && Object.keys(brilOptim.functions).length) {
+
+    if (optimLevel == "optim" && isRunOptim && Object.keys(brilOptim.functions).length) {
       setOptimLogs([]);
       brilInterpWorker.postMessage({
         action: "main",
@@ -137,7 +139,7 @@ export const Output: React.FC = () => {
       switch (action) {
         case "done":
           const { res, optimLevel } = payload;
-          console.log("done", res);
+          // console.log("done", res);
           if (optimLevel == "optimised") {
             setOptimMemory(new Uint8ClampedArray(res.memory.buffer));
             optimHeapVars = res.heap;
@@ -167,21 +169,14 @@ export const Output: React.FC = () => {
           break;
         }
         case "log":
-          const { id, level, logmsg } = payload;
+          const { id, level, logmsg, dump } = payload;
           const con = id == "console" ? window.conout0 : window.conout2;
-          switch (level) {
-            case "warn":
-              con.warn(logmsg);
-              break;
-            case "info":
-              con.info(logmsg);
-              break;
-            case "log":
-              con.log(logmsg);
-              break;
-            case "error":
-              con.error(logmsg);
-              break;
+          const logger = con[level as "warn" | "info" | "log" | "error"];
+          if (logmsg != "") {
+            if (!_.isUndefined(dump)) logger(logmsg, dump);
+            else logger(logmsg);
+          } else {
+            logger(dump);
           }
           break;
       }
@@ -202,9 +197,15 @@ export const Output: React.FC = () => {
 
   useEffect(() => {
     if (isRunAuto) {
-      run(true);
+      run(true, "unoptim");
     }
-  }, [bril, brilOptim, isRunAuto, isRunWasm, isRunUnoptim, isRunOptim]);
+  }, [bril, isRunAuto, isRunUnoptim]);
+
+  useEffect(() => {
+    if (isRunAuto) {
+      run(true, "optim");
+    }
+  }, [brilOptim, isRunAuto, isRunWasm, isRunOptim]);
 
   useEffect(() => {
     if (showScreen && brilMemory.byteLength > 0) paintScreen("brilCanvas", brilMemory);
@@ -348,8 +349,8 @@ export const Output: React.FC = () => {
             <Divider orientation="vertical" size="sm"></Divider>
             <Grid templateRows="auto auto 1fr" gap="2" height="100%">
               <HStack>
-                <IconButton size="xs" aria-label="main" icon={<VscDebugRerun />} onClick={() => run(true, 0)} />
-                <IconButton size="xs" aria-label="loop" icon={<VscDebugStepOver />} onClick={() => run(false, 1)} />
+                <IconButton size="xs" aria-label="main" icon={<VscDebugRerun />} onClick={() => run(true, "optim", 0)} />
+                <IconButton size="xs" aria-label="loop" icon={<VscDebugStepOver />} onClick={() => run(false, "optim", 1)} />
               </HStack>
               <Divider></Divider>
               {showScreen ? <canvas id="wasmCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}

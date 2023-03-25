@@ -51,6 +51,8 @@ export const runWasm = (wasmBuffer: Uint8Array, runtime: IRuntimeOptions) => {
         print_float: (x: number) => window.conout3.info("print_float: ", x),
         print_string: (x: number) => window.conout3.info(`print_string @ 0x${x.toString(16)}: ${getStringFromMemory(x)}`),
         print_char: (x: number) => window.conout3.info(`print_char: ${x} = 0x${x.toString(16)} = ${String.fromCharCode(x)}`),
+        assert: (test: boolean, pmsg: number) =>
+          window.conout3.info(`ASSERT: ${getStringFromMemory(pmsg)} is ${test.toString().toUpperCase()}`),
         render: () => {
           const screenData = new Uint8ClampedArray(memory.buffer, 0, 100 * 100 * 4);
           const screenImage = new ImageData(screenData.slice(0, 100 * 100 * 4), 100, 100);

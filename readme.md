@@ -31,7 +31,10 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
    - [x] uf (cond) instead of if (cond == true) where cond is boolean function call
    - [x] arrays
    - [x] stdlib (print_int, print_string)  
-   - [ ] add modulo operator to SimpleC and Bril
+   - [x] add modulo operator to SimpleC and Bril
+   - [ ] add bitwise operators to SimpleC and Bril
+   - [ ] reimplement library functions in raw Bril
+   - [ ] add assert to library functions
 2. Improve UI
    - [x] CFG node selection shows DFA for that node
    - [x] Bril IR diffeditor - plain vs SSA and SSA vs optimisations
@@ -49,10 +52,11 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
    2. Loop optimisation
       - [ ] Unrolling
       - [x] Loop-invariant computation hoisting
-      - [x] Strength reduction 
+      - [x] Strength reduction
+   3. Peephole optimisations
 5. Many more examples
    - [x] Mandelbrot
-   - [ ] Color Mandelbrot
+   - [x] Color Mandelbrot
    - [x] Game of Life
 6. Code generators
    - [ ] IR to RiscV

@@ -78,7 +78,21 @@ export const libraryFunctions: ISignature[] = [
     type: "void",
     block: { _name: "block", statements: [], heapVars: [] },
     params: [{ _name: "variableDeclaration", id: "b", type: "bool", pos: getLibPos() }],
-    docComment: parseDocCommentString("/**\n* @desc Print an boolean to console\n* @param [int num] Number to print\n*/"),
+    docComment: parseDocCommentString("/**\n* @desc Print a boolean to console\n* @param [bool b] boolean to print\n*/"),
+    pos: getLibPos(),
+  },
+  {
+    _name: "functionDeclaration",
+    id: "assert",
+    type: "void",
+    params: [
+      { _name: "variableDeclaration", id: "test", type: "bool", pos: getLibPos() },
+      { _name: "variableDeclaration", id: "msg", type: "int", pos: getLibPos() },
+    ],
+    block: { _name: "block", statements: [], heapVars: [] },
+    docComment: parseDocCommentString(
+      "/**\n* @desc Test assertion and print message\n* @param [bool test] boolean test expression \n* @param [int msg] message\n*/"
+    ),
     pos: getLibPos(),
   },
   {

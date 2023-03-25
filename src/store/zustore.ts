@@ -1,6 +1,6 @@
 import { CstNode } from "chevrotain";
 import produce from "immer";
-import create from "zustand";
+import { create } from "zustand";
 import { IBrilProgram } from "../languages/bril/BrilInterface";
 import { ICFG } from "../languages/bril/cfg";
 import { IAstProgram } from "../languages/simpleC/ast";
@@ -49,8 +49,9 @@ export interface SettingsState {
 export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Screen/setpixel.sc",
   // filename: "./Syntax/while.sc",
-  filename: "./Screen/mandel.sc",
+  // filename: "./Screen/mandel.sc",
   // filename: "./Syntax/elseif.sc",
+  filename: "./Syntax/for.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

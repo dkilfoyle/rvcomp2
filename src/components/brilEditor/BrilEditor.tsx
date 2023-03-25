@@ -97,17 +97,25 @@ export const BrilEditor: VFC = () => {
   }, [brilTxt, brilTxtOptim]);
 
   useEffect(() => {
-    if (monacoEl && !editor) {
+    if (!editor) {
       setupLanguage();
-      setEditor(monaco.editor.createDiffEditor(monacoEl.current!, { automaticLayout: true }));
+      setEditor(monaco.editor.createDiffEditor(document.getElementById("brilEditorContainer")!, { automaticLayout: true }));
     }
     return () => editor?.dispose();
-  }, [monacoEl.current]);
+  }, []);
+
+  // useEffect(() => {
+  //   if (monacoEl && !editor) {
+  //     setupLanguage();
+  //     setEditor(monaco.editor.createDiffEditor(monacoEl.current!, { automaticLayout: true }));
+  //   }
+  //   return () => editor?.dispose();
+  // }, [monacoEl.current]);
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <VStack height="100%" align="left" spacing="0px">
-        <div className={styles.Editor} ref={monacoEl}></div>
+        <div className={styles.Editor} id="brilEditorContainer" ref={monacoEl}></div>
       </VStack>
     </ErrorBoundary>
   );
