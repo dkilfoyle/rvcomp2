@@ -35,7 +35,10 @@ const freshVars = (existing: string[]) => {
 export const getNaturalLoops = (backEdges: string[][], predecessorMap: IStringsMap) => {
   const recursePredecessors = (tail: string, loop: string[], explored: string[]) => {
     explored.push(tail);
-    if (!predecessorMap[tail]) debugger;
+    if (!predecessorMap[tail]) {
+      console.error(`PredecessorMap missing ${tail}`, predecessorMap);
+      return [];
+    }
     predecessorMap[tail].forEach((tailPredecessor) => {
       if (!explored.includes(tailPredecessor)) recursePredecessors(tailPredecessor, loop, explored);
     });

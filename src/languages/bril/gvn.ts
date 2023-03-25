@@ -204,10 +204,10 @@ const dvn = (func: IBrilFunction, blockMap: ICFGBlockMap, successors: IDictStrin
 
     stats.removed += instrsToRemove.length;
 
-    // remove instructions marked for removal
-    blockMap[blockName].instructions = blockMap[blockName].instructions.filter((b, i) => !instrsToRemove.includes(i));
     // replace instructions mapped for replacement (constant folds)
     instrsToReplace.forEach((value, key) => (blockMap[blockName].instructions[key] = value));
+    // remove instructions marked for removal
+    blockMap[blockName].instructions = blockMap[blockName].instructions.filter((b, i) => !instrsToRemove.includes(i));
 
     // console.log(blockName, blockMap[blockName].instructions);
     const vnTableSize = vnTable.rows.length;

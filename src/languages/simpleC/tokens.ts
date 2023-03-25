@@ -25,7 +25,7 @@ createToken({
 const LineComment = createToken({
   name: "LineComment",
   pattern: /\/\/[^\n\r]*/,
-  // group: Lexer.SKIPPED,
+  group: Lexer.SKIPPED,
 });
 
 const DocComment = createToken({

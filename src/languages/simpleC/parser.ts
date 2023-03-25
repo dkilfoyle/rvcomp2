@@ -49,30 +49,32 @@ class SimpleCParser extends CstParser {
     this.performSelfAnalysis();
   }
 
-  LA(howMuch: number) {
-    // Skip Comments during regular parsing as we wish to auto-magically insert them
-    // into our CST
-    while (tokenMatcher(super.LA(howMuch), tokens.LineComment)) {
-      super.consumeToken();
-    }
+  // LA(howMuch: number) {
+  //   // Skip Comments during regular parsing as we wish to auto-magically insert them
+  //   // into our CST
+  //   while (tokenMatcher(super.LA(howMuch), tokens.LineComment)) {
+  //     super.consumeToken();
+  //   }
 
-    return super.LA(howMuch);
-  }
+  //   return super.LA(howMuch);
+  // }
 
-  cstPostTerminal(key: string, consumedToken: IToken) {
-    super.cstPostTerminal(key, consumedToken);
+  // cstPostTerminal(key: string, consumedToken: IToken) {
+  //   console.log(`cstPostTerminal ${key}, ${consumedToken.image}`, consumedToken.image);
+  //   super.cstPostTerminal(key, consumedToken);
 
-    let lookBehindIdx = -1;
-    let prevToken = super.LA(lookBehindIdx);
+  //   let lookBehindIdx = -1;
+  //   let prevToken = super.LA(lookBehindIdx);
 
-    // After every Token (terminal) is successfully consumed
-    // We will add all the comment that appeared before it to the CST (Parse Tree)
-    while (tokenMatcher(prevToken, tokens.LineComment)) {
-      super.cstPostTerminal(tokens.LineComment.name, prevToken);
-      lookBehindIdx--;
-      prevToken = super.LA(lookBehindIdx);
-    }
-  }
+  //   // After every Token (terminal) is successfully consumed
+  //   // We will add all the comment that appeared before it to the CST (Parse Tree)
+  //   while (tokenMatcher(prevToken, tokens.LineComment)) {
+  //     console.log(`cstPostTerminal comment matched ${lookBehindIdx}, ${prevToken.image}`, prevToken.image);
+  //     super.cstPostTerminal(tokens.LineComment.name, prevToken);
+  //     lookBehindIdx--;
+  //     prevToken = super.LA(lookBehindIdx);
+  //   }
+  // }
 
   public program = this.RULE("program", () => {
     this.MANY(() => {
