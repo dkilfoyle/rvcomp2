@@ -67,7 +67,7 @@ export const getLoopExits = (loops: string[][], successorMap: IStringsMap) => {
   return exits;
 };
 
-const findLoopInvariants = (blockMap: ICFGBlockMap, loops: string[][], reachingDefs: Record<string, Record<string, string[]>>) => {
+export const findLoopInvariants = (blockMap: ICFGBlockMap, loops: string[][], reachingDefs: Record<string, Record<string, string[]>>) => {
   const invariants: Record<string, IBrilValueInstruction[]>[] = [];
   loops.forEach((loop, iLoop) => {
     invariants[iLoop] = {};
@@ -249,7 +249,7 @@ interface IInductionVar {
 
 type IInductionVarMap = Record<string, IInductionVar>;
 
-const getBasicInductionVars = (blockMap: ICFGBlockMap, loop: string[], liInstructions: IBrilValueInstruction[]) => {
+export const getBasicInductionVars = (blockMap: ICFGBlockMap, loop: string[], liInstructions: IBrilValueInstruction[]) => {
   // v = add v const or v = ptradd v const
   const inductionVarMap: Record<string, IInductionVar> = {};
   const loopDefs = getLoopDefinitions(blockMap, loop);

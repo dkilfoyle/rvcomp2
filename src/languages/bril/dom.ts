@@ -2,6 +2,7 @@ import _ from "lodash";
 import { ICFGBlock } from "./cfg";
 
 export type IStringsMap = Record<string, string[]>;
+export type IStringMap = Record<string, string>;
 
 export const invertMap = (inmap: IStringsMap) => {
   const out: IStringsMap = {};

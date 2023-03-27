@@ -33,8 +33,8 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
    - [x] stdlib (print_int, print_string)  
    - [x] add modulo operator to SimpleC and Bril
    - [ ] add bitwise operators to SimpleC and Bril
-   - [ ] reimplement library functions in raw Bril
-   - [ ] add assert to library functions
+   - [x] add assert to library functions
+   - [ ] move semicolon out of each statement to allow no semicolon in for (int i=0;i<10;i++)
 2. Improve UI
    - [x] CFG node selection shows DFA for that node
    - [x] Bril IR diffeditor - plain vs SSA and SSA vs optimisations

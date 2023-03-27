@@ -133,7 +133,7 @@ export const ANALYSES: Record<string, IDFAnalysis<any>> = {
   },
 };
 
-export const dfWorklist = (blockMap: ICFGBlockMap, analysis: IDFAnalysis<any>) => {
+export const dfWorklist = <T>(blockMap: ICFGBlockMap, analysis: IDFAnalysis<T>) => {
   const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
 
   let firstBlock: ICFGBlock | undefined;
@@ -149,8 +149,8 @@ export const dfWorklist = (blockMap: ICFGBlockMap, analysis: IDFAnalysis<any>) =
     outEdges = predecessorsMap;
   }
 
-  const _in: Record<string, any> = { [firstBlock!.name]: analysis.init };
-  const _out: Record<string, any> = Object.keys(blockMap).reduce((accum: Record<string, any>, name) => {
+  const _in: Record<string, T> = { [firstBlock!.name]: analysis.init };
+  const _out: Record<string, T> = Object.keys(blockMap).reduce((accum: Record<string, any>, name) => {
     accum[name] = analysis.init;
     return accum;
   }, {});
