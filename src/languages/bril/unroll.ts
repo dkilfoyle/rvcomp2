@@ -134,6 +134,19 @@ const getInductionVariable = (condInstr: IBrilValueOperation, constsIn: IStringM
   return { indVarName, boundValue };
 };
 
+const getInitialValue = (nodes: string[], predecessors: string[], constsOut: Record<string, IStringMap>, indVarName: string) => {
+  const initVal = new Set();
+  predecessors.forEach((pred) => {
+    // for each predecessor block of the loop entry block
+    if (!nodes.includes(pred)) {
+      const predConsts = constsOut[pred];
+      if (predConsts[indVarName] != "?") initVal.add(Number(predConsts[indVarName]));
+    }
+  });
+  if (initVal.size != 1) return undefined;
+  return Number(Array.from(initVal)[0]);
+};
+
 const getTripCount = (
   loop: string[],
   predecessorsMap: IStringsMap,
@@ -154,7 +167,7 @@ const getTripCount = (
   if (!(br && "op" in br && br.op == "br")) {
     throw Error(`Expect br instr at end of ${source}`);
   }
-  console.log(`Found br instruction with condVar ${br.args![0]}`, br);
+  console.log(`Found br instruction with condVar = ${br.args![0]}`, br);
 
   // find the instruction that defines the loop condition var
   // eg test:bool = lt i 10
@@ -176,7 +189,16 @@ const getTripCount = (
     console.log("!! Cannot determine loop bound");
     return undefined;
   }
-  console.log(`Found induction variable ${indVarName}, lt bound is ${boundValue}`);
+  console.log(`Found induction variable ${indVarName}, lt bound = ${boundValue}`);
+
+  // find the initial value of induction var
+  // eg i:int = const 0    or i:int = id x (where x chains to a const)
+  const initVal = getInitialValue(loop, predecessorsMap[loop[0]], constsOut, indVarName);
+  if (_.isUndefined(initVal)) {
+    console.log("!! Unable to find induction var initial value");
+    return undefined;
+  }
+  console.log(`Found induction var ${indVarName} inital value = ${initVal}`);
 
   return 0;
 };
