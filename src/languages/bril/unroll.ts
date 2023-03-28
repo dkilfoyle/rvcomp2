@@ -1,7 +1,7 @@
 // adapted from https://github.com/seanlatias/bril
 
 import _ from "lodash";
-import { IBrilEffectOperation, IBrilFunction, IBrilValueInstruction } from "./BrilInterface";
+import { IBrilEffectOperation, IBrilFunction, IBrilValueInstruction, IBrilValueOperation } from "./BrilInterface";
 import { ICFGBlockMap, getCfgEdges } from "./cfg";
 import { dfWorklist, ANALYSES } from "./df";
 import { getDominatorMap, IStringsMap, IStringMap } from "./dom";
@@ -86,9 +86,17 @@ const getLoopEndTarget = (loop: string[], successorMap: IStringsMap) => {
   return target;
 };
 
-const findLoopCondition = (blockMap: ICFGBlockMap, nodes: string[], source: string, br: IBrilEffectOperation, rdSource: IStringsMap) => {
+const getLoopConditionInstruction = (
+  blockMap: ICFGBlockMap,
+  nodes: string[],
+  source: string,
+  br: IBrilEffectOperation,
+  rdSource: IStringsMap
+) => {
+  // br condVar whileLoop whileExit
+  // find the instruction condVar:bool = lt .. ..
   if (!br.args) throw Error();
-  const condVar = br.args[0]; // br condVar whileLoop whileExit
+  const condVar = br.args[0];
 
   // count number of reaching definitions of condVar from inside the loop
   // there should be only 1 which is from the source block itself
@@ -109,18 +117,29 @@ const findLoopCondition = (blockMap: ICFGBlockMap, nodes: string[], source: stri
   });
   if (!condInstr) throw Error("Unable to find loop condition");
 
-  console.log("Loop condition instruction", condInstr);
   if (condInstr.op !== "lt") return undefined;
 
   return { condInstr, condInstrBlock: condVarReachingDef.originBlock };
+};
+
+const getInductionVariable = (condInstr: IBrilValueOperation, constsIn: IStringMap) => {
+  // test:bool = lt i c10
+  // induction var = i
+  // bound var = c10
+  let boundValue = undefined;
+  const boundArg = condInstr.args[1];
+  if (boundArg in constsIn && constsIn[boundArg] != "?") boundValue = Number(constsIn[boundArg]);
+
+  const indVarName = !_.isUndefined(boundValue) ? condInstr.args[0] : undefined;
+  return { indVarName, boundValue };
 };
 
 const getTripCount = (
   loop: string[],
   predecessorsMap: IStringsMap,
   successorsMap: IStringsMap,
-  constsIn: IStringMap,
-  constsOut: IStringMap,
+  constsIn: Record<string, IStringMap>,
+  constsOut: Record<string, IStringMap>,
   reachingIn: Record<string, IStringsMap>,
   reachingOut: Record<string, IStringsMap>,
   blockMap: ICFGBlockMap
@@ -129,18 +148,41 @@ const getTripCount = (
   const source = loop[0]; // jump to loop end from loop entry (while loop) - do while with jump from exit not supported
   console.log(`Outgoing edge ${source} => ${target}`);
 
+  // Find the loop test br
+  // eg br test whilebody whileexit
   const br = blockMap[source].instructions.at(-1);
   if (!(br && "op" in br && br.op == "br")) {
-    debugger;
     throw Error(`Expect br instr at end of ${source}`);
   }
+  console.log(`Found br instruction with condVar ${br.args![0]}`, br);
 
-  const cond = findLoopCondition(blockMap, loop, source, br, reachingIn[source]);
-  console.log(cond);
+  // find the instruction that defines the loop condition var
+  // eg test:bool = lt i 10
+  const cond = getLoopConditionInstruction(blockMap, loop, source, br, reachingIn[source]);
+  if (!cond) {
+    console.log("!! No valid condition"); // only lt conditions and condvar must not be redefined within the loop
+    return undefined;
+  }
+  const { condInstr, condInstrBlock } = cond;
+  console.log(`Found condVar ${condInstr.dest} definition in block ${condInstrBlock}`, condInstr);
+
+  // get the induction variable and loop bound
+  const { indVarName, boundValue } = getInductionVariable(condInstr, constsIn[condInstrBlock]);
+  if (!indVarName) {
+    console.log("!! Cannot find induction variable");
+    return undefined;
+  }
+  if (!boundValue) {
+    console.log("!! Cannot determine loop bound");
+    return undefined;
+  }
+  console.log(`Found induction variable ${indVarName}, lt bound is ${boundValue}`);
+
   return 0;
 };
 
-const checkTripCount = (loop: string[], blockMap: ICFGBlockMap, tripCount: number) => {
+const checkTripCount = (loop: string[], blockMap: ICFGBlockMap, tripCount: number | undefined) => {
+  if (_.isUndefined(tripCount)) return false;
   if (tripCount <= 0) return false;
   let totalInstrs = 0;
   for (let n of loop) {
@@ -153,7 +195,7 @@ export const unroll = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   const blocks = Object.values(blockMap);
   const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
   const dominatorMap = getDominatorMap(successorsMap, Object.keys(blockMap)[0]);
-  const { _in: constsIn, _out: constsOuts } = dfWorklist<string>(blockMap, ANALYSES["cprop"]);
+  const { _in: constsIn, _out: constsOuts } = dfWorklist<IStringMap>(blockMap, ANALYSES["cprop"]);
   const { _in: reachingIn, _out: reachingOut } = dfWorklist<IStringsMap>(blockMap, ANALYSES["reaching"]);
 
   const backEdges = getBackEdges(blocks, dominatorMap, successorsMap);
@@ -161,14 +203,22 @@ export const unroll = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   loops = loops.filter((loop) => checkLoop(loop, successorsMap));
   loops = filterInnermostLoops(loops);
   const exits = getLoopExits(loops, successorsMap);
+
+  console.group("Unroll");
   console.log("naturalLoops", loops);
 
-  const invariants = findLoopInvariants(blockMap, loops, reachingIn);
-  console.log("Invariants: ", invariants);
+  // const invariants = findLoopInvariants(blockMap, loops, reachingIn);
+  // console.log("Invariants: ", invariants);
 
   for (let loop of loops) {
+    console.group(`Loop ${loop[0]} => ${_.last(loop)}`);
     const tripCount = getTripCount(loop, predecessorsMap, successorsMap, constsIn, constsOuts, reachingIn, reachingOut, blockMap);
-    if (!checkTripCount(loop, blockMap, tripCount)) break;
+
+    if (!checkTripCount(loop, blockMap, tripCount)) {
+      console.log(`Trip count fail, tripCount = ${tripCount}`);
+      console.groupEnd();
+      break;
+    }
 
     // const liInstructions = _.flatten(Object.values(invariants[iLoop]));
     // const basicInductionVars = getBasicInductionVars(blockMap, loops[iLoop], liInstructions);
@@ -180,7 +230,10 @@ export const unroll = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
     // loop on true, exit on false ie br test doloop endloop
     // copy propogation already done
     // no embedded loops
+    console.groupEnd();
   }
+
+  console.groupEnd();
 
   return {};
 };
