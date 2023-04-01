@@ -147,6 +147,41 @@ const getInitialValue = (nodes: string[], predecessors: string[], constsOut: Rec
   return Number(Array.from(initVal)[0]);
 };
 
+const getStepSize = (nodes: string[], blockMap: ICFGBlockMap, constsIn: Record<string, IStringMap>, indVarName: string) => {
+  // find all the instructions in the loop that change the induction var in the form i=i+/-n
+  const indVarUpdates: { updateInstr: IBrilValueOperation; updateBlock: string }[] = [];
+  nodes.forEach((node) =>
+    blockMap[node].instructions.forEach((instr) => {
+      if (!(instr.op == "const"))
+        if ("dest" in instr && instr.dest == indVarName && ["add", "sub"].includes(instr.op) && instr.args.includes(instr.dest))
+          indVarUpdates.push({ updateInstr: instr as IBrilValueOperation, updateBlock: node });
+    })
+  );
+
+  if (indVarUpdates.length != 1) {
+    console.log("!! Inductionn var update is not in form i=i+n");
+    return undefined;
+  }
+  const { updateInstr, updateBlock } = indVarUpdates[0];
+  console.log(`Found induction var update instruction in block ${updateBlock}`, updateInstr);
+
+  // get step size
+  let step = undefined;
+  updateInstr.args.forEach((arg) => {
+    if (arg != indVarName) {
+      const cp = constsIn[updateBlock];
+      if (arg in cp && cp[arg] != "?") step = Number(cp[arg]);
+    }
+  });
+
+  if (!step) {
+    console.log("!! Induction var update step not defined in copy propogation");
+    return undefined;
+  }
+
+  return step * (updateInstr.op == "sub" ? -1 : 1);
+};
+
 const getTripCount = (
   loop: string[],
   predecessorsMap: IStringsMap,
@@ -200,7 +235,14 @@ const getTripCount = (
   }
   console.log(`Found induction var ${indVarName} inital value = ${initVal}`);
 
-  return 0;
+  const step = getStepSize(loop, blockMap, constsIn, indVarName);
+  if (_.isUndefined(step)) {
+    console.log("!! Cannot determine step size");
+    return undefined;
+  }
+  console.log(`Step size = ${step}`);
+
+  return (boundValue - initVal + step - 1) / step;
 };
 
 const checkTripCount = (loop: string[], blockMap: ICFGBlockMap, tripCount: number | undefined) => {
@@ -213,7 +255,100 @@ const checkTripCount = (loop: string[], blockMap: ICFGBlockMap, tripCount: numbe
   return tripCount * totalInstrs < 1024;
 };
 
-export const unroll = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
+const unrollLoop = (blockMap: ICFGBlockMap, successorsMap: IStringsMap, loop: string[], iLoop: number, tripCount: number) => {
+  const newBlocks: ICFGBlockMap = {};
+  // copy all non loop blocks to new blocks
+  for (let bb in blockMap) {
+    if (!loop.includes(bb)) newBlocks[bb] = _.cloneDeep(blockMap[bb]);
+  }
+
+  const entry = _.first(loop)!;
+  const exit = _.last(loop)!;
+  const exitFromExit = false; // SimpleC only has while do, no do while
+  console.log(`Unrolling loop #${iLoop}: ${entry} => ${exit}, tripCount = ${tripCount}`);
+
+  // change targets of other blocks that might jump to the loop entry
+  // and instead jump to L[n]_0_entry
+  Object.entries(newBlocks).forEach(([blockName, block]) => {
+    let rawBlockName = blockName.includes("_") ? _.last(blockName.split("_"))! : blockName;
+    if (successorsMap[rawBlockName].includes(entry)) {
+      const termInstr = block.instructions.at(-1);
+      if (!termInstr) throw Error("block before loop entry has 0 instructions");
+      if (termInstr.op == "jmp") termInstr.labels![0]! = `L${iLoop}_0_${entry}`;
+      else if (termInstr.op == "br") {
+        for (let i = 0; i < termInstr.labels!.length; i++) {
+          if (termInstr.labels![i] == entry) termInstr.labels![i] = `L${iLoop}_0_${entry}`;
+        }
+      }
+    }
+  });
+
+  const loopBlocks: ICFGBlockMap = {};
+  // duplicate blocks in loop
+  for (let i = 0; i < tripCount; i++) {
+    loop.forEach((bb) => {
+      const newBlock = _.cloneDeep(blockMap[bb]);
+      newBlock.name = `L${iLoop}_${i}_${bb}`;
+      if (newBlock.instructions.length) {
+        const termInstr = newBlock.instructions.at(-1)!;
+        // change jmps to targets inside loop or exit block
+        if (termInstr.op == "jmp") {
+          if (!termInstr.labels) throw Error("badly formed IR, jmp should have target");
+          const target = termInstr.labels[0];
+          if (target == entry)
+            termInstr.labels[0] = `L${iLoop}_${i + 1}_${entry}`; // backedge should now instead jump to the next unrolled block
+          else if (loop.includes(target)) termInstr.labels[0] = `L${iLoop}_${i}_${target}`; // jmps internal to loop jmp within numbered unroll block
+        } else if (termInstr.op == "br") {
+          if (!termInstr.labels) throw Error("badly formed IR, jmp should have target");
+          const targets = termInstr.labels.slice(0);
+          const inLoop = targets.map((t) => loop.includes(t));
+          if (inLoop[0] && !inLoop[1]) {
+            // first arg is in loop
+            termInstr.op = "jmp";
+            delete termInstr.args;
+            if (targets[0] == entry) termInstr.labels = [`L${iLoop}_${i + 1}_${entry}`];
+            else termInstr.labels = [`L${iLoop}_${i}_${targets[0]}`];
+          } else {
+            // both args in loop
+            for (let j = 0; j < termInstr.labels.length; j++) {
+              termInstr.labels[j] = `L${iLoop}_${i}_${termInstr.labels[j]}`;
+            }
+          }
+        }
+      }
+      console.log(` - Adding block ${newBlock.name}, final instruction: `, newBlock.instructions.at(-1));
+      loopBlocks[newBlock.name] = newBlock;
+    });
+  }
+
+  if (!exitFromExit) {
+    // need to add an extra entry block
+    const newBlock = _.cloneDeep(blockMap[entry]);
+    newBlock.name = `L${iLoop}_${tripCount}_${entry}`;
+    const brInstr = newBlock.instructions.at(-1)!;
+    if (brInstr.op == "br") {
+      brInstr.op = "jmp";
+      delete brInstr.args;
+      brInstr.labels = [brInstr.labels![1]];
+    }
+    loopBlocks[newBlock.name] = newBlock;
+    console.log(` - Adding entry block ${newBlock.name}, last instruction: `, newBlock.instructions.at(-1));
+  } else {
+    throw Error("exit from exit not supported - no do while loops in SimpleC");
+  }
+
+  // for (let i = 0; i < tripCount + 1; i++) {
+  //   const exitBlockName = `L${iLoop}_${i}_${exit}`;
+  //   if (exitBlockName in loopBlocks) {
+  //     delete loopBlocks[exitBlockName];
+  //     if (!exitFromExit || i < tripCount - 1) loopBlocks[exitBlockName];
+  //   }
+  // }
+
+  return { ...newBlocks, ...loopBlocks };
+};
+
+export const unrollLoops = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   const blocks = Object.values(blockMap);
   const { predecessorsMap, successorsMap } = getCfgEdges(blockMap);
   const dominatorMap = getDominatorMap(successorsMap, Object.keys(blockMap)[0]);
@@ -232,15 +367,25 @@ export const unroll = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
   // const invariants = findLoopInvariants(blockMap, loops, reachingIn);
   // console.log("Invariants: ", invariants);
 
-  for (let loop of loops) {
-    console.group(`Loop ${loop[0]} => ${_.last(loop)}`);
+  const stats = {
+    unrolledLoops: 0,
+  };
+
+  for (let iLoop = 0; iLoop < loops.length; iLoop++) {
+    const loop = loops[iLoop];
+    console.group(`Loop iLoop=${iLoop}: ${loop[0]} => ${_.last(loop)}`);
     const tripCount = getTripCount(loop, predecessorsMap, successorsMap, constsIn, constsOuts, reachingIn, reachingOut, blockMap);
 
-    if (!checkTripCount(loop, blockMap, tripCount)) {
-      console.log(`Trip count fail, tripCount = ${tripCount}`);
+    if (!tripCount || !checkTripCount(loop, blockMap, tripCount)) {
+      console.log(`!! Trip count fail, tripCount = ${tripCount}`);
       console.groupEnd();
       break;
     }
+    console.log(`Trip count = ${tripCount}`);
+
+    // do unroll
+    stats.unrolledLoops++;
+    blockMap = unrollLoop(blockMap, successorsMap, loop, iLoop, tripCount);
 
     // const liInstructions = _.flatten(Object.values(invariants[iLoop]));
     // const basicInductionVars = getBasicInductionVars(blockMap, loops[iLoop], liInstructions);
@@ -257,5 +402,5 @@ export const unroll = (func: IBrilFunction, blockMap: ICFGBlockMap) => {
 
   console.groupEnd();
 
-  return {};
+  return { blockMap, stats };
 };

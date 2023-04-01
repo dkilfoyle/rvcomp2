@@ -5,7 +5,7 @@ import { runDCE } from "./dce";
 import { removePhis, runSSA } from "./ssa";
 import { gvn } from "./gvn";
 import { licm_sr } from "./loops";
-import { unroll } from "./unroll";
+import { unrollLoops } from "./unroll";
 
 export type IBrilOptimisations = "doSSA" | "removePhis" | "doLVN" | "doGVN" | "doDCE" | "doLICM";
 
@@ -24,8 +24,10 @@ export const optimiseBril = (bril: IBrilProgram, optimisations: string[], logger
       optimisations.forEach((optim) => {
         switch (optim) {
           case "Unroll":
-            const statsUnroll = unroll(func, blockMap);
-            if (logger) logger.info(` - ${func.name}: Unroll: `, statsUnroll);
+            const unrollResult = unrollLoops(func, blockMap);
+            blockMap = unrollResult.blockMap;
+            console.log(blockMap);
+            if (logger) logger.info(` - ${func.name}: Unroll: `, unrollResult.stats);
             break;
           case "SSA":
             const statsSSA = runSSA(blockMap, func);

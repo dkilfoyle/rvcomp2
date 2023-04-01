@@ -1,7 +1,7 @@
 void main() {
   // should unroll
-  for (int i = 0; i < 5; i++;) {
-    if (i < 2)
+  for (int i = 0; i < 2; i++;) {
+    // if (i < 2)
       print_int(i);
   }
   // expect 0,1,2,3,4
