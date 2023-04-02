@@ -1,0 +1,154 @@
+.schematic ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  /* background-color: red; */
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.schematic ::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.ramTable td {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  border-color: #ced7ce;
+}
+
+.regTable td {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  border-color: #cecece;
+}
+
+td.value {
+  text-align: right;
+  padding-right: 10px;
+  font-size: 10pt;
+}
+
+tr.instruction-bits td {
+  border-right: 1px solid rgb(241, 241, 241);
+  width: 12px;
+  font-size: 6pt;
+  text-align: center;
+  background-color: lightgrey;
+}
+
+td.name {
+  font-size: 10pt;
+}
+
+.fade-enter {
+  opacity: 0;
+}
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 500ms;
+}
+
+/* .fade-exit {
+  opacity: 1;
+}
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 500ms;
+} */
+
+.irBox {
+  width: 100%;
+  border-radius: 5px;
+  border-width: 1px;
+  background: rgb(239, 235, 233);
+}
+
+.irBox h2 {
+  font-size: 10pt;
+  font-weight: bold;
+}
+
+.datapathBox {
+  width: 100%;
+  border-radius: 5px;
+  border-width: 1px;
+  border-bottom: 0px;
+  background: rgb(250, 250, 250);
+}
+
+.datapathBox .chakra-accordion__button {
+  font-size: 10pt;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-inline-start: 8px;
+  padding-inline-end: 8px;
+}
+
+.datapathBox .chakra-accordion__panel {
+  font-size: 10pt;
+  padding-top: 4px;
+  padding-bottom: 8px;
+  padding-inline-start: 8px;
+  padding-inline-end: 8px;
+}
+
+.componentBox {
+  width: 100%;
+  max-width: 230px;
+  border-radius: 5px;
+  border-width: 1px;
+}
+
+.componentBox th {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.componentBox td:first-child {
+  /* width: 100px; */
+  text-align: left;
+  padding-left: 10px;
+}
+
+.componentBox td:last-child {
+  /* width: 100px; */
+  text-align: right;
+  padding-right: 10px;
+}
+
+.regBox {
+  border-radius: 5px;
+  border-width: 1px;
+  overflow: overlay;
+  min-width: 200px;
+  background-color: #f8f8f8;
+}
+
+.regBox td:first-child {
+  text-align: right;
+  padding: 0;
+  width: 20%;
+}
+
+.regBox td:nth-child(2) {
+  text-align: right;
+  width: 60%;
+}
+
+.regBox td:last-child {
+  text-align: left;
+  padding: 0;
+  width: 20%;
+}
+
+.componentBox {
+  font-size: 8pt;
+}
+
+.ramBox {
+  background: #e8f5e9;
+  border-radius: 5px;
+  border-width: 1px;
+  overflow: overlay;
+  width: 220px;
+}
