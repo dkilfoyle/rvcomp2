@@ -1,29 +1,6 @@
 // adapted from Chocopy
 
-import { waitForElementToBeRemoved } from "@testing-library/react";
-import {
-  AstAssignment,
-  AstBinaryExpression,
-  AstBlock,
-  AstConstExpression,
-  AstExpression,
-  AstFunctionCall,
-  AstFunctionDeclaration,
-  AstIf,
-  AstCNode,
-  AstRepl,
-  AstReturn,
-  AstStatement,
-  AstVariableDeclaration,
-  AstVariableExpression,
-  AstWhile,
-  AstUnaryExpression,
-  AstArrayDeclaration,
-  AstListExpression,
-} from "../../languages/simpleC/parser/astNodes";
-import { Scope } from "../../languages/simpleC/parser/scopeStack";
-import { library } from "../../linker/library";
-import { DocPosition, RangeMap } from "../../utils/antlr";
+import { IBrilFunction, IBrilProgram } from "../bril/BrilInterface";
 import { R, RiscvEmmiter } from "./emitter";
 import { LocalScope, LocalScopeStack, LocalVariable } from "./LocalScope";
 
@@ -39,30 +16,27 @@ interface GlobalVar {
   value: string;
 }
 
-export class CompilerError {
-  pos: DocPosition;
-  msg: string;
-  constructor(pos: DocPosition, msg: string) {
-    this.pos = pos;
-    this.msg = msg;
-  }
-}
+// export class CompilerError {
+//   pos: DocPosition;
+//   msg: string;
+//   constructor(pos: DocPosition, msg: string) {
+//     this.pos = pos;
+//     this.msg = msg;
+//   }
+// }
 
-export class ASMGenerator {
+class RiscvCodeGenerator {
   emitter: RiscvEmmiter;
   labelCount: number = 0;
-  currentFunction: AstFunctionDeclaration;
   scopeStack: LocalScopeStack;
   dataSection: GlobalVar[];
-  rangeMap: RangeMap;
-  src: string;
-  mulSource: string;
-  divSource: string;
-  errors: CompilerError[];
+  currentFunction: IBrilFunction | undefined;
 
   constructor() {
     this.emitter = new RiscvEmmiter();
     this.scopeStack = new LocalScopeStack();
+    this.dataSection = [];
+    this.currentFunction = undefined;
     this.reset();
   }
 
@@ -71,8 +45,7 @@ export class ASMGenerator {
     this.scopeStack.reset();
     this.labelCount = 0;
     this.dataSection = [];
-    this.rangeMap = [];
-    this.errors = [];
+    this.currentFunction = undefined;
   }
 
   newLabel(stub: string = "") {
@@ -94,22 +67,70 @@ export class ASMGenerator {
     this.emitter.emitADDI(R.SP, R.SP, 4, "shrink stack");
   }
 
-  compile(root: AstCNode, src: string) {
-    if (!(root instanceof AstRepl)) throw new Error();
+  generate(program: IBrilProgram) {
     this.reset();
-    this.src = src;
 
     this.emitter.startCode();
     this.emitter.emitGlobalLabel("main");
 
-    this.visitRepl(root);
+    Object.values(program.functions).forEach((func) => this.generateFunction(func));
 
     this.emitter.startData();
     this.dataSection.forEach((globalvar) => {
       this.emitter.emitGlobalVar(globalvar.label, globalvar.type, globalvar.value);
     });
 
-    return { code: this.emitter.out, rangeMap: this.rangeMap, errors: this.errors };
+    return this.emitter.out;
+  }
+
+  generateFunction(func: IBrilFunction) {
+    const asmFunctionStartLine = this.emitter.nextLine;
+
+    // add a new scope for the function. SP starts at -WORD_SIZE to accomodate saved FP and RA
+    const scope = this.scopeStack.enterFunction(func.name);
+    if (!scope.context) throw Error();
+    console.log(`Entering function ${func.name} scope: FP=${scope.context.FP}, initSP=${scope.context.SP}`);
+
+    // add function parameters to function scope
+    this.scopeStack.pushFunctionParams(func);
+
+    this.emitter.emitLocalLabel(func.name);
+    this.currentFunction = func;
+
+    // preface: the caller will have resulted in state
+    // Arg1  <--- Caller FP
+    // ....
+    // Arg3
+    // Arg2
+    // Arg1  <--- SP
+
+    // prolog: now becomes
+    // Arg1  <--- old SP             ====> new FP (args will be at 0(FP), 4(FP), 8(FP)... )
+    // RA
+    // Caller FP = dynamic link      ====> new SP
+    this.emitter.emitADDI(R.SP, R.SP, scope.context.SP, "Make space for start of AR");
+    this.emitter.emitSW(R.FP, R.SP, 0, "Save caller's FP");
+    this.emitter.emitSW(R.RA, R.SP, WORD_SIZE, "Save caller's RA");
+    this.emitter.emitADDI(R.FP, R.SP, 2 * WORD_SIZE, "New FP is at old SP");
+
+    const asmBodyStartLine = this.emitter.nextLine;
+    this.emitter.emitComment(`${func.name} body`);
+
+    //this.visitBlock(func.body, `${func.name} body`, scope);
+
+    const asmEpilogStartLine = this.emitter.nextLine;
+    this.emitter.emitComment(`${func.name} epilogue`);
+    if (func.name === "main") {
+      this.emitter.emitLI(R.A0, 10, "Set A0 to 10 for exit ecall");
+      this.emitter.emitECALL();
+    } else {
+      // Epilog
+      this.emitter.emitLW(R.RA, R.FP, -1 * WORD_SIZE, "load saved RA");
+      this.emitter.emitMV(R.T0, R.FP, "temp current FP (also = old SP)");
+      this.emitter.emitLW(R.FP, R.FP, -2 * WORD_SIZE, "restore callers FP");
+      this.emitter.emitMV(R.SP, R.T0, "restore caller's SP, deleting the callee AR");
+      this.emitter.emitJR(R.RA, "jump back to caller (RA)");
+    }
   }
 
   // =================================================================================================================
@@ -124,9 +145,7 @@ export class ASMGenerator {
     this.visitFunctionDeclaration(topLevelMain);
 
     // all the others
-    node.functions
-      .slice(0, node.functions.length - 1)
-      .forEach((funDecl) => this.visitFunctionDeclaration(funDecl));
+    node.functions.slice(0, node.functions.length - 1).forEach((funDecl) => this.visitFunctionDeclaration(funDecl));
   }
 
   visitFunctionDeclaration(node: AstFunctionDeclaration) {
@@ -139,9 +158,7 @@ export class ASMGenerator {
 
     // add a new scope for the function. SP starts at -WORD_SIZE to accomodate saved FP and RA
     const scope = this.scopeStack.enterFunction(node.id);
-    console.log(
-      `Entering function ${node.id} scope: FP=${scope.context.FP}, initSP=${scope.context.SP}`
-    );
+    console.log(`Entering function ${node.id} scope: FP=${scope.context.FP}, initSP=${scope.context.SP}`);
 
     // add function parameters to function scope
     this.scopeStack.pushFunctionParams(node);
@@ -323,9 +340,7 @@ export class ASMGenerator {
         R.SP,
         R.SP,
         scope.context.SP - startSP,
-        `reserve stack space for ${Object.keys(scope.entries).length} locals ${Object.keys(
-          scope.entries
-        )}`
+        `reserve stack space for ${Object.keys(scope.entries).length} locals ${Object.keys(scope.entries)}`
       );
     } else this.emitter.emitComment("no locals to reserve stack for");
 
@@ -352,19 +367,8 @@ export class ASMGenerator {
 
     if (node.initialExpression) {
       this.visitExpression(node.initialExpression);
-      this.emitter.emitSW(
-        R.A0,
-        R.FP,
-        offset.fpoffset,
-        `push local var ${node.id} to stack and init value`
-      );
-    } else
-      this.emitter.emitSW(
-        R.ZERO,
-        R.FP,
-        offset.fpoffset,
-        `push local var ${node.id} to stack and init to 0`
-      );
+      this.emitter.emitSW(R.A0, R.FP, offset.fpoffset, `push local var ${node.id} to stack and init value`);
+    } else this.emitter.emitSW(R.ZERO, R.FP, offset.fpoffset, `push local var ${node.id} to stack and init to 0`);
   }
 
   buildArrayAt(expressions: AstExpression[], fpoffset: number, id = "") {
@@ -382,13 +386,7 @@ export class ASMGenerator {
 
     if (node.initialExpression) {
       this.buildArrayAt(node.initialExpression.expressions, offset.fpoffset, node.id);
-    } else
-      this.emitter.emitSW(
-        R.ZERO,
-        R.FP,
-        offset.fpoffset,
-        `push local var ${node.id} to stack and init to 0`
-      );
+    } else this.emitter.emitSW(R.ZERO, R.FP, offset.fpoffset, `push local var ${node.id} to stack and init to 0`);
 
     this.rangeMap.push({
       left: { ...node.pos, col: "red" },
@@ -400,10 +398,7 @@ export class ASMGenerator {
     // check type compatibility
     if (node.lhsVariable.returnType.toString() !== node.rhsExpression.returnType.toString())
       this.errors.push(
-        new CompilerError(
-          node.pos,
-          `Assignment type mismatch: ${node.lhsVariable.returnType} != ${node.rhsExpression.returnType}`
-        )
+        new CompilerError(node.pos, `Assignment type mismatch: ${node.lhsVariable.returnType} != ${node.rhsExpression.returnType}`)
       );
 
     // if (node.lhsVariable.returnType.toString() === "int[]") {
@@ -535,8 +530,7 @@ export class ASMGenerator {
 
   visitConstExpression(node: AstConstExpression) {
     // return llvm.ConstantInt.get(this.context, node.value);
-    if (node.returnType.baseType === "int")
-      this.emitter.emitLI(R.A0, node.value as number, `Load constant ${node.value} to a0`);
+    if (node.returnType.baseType === "int") this.emitter.emitLI(R.A0, node.value as number, `Load constant ${node.value} to a0`);
     else if (node.returnType.baseType === "string") {
       const label = this.newLabel("stringconst");
       let value = node.value as string;
@@ -552,12 +546,7 @@ export class ASMGenerator {
     const anonListID = this.newLabel("anonList");
     const anonListVar = this.scopeStack.pushLocal(anonListID, node.expressions.length * 4);
 
-    this.emitter.emitADDI(
-      R.SP,
-      R.SP,
-      -anonListVar.size,
-      `reserve stack for anon[${node.expressions.length}]`
-    );
+    this.emitter.emitADDI(R.SP, R.SP, -anonListVar.size, `reserve stack for anon[${node.expressions.length}]`);
 
     this.buildArrayAt(node.expressions, anonListVar.fpoffset, anonListID);
 
@@ -565,18 +554,13 @@ export class ASMGenerator {
       "visitListExpression",
       this.scopeStack.getCurrentContext().FP,
       this.scopeStack.getLocalVarOffset(anonListID).fpoffset,
-      4096 +
-        this.scopeStack.getCurrentContext().FP +
-        this.scopeStack.getLocalVarOffset(anonListID).fpoffset
+      4096 + this.scopeStack.getCurrentContext().FP + this.scopeStack.getLocalVarOffset(anonListID).fpoffset
     );
 
     // set A0 to array address
     this.emitter.emitLI(
       R.A0,
-      4096 +
-        this.scopeStack.getCurrentContext().FP +
-        8 +
-        this.scopeStack.getLocalVarOffset(anonListID).fpoffset,
+      4096 + this.scopeStack.getCurrentContext().FP + 8 + this.scopeStack.getLocalVarOffset(anonListID).fpoffset,
       "A0 = list[0] address"
     );
   }
@@ -605,12 +589,7 @@ export class ASMGenerator {
 
       this.emitter.emitLW(R.A0, R.A0, 0, `retrieve ${id}[A0]`);
     } else {
-      this.emitter.emitLW(
-        R.A0,
-        R.FP,
-        offset,
-        `retrieve ${offset >= 0 ? "func param" : "local variable"} ${node.declaration.id}`
-      );
+      this.emitter.emitLW(R.A0, R.FP, offset, `retrieve ${offset >= 0 ? "func param" : "local variable"} ${node.declaration.id}`);
     }
   }
 
@@ -630,32 +609,17 @@ export class ASMGenerator {
     this.visitExpression(node.lhs); // accumulator will be saved to a0 = result of LHS
     const lhsTempLabel = this.newLabel("LHSTemp");
     const offset = this.scopeStack.pushLocal(lhsTempLabel, 4);
-    this.pushStack(
-      R.A0,
-      `push a0 (LHS result of ${node.lhs.toCode()}) onto stack as ${lhsTempLabel} ${
-        offset.fpoffset
-      }`
-    );
+    this.pushStack(R.A0, `push a0 (LHS result of ${node.lhs.toCode()}) onto stack as ${lhsTempLabel} ${offset.fpoffset}`);
 
     // compute RHS, result in A0
     this.visitExpression(node.rhs); // accumulator will be saved to a0 = result of RHS
 
     // retrieve LHS in T1
-    this.emitter.emitLW(
-      R.T1,
-      R.FP,
-      this.scopeStack.getLocalVarOffset(lhsTempLabel).fpoffset,
-      `t1 = saved LHS (${lhsTempLabel})`
-    );
+    this.emitter.emitLW(R.T1, R.FP, this.scopeStack.getLocalVarOffset(lhsTempLabel).fpoffset, `t1 = saved LHS (${lhsTempLabel})`);
 
     switch (node.op) {
       case "+":
-        this.emitter.emitADD(
-          R.A0,
-          R.T1,
-          R.A0,
-          `a0 = t1 + a0 (${node.lhs.toCode()}) + ${node.rhs.toCode()})`
-        );
+        this.emitter.emitADD(R.A0, R.T1, R.A0, `a0 = t1 + a0 (${node.lhs.toCode()}) + ${node.rhs.toCode()})`);
         break;
       case "*":
         library.mul.include = true;
@@ -687,54 +651,24 @@ export class ASMGenerator {
         // this.popStack(R.A1, "restore A1 from stack");
         break;
       case "-":
-        this.emitter.emitSUB(
-          R.A0,
-          R.T1,
-          R.A0,
-          `a0 = t1 - a0 (${node.lhs.toCode()}) - ${node.rhs.toCode()})`
-        );
+        this.emitter.emitSUB(R.A0, R.T1, R.A0, `a0 = t1 - a0 (${node.lhs.toCode()}) - ${node.rhs.toCode()})`);
         break;
       case "==":
-        this.emitter.emitSUB(
-          R.A0,
-          R.T1,
-          R.A0,
-          `a0 = t1 - a0 (${node.lhs.toCode()}) - ${node.rhs.toCode()})`
-        );
+        this.emitter.emitSUB(R.A0, R.T1, R.A0, `a0 = t1 - a0 (${node.lhs.toCode()}) - ${node.rhs.toCode()})`);
         this.emitter.emitSEQZ(R.A0, R.A0, "a0 = a0 (lhs-rhs) == 0");
         break;
       case "<":
-        this.emitter.emitSLT(
-          R.A0,
-          R.T1,
-          R.A0,
-          `a0 = t1 < a0 (${node.lhs.toCode()} < ${node.rhs.toCode()})`
-        );
+        this.emitter.emitSLT(R.A0, R.T1, R.A0, `a0 = t1 < a0 (${node.lhs.toCode()} < ${node.rhs.toCode()})`);
         break;
       case ">=":
-        this.emitter.emitSLT(
-          R.A0,
-          R.T1,
-          R.A0,
-          `a0 = t1 < a0 (${node.lhs.toCode()} < ${node.rhs.toCode()})`
-        );
+        this.emitter.emitSLT(R.A0, R.T1, R.A0, `a0 = t1 < a0 (${node.lhs.toCode()} < ${node.rhs.toCode()})`);
         this.emitter.emitNOT(R.A0, R.A0, "A0 = !A0 because >= is !<");
         break;
       case ">":
-        this.emitter.emitSLT(
-          R.A0,
-          R.A0,
-          R.T1,
-          `a0 = a0 < t1 (equiv a0 > t1) (${node.lhs.toCode()} > ${node.rhs.toCode()})`
-        );
+        this.emitter.emitSLT(R.A0, R.A0, R.T1, `a0 = a0 < t1 (equiv a0 > t1) (${node.lhs.toCode()} > ${node.rhs.toCode()})`);
         break;
       case "<=":
-        this.emitter.emitSLT(
-          R.A0,
-          R.A0,
-          R.T1,
-          `a0 = a0 (rhs: ${node.rhs.toCode()}) < t1 (lhs: ${node.lhs.toCode()})`
-        );
+        this.emitter.emitSLT(R.A0, R.A0, R.T1, `a0 = a0 (rhs: ${node.rhs.toCode()}) < t1 (lhs: ${node.lhs.toCode()})`);
         this.emitter.emitNOT(R.A0, R.A0, "A0 = !A0 because <= is !>");
         break;
       default:
@@ -744,3 +678,5 @@ export class ASMGenerator {
     this.scopeStack.popLocal();
   }
 }
+
+export const riscvCodeGenerator = new RiscvCodeGenerator();

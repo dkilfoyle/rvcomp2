@@ -51,7 +51,7 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Syntax/while.sc",
   // filename: "./Screen/mandel.sc",
   // filename: "./Syntax/elseif.sc",
-  filename: "./Optimisation/unroll.sc",
+  filename: "./helloint.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
@@ -99,6 +99,7 @@ export interface ParseState {
   cfg: ICFG;
   errors: ISimpleCLangError[];
   wasm: Uint8Array;
+  riscv: string;
   set: (fn: (state: ParseState) => void) => void;
   reset: (rcst: boolean, rast?: boolean, rbril?: boolean, rbrilOptim?: boolean, rcfg?: boolean) => void;
 }
@@ -111,6 +112,7 @@ export const useParseStore = create<ParseState>()((set) => ({
   cfg: {},
   errors: [],
   wasm: new Uint8Array(),
+  riscv: "",
   set: (fn: (state: ParseState) => void) => set(produce(fn)),
   reset: (rcst: boolean, rast: boolean = true, rbril: boolean = true, rbrilOptim: boolean = true, rcfg: boolean = true) =>
     set(

@@ -24,6 +24,7 @@ import {
   TbTerminal2,
 } from "react-icons/tb";
 import { BiCollapse, BiExpand } from "react-icons/bi";
+import { BsCpu } from "react-icons/bs";
 
 import DockLayout, {
   BoxBase,
@@ -46,6 +47,7 @@ import { accordionTheme } from "./theme";
 import { FaRunning } from "react-icons/fa";
 import { SiCodecademy, SiWebassembly } from "react-icons/si";
 import { GiSlowBlob } from "react-icons/gi";
+import { RiscVEditor } from "../components/riscvEditor/RiscVEditor";
 
 export const theme = extendTheme({
   components: { Accordion: accordionTheme },
@@ -72,7 +74,7 @@ const defaultlayout: LayoutBase = {
             mode: "vertical",
             children: [
               { id: "codePanel", size: 400, group: "card", tabs: [{ id: "code" }] },
-              { id: "brilPanel", size: 600, group: "card", tabs: [{ id: "bril" }, { id: "wasm" }] },
+              { id: "brilPanel", size: 600, group: "card", tabs: [{ id: "bril" }, { id: "wasm" }, { id: "riscv" }] },
             ],
           },
           {
@@ -154,6 +156,17 @@ const tabs: Record<string, TabData> = {
       </HStack>
     ),
     content: <WasmEditor></WasmEditor>,
+    cached: true,
+  },
+  riscv: {
+    id: "riscv",
+    title: (
+      <HStack>
+        <Icon as={BsCpu}></Icon>
+        <span>RiscV</span>
+      </HStack>
+    ),
+    content: <RiscVEditor></RiscVEditor>,
     cached: true,
   },
   cfg: {

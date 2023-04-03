@@ -28,7 +28,6 @@ import {
 } from "../simpleC/ast";
 import { BrilBuilder } from "./BrilBuilder";
 import { IBrilProgram, IBrilType, IBrilValueInstruction } from "./BrilInterface";
-import { lchownSync } from "fs";
 
 class AstToBrilVisitor {
   public builder: BrilBuilder = new BrilBuilder();

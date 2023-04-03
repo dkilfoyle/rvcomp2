@@ -1,6 +1,7 @@
-import { AstFunctionDeclaration } from "../../languages/simpleC/parser/astNodes";
-import { ScopeStack } from "../../languages/simpleC/parser/scopeStack";
-import { WORD_SIZE } from "./ASMGenerator";
+import _ from "lodash";
+import { IBrilFunction } from "../bril/BrilInterface";
+import { WORD_SIZE } from "./brilToRiscV";
+import { ScopeStack } from "./scopeStack";
 
 export interface LocalScope {
   FP: number; // the SP at the entry point of the block
@@ -22,12 +23,12 @@ export class LocalScopeStack extends ScopeStack<LocalVariable, LocalScope> {
     this.scopes.length = 0;
     this.enterScope("topLevel", { FP: 0, SP: 0 });
   }
-  pushFunctionParams(node: AstFunctionDeclaration) {
+  pushFunctionParams(node: IBrilFunction) {
     // FP+8    Arg2
     // FP+4    Arg1
     // FP+0 -> Arg0
-    node.params.forEach((p, i) => {
-      this.newSymbol(p.id, { fpoffset: i * WORD_SIZE, size: WORD_SIZE });
+    node.args.forEach((p, i) => {
+      this.newSymbol(p.name, { fpoffset: i * WORD_SIZE, size: WORD_SIZE });
     });
   }
   pushLocal(name: string, size: number) {
@@ -48,6 +49,7 @@ export class LocalScopeStack extends ScopeStack<LocalVariable, LocalScope> {
     //                        BlockFP = -16 (enterBlock FP = topFP + topSP = -8 + -8 = -16)
     // FP-20   Local0         BlockSP = -4  offset=-16-4=-20       int z = 2;
     const top = this.top();
+    if (!top.context) throw Error();
     top.context.SP -= size;
     const localVar = { spoffset: top.context.SP, fpoffset: top.context.FP + top.context.SP, size };
     this.newSymbol(name, localVar);
@@ -55,6 +57,7 @@ export class LocalScopeStack extends ScopeStack<LocalVariable, LocalScope> {
   }
   popLocal() {
     const top = this.top();
+    if (!top.context) throw Error();
     const lastKey = Object.keys(top.entries)[Object.keys(top.entries).length - 1];
     top.context.SP += this.getLocalVarOffset(lastKey).size;
     delete top.entries[lastKey];
@@ -62,6 +65,7 @@ export class LocalScopeStack extends ScopeStack<LocalVariable, LocalScope> {
   getLocalVarOffset(id: string) {
     const [found, localVar] = this.getSymbol(id);
     if (!found) throw new Error();
+    if (_.isUndefined(localVar)) throw Error();
     return localVar;
   }
   enterFunction(name: string) {
@@ -74,10 +78,12 @@ export class LocalScopeStack extends ScopeStack<LocalVariable, LocalScope> {
     //
 
     const parentContext = this.top().context;
+    if (!parentContext) throw Error();
     return this.enterScope(`function ${name}`, { FP: parentContext.SP, SP: -2 * WORD_SIZE });
   }
   enterBlock(name: string) {
     const parentContext = this.top().context;
+    if (!parentContext) throw Error();
     return this.enterScope(name, { FP: parentContext.FP + parentContext.SP, SP: 0 });
   }
 }
