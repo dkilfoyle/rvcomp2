@@ -1,3 +1,6 @@
+// TODO: Debug case where induction variable i is a function parameter
+// eg main(int i) ....
+
 void main() {
   int i = 0;
   int x = 10;

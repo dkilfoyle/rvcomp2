@@ -51,15 +51,15 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Syntax/while.sc",
   // filename: "./Screen/mandel.sc",
   // filename: "./Syntax/elseif.sc",
-  filename: "./helloint.sc",
+  filename: "./CodeGen/registers.sc",
   cfg: {
     nodeName: "",
     functionName: "main",
   },
   optimisations: {
     // selected: ["LICM", "SSA", "Phis-", "DCE"],
-    selected: ["Unroll"],
-    available: ["LICM&SR", "LVN", "GVN", "DCE", "SSA", "Phis-"],
+    selected: [],
+    available: ["LICM&SR", "LVN", "GVN", "DCE", "Unroll", "SSA", "Phis-"],
   },
   // optim: {
   //   removePhis: true,

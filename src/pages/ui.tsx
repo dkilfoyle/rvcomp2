@@ -48,6 +48,7 @@ import { FaRunning } from "react-icons/fa";
 import { SiCodecademy, SiWebassembly } from "react-icons/si";
 import { GiSlowBlob } from "react-icons/gi";
 import { RiscVEditor } from "../components/riscvEditor/RiscVEditor";
+import { RegView } from "../components/regView";
 
 export const theme = extendTheme({
   components: { Accordion: accordionTheme },
@@ -82,7 +83,7 @@ const defaultlayout: LayoutBase = {
             size: 500,
             mode: "vertical",
             group: "card",
-            tabs: [{ id: "cfg" }, { id: "cst" }, { id: "ast" }, { id: "ir" }],
+            tabs: [{ id: "reg" }, { id: "cfg" }, { id: "cst" }, { id: "ast" }, { id: "ir" }],
           },
         ],
       },
@@ -174,6 +175,12 @@ const tabs: Record<string, TabData> = {
     title: "CFG",
     // content: <div></div>,
     content: <CfgView></CfgView>,
+    minWidth: 30,
+  },
+  reg: {
+    id: "reg",
+    title: "REGs",
+    content: <RegView></RegView>,
     minWidth: 30,
   },
   cst: {

@@ -9,6 +9,7 @@ import { setupLanguage } from "./monaco/setup";
 import { optimiseBril } from "../../languages/bril/BrilOptimiser";
 import { useSettingsStore, SettingsState, ParseState, useParseStore } from "../../store/zustore";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
+import { registerAllocation } from "../../languages/bril/registers";
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
@@ -38,12 +39,18 @@ export const BrilEditor: VFC = () => {
   const brilTxt = useMemo(() => {
     if (brilIsSSA) {
       const { optimBril, optimCfg } = optimiseBril(bril, ["SSA", "Phis-"]);
+
       return brilPrinter.print(optimBril);
     } else return brilPrinter.print(bril);
   }, [bril, brilIsSSA, brilRemovePhis]);
 
   useEffect(() => {
     const { optimBril, optimCfg } = optimiseBril(bril, optimisations, window.conout0); //, "doLICM", "removePhis", "doDCE"], true);
+    if (Object.keys(optimBril.functions).length) {
+      const registers = registerAllocation(optimBril);
+      console.log("Registers", registers);
+    }
+
     setParse((state: ParseState) => {
       state.brilOptim = optimBril;
     });

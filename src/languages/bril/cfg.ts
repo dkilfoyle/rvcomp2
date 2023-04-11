@@ -1,5 +1,4 @@
 import _ from "lodash";
-import { l } from "vitest/dist/index-9f5bc072";
 import { IBrilEffectOperation, IBrilFunction, IBrilInstruction, IBrilInstructionOrLabel, IBrilLabel, IBrilProgram } from "./BrilInterface";
 
 const TERMINATORS = ["br", "jmp", "ret"];
@@ -105,7 +104,7 @@ export class CfgBuilder {
 
 export const cfgBuilder = new CfgBuilder();
 
-export const addCfgEntry = (blockMap: ICFGBlockMap) => {
+export const addCfgEntry = (blockMap: ICFGBlockMap, brilFunction: IBrilFunction) => {
   // ensure that the first block has no predecessors
   // this could happen if jmp or br back to first block
 
@@ -120,7 +119,7 @@ export const addCfgEntry = (blockMap: ICFGBlockMap) => {
 
   // inedge exists, insert a new entry block
   const newLabel = fresh(
-    "entry",
+    brilFunction.name + "Entry",
     blocks.map((block) => block.name)
   );
 
@@ -232,7 +231,7 @@ export const blockMap2Instructions = (blockMap: ICFGBlockMap) => {
 };
 
 export const getFunctionBlockMap = (func: IBrilFunction) => {
-  let blockMap = addCfgEntry(getCfgBlockMap(cfgBuilder.buildFunction(func)));
+  let blockMap = addCfgEntry(getCfgBlockMap(cfgBuilder.buildFunction(func)), func);
   addCfgTerminators(blockMap);
   return blockMap;
 };

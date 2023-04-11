@@ -37,8 +37,8 @@ export enum R {
 }
 
 export class RiscvEmmiter {
-  out: string;
-  nextLine: number;
+  out: string = "";
+  nextLine: number = 1;
   constructor() {
     this.reset();
   }

@@ -26,7 +26,6 @@ export const optimiseBril = (bril: IBrilProgram, optimisations: string[], logger
           case "Unroll":
             const unrollResult = unrollLoops(func, blockMap);
             blockMap = unrollResult.blockMap;
-            console.log(blockMap);
             if (logger) logger.info(` - ${func.name}: Unroll: `, unrollResult.stats);
             break;
           case "SSA":

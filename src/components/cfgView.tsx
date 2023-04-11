@@ -264,7 +264,7 @@ export const CfgView = () => {
   };
 
   const renderRows = useMemo(() => {
-    if (!cfg) return <tr></tr>;
+    if (!cfg || nodeName == "") return <tr></tr>;
 
     const maxRows = Math.max(
       cfg.dom[nodeName]?.length,
