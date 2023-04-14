@@ -46,10 +46,10 @@ export const BrilEditor: VFC = () => {
 
   useEffect(() => {
     const { optimBril, optimCfg } = optimiseBril(bril, optimisations, window.conout0); //, "doLICM", "removePhis", "doDCE"], true);
-    if (Object.keys(optimBril.functions).length) {
-      const registers = registerAllocation(optimBril);
-      console.log("Registers", registers);
-    }
+    // if (Object.keys(optimBril.functions).length) {
+    //   const registers = registerAllocation(optimBril);
+    //   console.log("Registers", registers);
+    // }
 
     setParse((state: ParseState) => {
       state.brilOptim = optimBril;

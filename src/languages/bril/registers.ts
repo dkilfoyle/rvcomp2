@@ -8,6 +8,7 @@ import { getDominatorMap, IStringsMap, IStringMap } from "./dom";
 import { getBackEdges, getNaturalLoops, getLoopExits, findLoopInvariants, getBasicInductionVars } from "./loops";
 import { brilPrinter } from "./BrilPrinter";
 import { keycharm } from "vis-network";
+import { SiNodedotjs } from "react-icons/si";
 
 interface IVariable {
   reg: string;
@@ -29,6 +30,24 @@ class IntermediateLang {
   public instructions: Instruction[] = [];
   constructor(instructions: Instruction[]) {
     this.instructions = instructions;
+  }
+  rewrite(f: IStringMap) {
+    this.instructions = this.instructions.map(
+      (instr) =>
+        new Instruction(
+          instr.opcode,
+          instr.dec.map((dec) => ({ reg: f[dec.reg] || dec.reg, dead: dec.dead })),
+          instr.use.map((use) => ({ reg: f[use.reg] || use.reg, dead: use.dead }))
+        )
+    );
+  }
+  registers() {
+    const reg = new Set<string>();
+    this.instructions.forEach((instr) => {
+      instr.dec.forEach((dec) => reg.add(dec.reg));
+      instr.use.forEach((use) => reg.add(use.reg));
+    });
+    return Array.from(reg);
   }
 }
 
@@ -65,7 +84,7 @@ class Graph {
   neighbors(x: string) {
     return this.adjacencyList[x] || [];
   }
-  plot(coloring: IStringMap) {
+  plot(coloring: Record<string, string | undefined>) {
     const nodes = Object.keys(this.adjacencyList).map((node) => ({ id: node, label: node, color: coloring[node] || "grey" }));
     const edges: { id: string; from: string; to: string }[] = [];
     Object.keys(this.adjacencyList).forEach((node1) => {
@@ -177,10 +196,76 @@ const buildGraph = (il: IntermediateLang) => {
   return graph;
 };
 
-export const registerAllocation = (prog: IBrilProgram) => {
+const isUnnecessaryCopy = (instruction: Instruction, graph: Graph) => {
+  if (instruction.dec.length == 0 || instruction.use.length == 0) return false;
+  const source = instruction.dec[0].reg;
+  const target = instruction.use[0].reg;
+  return instruction.opcode == "id" && source != target && !graph.hasEdge(source, target);
+};
+
+const coalesceNodes = (il: IntermediateLang, graph: Graph) => {
+  let modified = true;
+  let found = -1;
+  while (modified) {
+    found = il.instructions.slice(found + 1).findIndex((instr) => isUnnecessaryCopy(instr, graph));
+    if (found !== -1) {
+      const source = il.instructions[found].dec[0].reg;
+      const target = il.instructions[found].use[0].reg;
+      const f = { source: target };
+      graph.renameNode(source, target);
+      il.rewrite(f);
+    } else modified = false;
+  }
+};
+
+const colorGraph = (g: Graph, nodes: string[], colors: string[]): Record<string, string | undefined> | undefined => {
+  if (nodes.length == 0) return {};
+
+  // i = n.slice(i + 1).findIndex((node) => g.neighbors(node).length < colors.length);
+  // if (i == -1) return undefined;
+  // const node = n[i];
+  // console.group(`colorGraph: nodes=${nodes.toString()}`);
+
+  const node = nodes.find((nodei) => g.neighbors(nodei).length < colors.length);
+  if (_.isUndefined(node)) {
+    // console.log("No nodes with < 6 neighbors");
+    console.groupEnd();
+    return undefined;
+  }
+
+  // console.log("Found node with < 6 neighbors = ", node);
+
+  const gCopy = _.cloneDeep(g);
+  gCopy.removeNode(node);
+
+  ` // color the neighbors of node`;
+  let coloring = colorGraph(
+    gCopy,
+    nodes.filter((nodei) => nodei != node),
+    colors
+  );
+  if (_.isUndefined(coloring)) {
+    // console.log("coloring undefined");
+    // console.groupEnd();
+    return undefined;
+  }
+
+  const neighborColors = g.neighbors(node).map((neighbor) => coloring![neighbor]);
+  coloring[node] = _.sample(colors.filter((color) => !neighborColors.includes(color)));
+  // console.log("coloring", coloring);
+  // console.groupEnd();
+
+  return coloring;
+};
+
+export const registerAllocation = (prog: IBrilProgram, colors: string[]) => {
   const il = buildIL(prog);
-  const graph = buildGraph(il["main"]);
-  // TODO: do graph coloring for whole program or per function?
-  //
-  return { graph };
+  const graph: Record<string, Graph> = {};
+  const coloring: Record<string, Record<string, string | undefined> | undefined> = {};
+  Object.keys(prog.functions).forEach((fn) => {
+    graph[fn] = buildGraph(il[fn]);
+    coalesceNodes(il[fn], graph[fn]);
+    coloring[fn] = colorGraph(graph[fn], il[fn].registers(), colors);
+  });
+  return { graph, coloring };
 };
