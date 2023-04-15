@@ -5,7 +5,6 @@ import { Box, Grid, Select, Table, Tbody, Td, Th, Thead, Tr } from "@chakra-ui/r
 
 import "./regView.css";
 import { ParseState, SettingsState, useParseStore, useSettingsStore } from "../store/zustore";
-import { registerAllocation } from "../languages/bril/registers";
 import _ from "lodash";
 
 // const palette: Record<string, string> = {
@@ -22,6 +21,7 @@ import _ from "lodash";
 //   S11: "#ffff99",
 //   // S0:"#b15928",
 // };
+
 const palette: Record<string, string> = {
   S1: "#8dd3c7",
   S2: "#ffffb3",

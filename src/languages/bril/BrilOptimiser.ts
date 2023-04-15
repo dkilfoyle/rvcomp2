@@ -67,6 +67,6 @@ export const optimiseBril = (bril: IBrilProgram, optimisations: string[], logger
     outBril.dataSize = bril.dataSize;
     outCfg[func.name] = Object.values(blockMap);
   });
-  const regAllo = registerAllocation(outBril, ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11"]);
+  const regAllo = registerAllocation(outBril);
   return { optimBril: outBril, optimCfg: outCfg, regAllo };
 };

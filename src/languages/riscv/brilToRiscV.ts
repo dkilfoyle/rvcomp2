@@ -1,9 +1,26 @@
 // adapted from Chocopy
 
-import { IBrilFunction, IBrilInstruction, IBrilInstructionOrLabel, IBrilLabel, IBrilProgram } from "../bril/BrilInterface";
-import { registerAllocation } from "../bril/registers";
+import _ from "lodash";
+import { IBrilConst, IBrilFunction, IBrilInstructionOrLabel, IBrilLabel, IBrilProgram } from "../bril/BrilInterface";
+import { brilPrinter } from "../bril/BrilPrinter";
+import { IRegisterAllocation } from "../bril/registers";
 import { R, RiscvEmmiter } from "./emitter";
 import { LocalScope, LocalScopeStack, LocalVariable } from "./LocalScope";
+
+// ABI
+// caller:
+//   copy arguments to A registers
+//   call subFunction
+// callee:
+//   prolog
+//      reserve enough stack for AR and any local variables pushed to stack
+//      save caller FP and RA onto stack
+//      save any used S and A registers onto stack
+//   body
+//      if leaf function then preferentially use T registers, else use S registers
+//   epilog
+//      restore any used S and A registers
+//
 
 // Optimisations?
 // 1. for leaf functions (do not call other functions) pass parameters as registers and no prolog/epilog
@@ -16,8 +33,6 @@ interface GlobalVar {
   type: string;
   value: string;
 }
-
-type IRegisterAllocation = Record<string, Record<string, string | undefined>>;
 
 // export class CompilerError {
 //   pos: DocPosition;
@@ -34,15 +49,15 @@ class RiscvCodeGenerator {
   scopeStack: LocalScopeStack;
   dataSection: GlobalVar[];
   currentFunction: IBrilFunction | undefined;
-  registerAllocation:IRegisterAllocation;
+  registerAllocation: IRegisterAllocation;
 
   constructor() {
     this.emitter = new RiscvEmmiter();
     this.scopeStack = new LocalScopeStack();
     this.dataSection = [];
     this.currentFunction = undefined;
-    this.registerAllocation = {};
-    this.reset({});
+    this.registerAllocation = { graph: {}, coloring: {} };
+    this.reset({ graph: {}, coloring: {} });
   }
 
   reset(registerAllocation: IRegisterAllocation) {
@@ -73,7 +88,24 @@ class RiscvCodeGenerator {
     this.emitter.emitADDI(R.SP, R.SP, 4, "shrink stack");
   }
 
-  generate(program: IBrilProgram, registerAllocation: Record<string, Record<string, string | undefined>>) {
+  getRegister(variableName: string) {
+    if (_.isUndefined(this.registerAllocation.coloring)) {
+      debugger;
+      throw Error("Spilling not implemented yet");
+    }
+    if (!(this.currentFunction && this.currentFunction.name in this.registerAllocation.coloring)) {
+      debugger;
+      throw Error();
+    }
+    const reg = this.registerAllocation.coloring![this.currentFunction.name]![variableName];
+    if (!(reg && reg in R)) {
+      debugger;
+      throw Error(`unable to get register for variable ${variableName}`);
+    }
+    return reg as R;
+  }
+
+  generate(program: IBrilProgram, registerAllocation: IRegisterAllocation) {
     this.reset(registerAllocation);
 
     this.emitter.startCode();
@@ -122,7 +154,7 @@ class RiscvCodeGenerator {
     const asmBodyStartLine = this.emitter.nextLine;
     this.emitter.emitComment(`${func.name} body`);
 
-    this.generateInstructions(func.instrs, `${func.name} body`, scope);
+    this.generateInstructions(func.instrs, `${func.name} body`);
 
     const asmEpilogStartLine = this.emitter.nextLine;
     this.emitter.emitComment(`${func.name} epilogue`);
@@ -139,15 +171,20 @@ class RiscvCodeGenerator {
     }
   }
 
-  generateInstructions(instrs: IBrilInstructionOrLabel[], label:string, scope: ) {
+  generateInstructions(instrs: IBrilInstructionOrLabel[], label: string) {
     instrs.forEach((instr) => {
+      let ins;
       if ("label" in instr) {
-        const ins = instr as IBrilLabel;
+        ins = instr as IBrilLabel;
         this.emitter.emitLocalLabel(ins.label);
       } else if ("op" in instr) {
         switch (instr.op) {
           case "const":
-            if (instr.type == "int") this.emitter.emitLI(R.A0, node.value as number, `Load constant ${node.value} to a0`);
+            if (instr.type == "int") {
+              ins = instr as IBrilConst;
+              this.emitter.emitLI(this.getRegister(ins.dest), ins.value as number, brilPrinter.formatInstruction(ins, 0, false));
+            } else throw Error("unsupported const type");
+            break;
         }
       }
     });

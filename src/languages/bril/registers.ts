@@ -1,7 +1,7 @@
 // adapted from https://github.com/johnflanigan/graph-coloring-via-register-allocation
 
 import _ from "lodash";
-import { IBrilProgram } from "./BrilInterface";
+import { IBrilFunction, IBrilProgram } from "./BrilInterface";
 import { getFunctionBlockMap } from "./cfg";
 import { dfWorklist, ANALYSES } from "./df";
 import { IStringsMap, IStringMap } from "./dom";
@@ -248,7 +248,9 @@ const colorGraph = (g: Graph, nodes: string[], colors: string[]): Record<string,
   }
 
   const neighborColors = g.neighbors(node).map((neighbor) => coloring![neighbor]);
-  coloring[node] = _.sample(colors.filter((color) => !neighborColors.includes(color)));
+  // coloring[node] = _.sample(colors.filter((color) => !neighborColors.includes(color)));
+  coloring[node] = colors.find((color) => !neighborColors.includes(color));
+
   // console.log("coloring", coloring);
   // console.groupEnd();
 
@@ -260,14 +262,27 @@ export interface IRegisterAllocation {
   coloring: Record<string, Record<string, string | undefined> | undefined>;
 }
 
-export const registerAllocation = (prog: IBrilProgram, colors: string[]) => {
+const tempRegisters = ["T1", "T2", "T3", "T4", "T5", "T6", "T7"];
+const savedRegisters = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11"];
+
+const isLeafFunction = (fun: IBrilFunction) => {
+  return !fun.instrs.find((instr) => "op" in instr && instr.op == "call");
+};
+
+export const registerAllocation = (prog: IBrilProgram) => {
   const il = buildIL(prog);
   const graph: Record<string, Graph> = {};
   const coloring: Record<string, Record<string, string | undefined> | undefined> = {};
   Object.keys(prog.functions).forEach((fn) => {
     graph[fn] = buildGraph(il[fn]);
     coalesceNodes(il[fn], graph[fn]);
-    coloring[fn] = colorGraph(graph[fn], il[fn].registers(), colors);
+    // if fn does not call any other functions then we can preferentially use temporary regs
+    coloring[fn] = colorGraph(
+      graph[fn],
+      il[fn].registers(),
+      isLeafFunction(prog.functions[fn]) ? [...tempRegisters, ...savedRegisters] : savedRegisters
+    );
   });
+  console.log("Registers: ", graph, coloring);
   return { graph, coloring };
 };

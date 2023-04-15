@@ -25,7 +25,7 @@ export const RiscVEditor: VFC = () => {
   const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoEl = useRef(null);
 
-  const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
+  const { brilOptim, regAllo } = useParseStore((state: ParseState) => ({ brilOptim: state.brilOptim, regAllo: state.regAllo }));
   const setParse = useParseStore((state: ParseState) => state.set);
 
   const foldExprs = useSettingsStore((state: SettingsState) => state.wasm.foldExprs);
@@ -33,7 +33,7 @@ export const RiscVEditor: VFC = () => {
   useEffect(() => {
     if (editor && Object.keys(brilOptim.functions).length > 0) {
       try {
-        const txt = riscvCodeGenerator.generate(brilOptim);
+        const txt = riscvCodeGenerator.generate(brilOptim, regAllo);
         const riscvModel = monaco.editor.createModel(txt, "riscv");
         editor.setModel(riscvModel);
         setParse((state) => {
