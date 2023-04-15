@@ -1,11 +1,21 @@
 // adapted from Chocopy
 
 import _ from "lodash";
-import { IBrilConst, IBrilFunction, IBrilInstructionOrLabel, IBrilLabel, IBrilProgram } from "../bril/BrilInterface";
+import {
+  IBrilConst,
+  IBrilEffectOperation,
+  IBrilFunction,
+  IBrilInstructionOrLabel,
+  IBrilLabel,
+  IBrilProgram,
+  IBrilValueInstruction,
+  IBrilValueOperation,
+} from "../bril/BrilInterface";
 import { brilPrinter } from "../bril/BrilPrinter";
 import { IRegisterAllocation } from "../bril/registers";
 import { R, RiscvEmmiter } from "./emitter";
 import { LocalScope, LocalScopeStack, LocalVariable } from "./LocalScope";
+import { cfgBuilder } from "../bril/cfg";
 
 // ABI
 // caller:
@@ -105,17 +115,22 @@ class RiscvCodeGenerator {
     return reg as R;
   }
 
-  generate(program: IBrilProgram, registerAllocation: IRegisterAllocation) {
+  generate(bril: IBrilProgram, registerAllocation: IRegisterAllocation) {
     this.reset(registerAllocation);
+    if (Object.keys(bril.functions).length == 0) {
+      throw new Error("Empty bril");
+    }
+    const cfg = cfgBuilder.buildProgram(bril);
 
     this.emitter.startCode();
     this.emitter.emitGlobalLabel("main");
 
-    Object.values(program.functions).forEach((func) => this.generateFunction(func));
+    Object.values(bril.functions).forEach((func) => this.generateFunction(func));
 
     this.emitter.startData();
-    this.dataSection.forEach((globalvar) => {
-      this.emitter.emitGlobalVar(globalvar.label, globalvar.type, globalvar.value);
+    Array.from(bril.data).forEach(([symbolValue, symbolData]) => {
+      throw Error("riscv data segment not implemneted yet");
+      //this.emitter.emitGlobalVar(brilData..label, globalvar.type, globalvar.value);
     });
 
     return this.emitter.out;
@@ -132,7 +147,7 @@ class RiscvCodeGenerator {
     // add function parameters to function scope
     this.scopeStack.pushFunctionParams(func);
 
-    this.emitter.emitLocalLabel(func.name);
+    this.emitter.emitLocalLabel(func.name + ".prolog");
     this.currentFunction = func;
 
     // preface: the caller will have resulted in state
@@ -178,12 +193,47 @@ class RiscvCodeGenerator {
         ins = instr as IBrilLabel;
         this.emitter.emitLocalLabel(ins.label);
       } else if ("op" in instr) {
+        const insText = brilPrinter.formatInstruction(instr, 0, false);
+        let binOpFn;
         switch (instr.op) {
           case "const":
             if (instr.type == "int") {
               ins = instr as IBrilConst;
-              this.emitter.emitLI(this.getRegister(ins.dest), ins.value as number, brilPrinter.formatInstruction(ins, 0, false));
+              this.emitter.emitLI(this.getRegister(ins.dest), ins.value as number, insText);
             } else throw Error("unsupported const type");
+            break;
+          case "br":
+            ins = instr as IBrilEffectOperation;
+            if (!ins.args || !ins.labels) throw new Error("Branch instruction missing args - badly formed bril");
+            this.emitter.emitBNEZ(this.getRegister(ins.args[0]), ins.labels[0], insText);
+            if (ins.labels[1]) this.emitter.emitJ(ins.labels[1], insText);
+            break;
+          // integer binary numeric operations
+          case "add":
+          case "sub":
+          case "mul":
+          case "div":
+          case "mod":
+            ins = instr as IBrilValueOperation;
+            if (!ins.args) throw new Error("Branch instruction missing args - badly formed bril");
+            const rd = this.getRegister(ins.dest);
+            const rs1 = this.getRegister(ins.args[0]);
+            const rs2 = this.getRegister(ins.args[1]);
+            switch (ins.op) {
+              case "add":
+                this.emitter.emitADD(rd, rs1, rs2, insText);
+                break;
+              case "sub":
+                this.emitter.emitSUB(rd, rs1, rs2, insText);
+                break;
+              default:
+                throw Error();
+            }
+            break;
+          case "jmp":
+            ins = instr as IBrilEffectOperation;
+            if (!ins.labels) throw new Error("Branch instruction missing args - badly formed bril");
+            this.emitter.emitJ(ins.labels[0], insText);
             break;
         }
       }
