@@ -1,6 +1,7 @@
 // adapted from Chocopy
 
-import { IBrilFunction, IBrilProgram } from "../bril/BrilInterface";
+import { IBrilFunction, IBrilInstruction, IBrilInstructionOrLabel, IBrilLabel, IBrilProgram } from "../bril/BrilInterface";
+import { registerAllocation } from "../bril/registers";
 import { R, RiscvEmmiter } from "./emitter";
 import { LocalScope, LocalScopeStack, LocalVariable } from "./LocalScope";
 
@@ -15,6 +16,8 @@ interface GlobalVar {
   type: string;
   value: string;
 }
+
+type IRegisterAllocation = Record<string, Record<string, string | undefined>>;
 
 // export class CompilerError {
 //   pos: DocPosition;
@@ -31,21 +34,24 @@ class RiscvCodeGenerator {
   scopeStack: LocalScopeStack;
   dataSection: GlobalVar[];
   currentFunction: IBrilFunction | undefined;
+  registerAllocation:IRegisterAllocation;
 
   constructor() {
     this.emitter = new RiscvEmmiter();
     this.scopeStack = new LocalScopeStack();
     this.dataSection = [];
     this.currentFunction = undefined;
-    this.reset();
+    this.registerAllocation = {};
+    this.reset({});
   }
 
-  reset() {
+  reset(registerAllocation: IRegisterAllocation) {
     this.emitter.reset();
     this.scopeStack.reset();
     this.labelCount = 0;
     this.dataSection = [];
     this.currentFunction = undefined;
+    this.registerAllocation = registerAllocation;
   }
 
   newLabel(stub: string = "") {
@@ -67,8 +73,8 @@ class RiscvCodeGenerator {
     this.emitter.emitADDI(R.SP, R.SP, 4, "shrink stack");
   }
 
-  generate(program: IBrilProgram) {
-    this.reset();
+  generate(program: IBrilProgram, registerAllocation: Record<string, Record<string, string | undefined>>) {
+    this.reset(registerAllocation);
 
     this.emitter.startCode();
     this.emitter.emitGlobalLabel("main");
@@ -116,7 +122,7 @@ class RiscvCodeGenerator {
     const asmBodyStartLine = this.emitter.nextLine;
     this.emitter.emitComment(`${func.name} body`);
 
-    //this.visitBlock(func.body, `${func.name} body`, scope);
+    this.generateInstructions(func.instrs, `${func.name} body`, scope);
 
     const asmEpilogStartLine = this.emitter.nextLine;
     this.emitter.emitComment(`${func.name} epilogue`);
@@ -131,6 +137,20 @@ class RiscvCodeGenerator {
       this.emitter.emitMV(R.SP, R.T0, "restore caller's SP, deleting the callee AR");
       this.emitter.emitJR(R.RA, "jump back to caller (RA)");
     }
+  }
+
+  generateInstructions(instrs: IBrilInstructionOrLabel[], label:string, scope: ) {
+    instrs.forEach((instr) => {
+      if ("label" in instr) {
+        const ins = instr as IBrilLabel;
+        this.emitter.emitLocalLabel(ins.label);
+      } else if ("op" in instr) {
+        switch (instr.op) {
+          case "const":
+            if (instr.type == "int") this.emitter.emitLI(R.A0, node.value as number, `Load constant ${node.value} to a0`);
+        }
+      }
+    });
   }
 
   // =================================================================================================================
