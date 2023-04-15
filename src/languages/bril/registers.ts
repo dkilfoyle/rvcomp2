@@ -1,14 +1,11 @@
 // adapted from https://github.com/johnflanigan/graph-coloring-via-register-allocation
 
 import _ from "lodash";
-import { IBrilEffectOperation, IBrilFunction, IBrilParamType, IBrilProgram, IBrilValueInstruction, IBrilValueOperation } from "./BrilInterface";
-import { ICFGBlockMap, getCfgEdges, getFunctionBlockMap } from "./cfg";
+import { IBrilProgram } from "./BrilInterface";
+import { getFunctionBlockMap } from "./cfg";
 import { dfWorklist, ANALYSES } from "./df";
-import { getDominatorMap, IStringsMap, IStringMap } from "./dom";
-import { getBackEdges, getNaturalLoops, getLoopExits, findLoopInvariants, getBasicInductionVars } from "./loops";
+import { IStringsMap, IStringMap } from "./dom";
 import { brilPrinter } from "./BrilPrinter";
-import { keycharm } from "vis-network";
-import { SiNodedotjs } from "react-icons/si";
 
 interface IVariable {
   reg: string;
@@ -257,6 +254,11 @@ const colorGraph = (g: Graph, nodes: string[], colors: string[]): Record<string,
 
   return coloring;
 };
+
+export interface IRegisterAllocation {
+  graph: Record<string, Graph>;
+  coloring: Record<string, Record<string, string | undefined> | undefined>;
+}
 
 export const registerAllocation = (prog: IBrilProgram, colors: string[]) => {
   const il = buildIL(prog);

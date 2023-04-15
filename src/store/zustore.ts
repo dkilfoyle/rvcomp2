@@ -5,6 +5,7 @@ import { IBrilProgram } from "../languages/bril/BrilInterface";
 import { ICFG } from "../languages/bril/cfg";
 import { IAstProgram } from "../languages/simpleC/ast";
 import { ISimpleCLangError } from "../components/simpleCEditor/monaco/DiagnosticsAdapter";
+import { IRegisterAllocation } from "../languages/bril/registers";
 
 export interface SettingsState {
   filename: string;
@@ -96,6 +97,7 @@ export interface ParseState {
   ast: IAstProgram;
   bril: IBrilProgram;
   brilOptim: IBrilProgram;
+  regAllo: IRegisterAllocation;
   cfg: ICFG;
   errors: ISimpleCLangError[];
   wasm: Uint8Array;
@@ -110,6 +112,7 @@ export const useParseStore = create<ParseState>()((set) => ({
   bril: { functions: {}, data: new Map(), dataSize: 0 },
   brilOptim: { functions: {}, data: new Map(), dataSize: 0 },
   cfg: {},
+  regAllo: { graph: {}, coloring: {} },
   errors: [],
   wasm: new Uint8Array(),
   riscv: "",

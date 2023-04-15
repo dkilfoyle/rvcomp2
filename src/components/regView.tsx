@@ -42,15 +42,10 @@ export const RegView = () => {
   const functionName = useSettingsStore((state: SettingsState) => state.cfg.functionName);
   const [nodeName, setNodeName] = useState("None");
   const setSettings = useSettingsStore((state: SettingsState) => state.set);
+  const regAllo = useParseStore((state: ParseState) => state.regAllo);
 
   const visJsRef = useRef<HTMLDivElement>(null);
   let network: Network;
-
-  const regAllo = useMemo(() => {
-    const regAllo = registerAllocation(brilOptim, Object.keys(palette));
-    console.log(regAllo);
-    return regAllo;
-  }, [brilOptim]);
 
   const visData = useMemo(() => {
     const { nodes, edges } = Object.keys(brilOptim.functions).length
@@ -59,7 +54,7 @@ export const RegView = () => {
     const visEdges = edges.map((edge) => ({ ...edge, color: "black" }));
     const visNodes = nodes.map((node) => ({ ...node, color: palette[node.color] }));
     return { nodes: new DataSet(visNodes), edges: new DataSet(visEdges) };
-  }, [brilOptim, functionName]);
+  }, [regAllo, functionName]);
 
   useEffect(() => {
     const options: Options = {
@@ -85,13 +80,14 @@ export const RegView = () => {
   });
 
   const nodeInfo = useMemo(() => {
+    const emptyInfo = {
+      variableName: "None",
+      registerName: "",
+      shared: "[]",
+    };
+    if (!regAllo.coloring[functionName] || !regAllo.coloring[functionName]![nodeName]) return emptyInfo;
     const node = regAllo.coloring[functionName]![nodeName]!;
-    if (_.isUndefined(node))
-      return {
-        variableName: "None",
-        registerName: "",
-        shared: "[]",
-      };
+    if (_.isUndefined(node)) return emptyInfo;
     else
       return {
         variableName: nodeName,

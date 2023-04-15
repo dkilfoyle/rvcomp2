@@ -39,30 +39,23 @@ export const BrilEditor: VFC = () => {
   const brilTxt = useMemo(() => {
     if (brilIsSSA) {
       const { optimBril, optimCfg } = optimiseBril(bril, ["SSA", "Phis-"]);
-
       return brilPrinter.print(optimBril);
     } else return brilPrinter.print(bril);
   }, [bril, brilIsSSA, brilRemovePhis]);
 
-  useEffect(() => {
-    const { optimBril, optimCfg } = optimiseBril(bril, optimisations, window.conout0); //, "doLICM", "removePhis", "doDCE"], true);
-    // if (Object.keys(optimBril.functions).length) {
-    //   const registers = registerAllocation(optimBril);
-    //   console.log("Registers", registers);
-    // }
-
-    setParse((state: ParseState) => {
-      state.brilOptim = optimBril;
-    });
-    setParse((state: ParseState) => {
-      state.cfg = optimCfg;
-    });
-    // console.log(optimBril);
-  }, [bril, optimisations]);
-
   const brilTxtOptim = useMemo(() => {
     return brilPrinter.print(brilOptim);
   }, [brilOptim]);
+
+  useEffect(() => {
+    const { optimBril, optimCfg, regAllo } = optimiseBril(bril, optimisations, window.conout0);
+    setParse((state: ParseState) => {
+      state.brilOptim = optimBril;
+      state.cfg = optimCfg;
+      state.regAllo = regAllo;
+    });
+    // console.log(optimBril);
+  }, [bril, optimisations]);
 
   const selectedCfgNode = useMemo(() => {
     const fn = cfg[cfgFunctionName];
