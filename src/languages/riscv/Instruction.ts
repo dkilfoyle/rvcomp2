@@ -3,9 +3,7 @@
 // {             imm[11:0]           } {     rs1    } {  f3  } {      rd    } {      opcode      }   I Type
 // {     imm[11:5]    } {     rs2    } {     rs1    } {  f3  } {  imm[4:0]  } {      opcode      }   S Type
 
-import { DocPosition, getEmptyDocPosition } from "../../../utils/antlr";
-import { signedSlice, unsignedSlice, getBits, maskBits } from "../../../utils/bits";
-import { SymbolTable } from "./astBuilder";
+import { signedSlice, unsignedSlice, getBits, maskBits } from "./bits";
 
 // Base opcodes.
 const OP_LOAD = 0x03;
@@ -208,14 +206,12 @@ export class Instruction {
   iType: InstructionType;
   opName: string;
   params: InstructionParameters;
-  pos: DocPosition; // start, stop in asm code
   machineCode: number;
 
-  constructor(opName: string, params: InstructionParameters, pos: DocPosition) {
+  constructor(opName: string, params: InstructionParameters) {
     this.iType = OPCODE_TO_FORMAT[operations[opName][0]];
     this.opName = opName;
     this.params = params;
-    this.pos = pos;
     this.machineCode = 0;
   }
 
@@ -317,11 +313,7 @@ export class Instruction {
     const opName = tree as unknown as string;
     const format = OPCODE_TO_FORMAT[fields.opcode];
 
-    const result = new Instruction(
-      opName,
-      { ...fields, imm: decodeImmediate(fields, format, x) },
-      getEmptyDocPosition()
-    );
+    const result = new Instruction(opName, { ...fields, imm: decodeImmediate(fields, format, x) });
     result.machineCode = x;
     return result;
   }
@@ -335,14 +327,7 @@ export class Instruction {
     let slice = unsignedSlice;
     switch (this.iType) {
       case "R":
-        return [
-          slice(x, 31, 25),
-          slice(x, 24, 20),
-          slice(x, 19, 15),
-          slice(x, 14, 12),
-          slice(x, 11, 7),
-          slice(x, 6, 0),
-        ];
+        return [slice(x, 31, 25), slice(x, 24, 20), slice(x, 19, 15), slice(x, 14, 12), slice(x, 11, 7), slice(x, 6, 0)];
     }
   }
 
@@ -379,13 +364,7 @@ export class Instruction {
         );
       case "J":
       case "U":
-        return (
-          xs.slice(31 - 31, 31 - 12 + 1) +
-          "_" +
-          xs.slice(31 - 11, 31 - 7 + 1) +
-          "_" +
-          xs.slice(31 - 6, 31 - 0 + 1)
-        );
+        return xs.slice(31 - 31, 31 - 12 + 1) + "_" + xs.slice(31 - 11, 31 - 7 + 1) + "_" + xs.slice(31 - 6, 31 - 0 + 1);
       default:
         throw new Error();
     }
