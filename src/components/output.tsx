@@ -19,6 +19,7 @@ import { VscDebugRerun, VscDebugStepOver } from "react-icons/vsc";
 import { BrilTypeByteSize, IBrilDataSegment, IBrilPrimType } from "../languages/bril/BrilInterface";
 import _ from "lodash";
 import { riscvCodeGenerator } from "../languages/riscv/brilToRiscV";
+import { Computer } from "../languages/riscv/simulator/System";
 
 window.conout1 = { ...window.console };
 window.conout2 = { ...window.console };
@@ -27,15 +28,12 @@ window.conout4 = { ...window.console };
 
 const fullHeight = { maxHeight: "100%" };
 
-const segments = [
-  {
-    name: "Screen",
-    start: 0,
-    end: 100 * 100 * 4,
-  },
-  { name: "Data", start: 40960, end: 40960 },
-  { name: "Heap", start: 40960, end: 40960 },
-];
+const segments: Record<string, Record<string, number[]>> = {
+  bril: { screen: [0, 100 * 100 * 4], data: [40960, 40960], heap: [40960, 40960], text: [0, 0] },
+  brilOptim: { screen: [0, 100 * 100 * 4], data: [40960, 40960], heap: [40960, 40960], text: [0, 0] },
+  wasm: { screen: [0, 100 * 100 * 4], data: [40960, 40960], heap: [40960, 40960], text: [0, 0] },
+  riscv: { screen: [0, 100 * 100 * 4], data: [40960, 40960], heap: [40960, 40960], text: [0, 0] },
+};
 
 const paintScreen = (canvasId: string, mem: Uint8ClampedArray) => {
   const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -121,9 +119,8 @@ export const Output: React.FC = () => {
       };
       runWasm(wasmByteCode, runtime).then((res) => {
         setWasmMemory(new Uint8ClampedArray(res.memory.buffer, 0, res.heap_pointer));
-        segments[1].end = 40960 + Math.max(0, brilOptim.dataSize - 1);
-        segments[2].start = 40960 + brilOptim.dataSize;
-        segments[2].end = res.heap_pointer - 1;
+        segments.wasm.data[1] = 40960 + Math.max(0, brilOptim.dataSize - 1);
+        segments.wasm.heatp = [40960 + brilOptim.dataSize, res.heap_pointer - 1];
       });
     }
 
@@ -163,16 +160,14 @@ export const Output: React.FC = () => {
             setOptimMemory(new Uint8ClampedArray(res.memory.buffer));
             optimHeapVars = res.heap;
             optimData = res.data;
-            segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
-            segments[2].start = res.heap_start; // 40960 + bril.dataSize;
-            segments[2].end = res.heap_pointer - 1;
+            segments.brilOptim.data[1] = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
+            segments.brilOptim.heap = [res.heap_start, res.heap_pointer - 1]; // 40960 + bril.dataSize;
           } else if (optimLevel == "un-optimised") {
             setBrilMemory(new Uint8ClampedArray(res.memory.buffer));
             brilHeapVars = res.heap;
             brilData = res.data;
-            segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
-            segments[2].start = res.heap_start; // 40960 + bril.dataSize;
-            segments[2].end = res.heap_pointer - 1;
+            segments.bril.data[1] = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
+            segments.bril.heap = [res.heap_start, res.heap_pointer - 1]; // 40960 + bril.dataSize;
           }
           break;
         case "render": {
@@ -207,23 +202,14 @@ export const Output: React.FC = () => {
       const { action, payload } = data;
       switch (action) {
         case "done":
-          const { res } = payload;
-          console.log("riscv done", res);
-          // if (optimLevel == "optimised") {
-          //   setOptimMemory(new Uint8ClampedArray(res.memory.buffer));
-          //   optimHeapVars = res.heap;
-          //   optimData = res.data;
-          //   segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
-          //   segments[2].start = res.heap_start; // 40960 + bril.dataSize;
-          //   segments[2].end = res.heap_pointer - 1;
-          // } else if (optimLevel == "un-optimised") {
-          //   setBrilMemory(new Uint8ClampedArray(res.memory.buffer));
-          //   brilHeapVars = res.heap;
-          //   brilData = res.data;
-          //   segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
-          //   segments[2].start = res.heap_start; // 40960 + bril.dataSize;
-          //   segments[2].end = res.heap_pointer - 1;
-          // }
+          const computer: Computer = payload.computer;
+          console.log("riscv done", computer);
+          setRiscvMemory(new Uint8ClampedArray(computer.mem.data));
+
+          segments.riscv.screen = [0, 0];
+          segments.riscv.text = [riscv.textStart, riscv.dataStart - 4];
+          segments.riscv.data = [riscv.dataStart, riscv.heapStart - 4];
+          segments.riscv.heap = [riscv.heapStart, 4096]; // todo: extra heap pointer from cpu register
           break;
         case "render": {
           // const { memory, optimLevel } = payload;
@@ -250,7 +236,7 @@ export const Output: React.FC = () => {
           break;
       }
     };
-  }, [riscvInterpWorker]);
+  }, [riscvInterpWorker, riscv]);
 
   const wasmByteCode = useMemo(() => {
     if (Object.keys(brilOptim.functions).length == 0) return;
@@ -376,7 +362,7 @@ export const Output: React.FC = () => {
                 }}></Console>
             </OverlayScrollbarsComponent>
             <Divider orientation="vertical" size="sm"></Divider>
-            {showMem ? <MemView mem={brilMemory} segments={segments} heapVars={brilHeapVars}></MemView> : memButton}
+            {showMem ? <MemView mem={brilMemory} segments={segments.bril} heapVars={brilHeapVars}></MemView> : memButton}
             <Divider orientation="vertical" size="sm"></Divider>
             {showScreen ? <canvas id="brilCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
           </Grid>
@@ -401,7 +387,11 @@ export const Output: React.FC = () => {
                 }}></Console>
             </OverlayScrollbarsComponent>
             <Divider orientation="vertical" size="sm"></Divider>
-            {showMem ? <MemView mem={optimMemory} segments={segments} heapVars={optimHeapVars} dataSegment={optimData}></MemView> : memButton}
+            {showMem ? (
+              <MemView mem={optimMemory} segments={segments.brilOptim} heapVars={optimHeapVars} dataSegment={optimData}></MemView>
+            ) : (
+              memButton
+            )}
             <Divider orientation="vertical" size="sm"></Divider>
             {showScreen ? <canvas id="optimCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
           </Grid>
@@ -427,7 +417,7 @@ export const Output: React.FC = () => {
             </OverlayScrollbarsComponent>
 
             <Divider orientation="vertical" size="sm"></Divider>
-            {showMem ? <MemView mem={wasmMemory} segments={segments}></MemView> : memButton}
+            {showMem ? <MemView mem={wasmMemory} segments={segments.wasm}></MemView> : memButton}
             <Divider orientation="vertical" size="sm"></Divider>
             <Grid templateRows="auto auto 1fr" gap="2" height="100%">
               <HStack>
@@ -442,7 +432,7 @@ export const Output: React.FC = () => {
 
         <TabPanel height="100%" padding="4px">
           <Grid templateColumns="1fr auto auto auto auto" gap="2" height="100%">
-            <OverlayScrollbarsComponent style={fullHeight} ref={wasmOutputRef}>
+            <OverlayScrollbarsComponent style={fullHeight} ref={riscvOutputRef}>
               <Console
                 logs={riscvlogs}
                 variant="light"
@@ -460,7 +450,7 @@ export const Output: React.FC = () => {
             </OverlayScrollbarsComponent>
 
             <Divider orientation="vertical" size="sm"></Divider>
-            {showMem ? <MemView mem={riscvMemory} segments={segments}></MemView> : memButton}
+            {showMem ? <MemView mem={riscvMemory} segments={segments.riscv}></MemView> : memButton}
             <Divider orientation="vertical" size="sm"></Divider>
             <Grid templateRows="auto auto 1fr" gap="2" height="100%">
               <HStack>

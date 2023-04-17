@@ -103,7 +103,7 @@ export interface ParseState {
   cfg: ICFG;
   errors: ISimpleCLangError[];
   wasm: Uint8Array;
-  riscv: { asm: string; memWords: number[]; metas: Map<number, any> };
+  riscv: { asm: string; memWords: number[]; metas: Map<number, any>; textStart: number; dataStart: number; heapStart: number };
   set: (fn: (state: ParseState) => void) => void;
   reset: (rcst: boolean, rast?: boolean, rbril?: boolean, rbrilOptim?: boolean, rcfg?: boolean) => void;
 }
@@ -117,7 +117,7 @@ export const useParseStore = create<ParseState>()((set) => ({
   regAllo: { graph: {}, coloring: {} },
   errors: [],
   wasm: new Uint8Array(),
-  riscv: { asm: "", memWords: [], metas: new Map<number, any>() },
+  riscv: { asm: "", memWords: [], metas: new Map<number, any>(), textStart: 0, dataStart: 0, heapStart: 0 },
   set: (fn: (state: ParseState) => void) => set(produce(fn)),
   reset: (rcst: boolean, rast: boolean = true, rbril: boolean = true, rbrilOptim: boolean = true, rcfg: boolean = true) =>
     set(

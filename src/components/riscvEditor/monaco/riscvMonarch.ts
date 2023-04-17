@@ -7,11 +7,14 @@ export const richLanguageConfiguration: IRichLanguageConfiguration = {
   wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g,
 
   comments: {
-    lineComment: ";;",
-    blockComment: ["(;", ";)"],
+    lineComment: "#",
   },
 
-  brackets: [["(", ")"]],
+  brackets: [
+    ["{", "}"],
+    ["[", "]"],
+    ["(", ")"],
+  ],
 
   onEnterRules: [
     {
@@ -68,14 +71,57 @@ export const richLanguageConfiguration: IRichLanguageConfiguration = {
 };
 
 export const monarchLanguage = <ILanguage>{
+  // Create your own language definition here
+  // You can safely look at other samples without losing modifications.
+  // Modifications are not saved on browser refresh/close though -- copy often!
+
   // Set defaultToken to invalid to see what you do not tokenize yet
-  // defaultToken: 'invalid',
+  defaultToken: "invalid",
 
-  keywords: ["module", "func", "type", "param", "result", "export"],
+  keywords: [".text", ".data", ".globl"],
 
-  typeKeywords: ["i32", "f32"],
+  typeKeywords: ["li", "add", "j", "bnez", "addi", "ecall", "call", "j", "jal", "jalr", "bne", "beq"],
 
-  operators: [],
+  operators: [
+    "li",
+    "=",
+    ">",
+    "<",
+    "!",
+    "~",
+    "?",
+    ":",
+    "==",
+    "<=",
+    ">=",
+    "!=",
+    "&&",
+    "||",
+    "++",
+    "--",
+    "+",
+    "-",
+    "*",
+    "/",
+    "&",
+    "|",
+    "^",
+    "%",
+    "<<",
+    ">>",
+    ">>>",
+    "+=",
+    "-=",
+    "*=",
+    "/=",
+    "&=",
+    "|=",
+    "^=",
+    "%=",
+    "<<=",
+    ">>=",
+    ">>>=",
+  ],
 
   // we include these common regular expressions
   symbols: /[=><!~?:&|+\-*\/\^%]+/,
@@ -87,8 +133,9 @@ export const monarchLanguage = <ILanguage>{
   tokenizer: {
     root: [
       // identifiers and keywords
-      [/[a-z_$][\w$]*/, { cases: { "@typeKeywords": "type", "@keywords": "keyword", "@default": "identifier" } }],
-      [/[A-Z][\w\$]*/, "type.identifier"], // to show class names nicely
+      [/\#.*$/, "comment"],
+      [/[a-z_$.]\w*(.\d*)?:$/, "invalid"],
+      [/[a-z_$.][\w$]*/, { cases: { "@typeKeywords": "variable.value", "@keywords": "keyword", "@default": "identifier" } }],
 
       // whitespace
       { include: "@whitespace" },
@@ -101,7 +148,7 @@ export const monarchLanguage = <ILanguage>{
       // @ annotations.
       // As an example, we emit a debugging log message on these tokens.
       // Note: message are supressed during the first load -- change some lines to see them.
-      // [/@\s*[a-zA-Z_\$][\w\$]*/, { token: "annotation", log: "annotation token: $0" }],
+      [/@\s*[a-zA-Z_\$][\w\$]*/, { token: "annotation", log: "annotation token: $0" }],
 
       // numbers
       [/\d*\.\d+([eE][\-+]?\d+)?/, "number.float"],
@@ -109,7 +156,7 @@ export const monarchLanguage = <ILanguage>{
       [/\d+/, "number"],
 
       // delimiter: after number because of .\d floats
-      [/[;,.]/, "delimiter"],
+      //[/[;,.]/, 'delimiter'],
 
       // strings
       [/"([^"\\]|\\.)*$/, "string.invalid"], // non-teminated string
@@ -121,7 +168,12 @@ export const monarchLanguage = <ILanguage>{
       [/'/, "string.invalid"],
     ],
 
-    comment: [[/;;.*$/, "comment"]],
+    comment: [
+      //[/[^\/*]+/, 'comment' ],
+      //[///\/\*/,    'comment', '@push' ],    // nested comment
+      //["\\*/",    'comment', '@pop'  ],
+      [/[\#]/, "comment"],
+    ],
 
     string: [
       [/[^\\"]+/, "string"],

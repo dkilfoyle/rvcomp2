@@ -152,7 +152,15 @@ class RiscvCodeGenerator {
       metas.set(i * 4, instr.meta);
     });
 
-    return { asm: this.emitter.out, memWords, symbolTable, textStart: this.textStart, dataStart: this.dataStart, metas };
+    return {
+      asm: this.emitter.out,
+      memWords,
+      symbolTable,
+      textStart: this.textStart,
+      dataStart: this.dataStart,
+      heapStart: this.dataStart + this.emitter.dataSection.pointer,
+      metas,
+    };
   }
 
   generateFunction(func: IBrilFunction) {

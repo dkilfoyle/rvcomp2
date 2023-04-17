@@ -8,6 +8,7 @@ import { setupLanguage } from "./monaco/setup";
 import { useSettingsStore, SettingsState, ParseState, useParseStore } from "../../store/zustore";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { riscvCodeGenerator } from "../../languages/riscv/brilToRiscV";
+import _ from "lodash";
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
@@ -40,7 +41,7 @@ export const RiscVEditor: VFC = () => {
         });
       } catch (e: any) {
         setParse((state) => {
-          state.riscv = { asm: "", memWords: [], metas: new Map() };
+          state.riscv = { asm: "", memWords: [], metas: new Map(), textStart: 0, dataStart: 0, heapStart: 0 };
         });
         const riscvModel = monaco.editor.createModel(e.toString());
         editor.setModel(riscvModel);

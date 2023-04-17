@@ -1,6 +1,6 @@
 import * as monaco from "monaco-editor";
 import { languageExtensionPoint, languageID } from "./config";
-import { richLanguageConfiguration, monarchLanguage } from "./wasmMonarch";
+import { richLanguageConfiguration, monarchLanguage } from "./riscvMonarch";
 
 export function setupLanguage() {
   monaco.languages.register(languageExtensionPoint);

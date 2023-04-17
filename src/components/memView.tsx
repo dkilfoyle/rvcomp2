@@ -11,7 +11,7 @@ const zeroTo15 = _.range(0, 16);
 
 interface MemViewProps {
   mem: Uint8ClampedArray;
-  segments: { name: string; start: number; end: number }[];
+  segments: Record<string, number[]>;
   heapVars?: IHeapVar[];
   dataSegment?: IBrilDataSegment;
 }
@@ -37,9 +37,9 @@ export const MemView = ({ mem, segments, heapVars, dataSegment }: MemViewProps) 
   }, []);
 
   const rows = useMemo(() => {
-    const startLine = startOffset > -1 ? startOffset / 16 : segments[1].start / 16;
-    const endLine = endOffset > -1 ? endOffset / 16 : segments[2].end / 16;
-    const dataSize = segments[1].end - segments[1].start;
+    const startLine = startOffset > -1 ? startOffset / 16 : segments.data[0] / 16;
+    const endLine = endOffset > -1 ? endOffset / 16 : segments.heap[1] / 16;
+    const dataSize = segments.data[1] - segments.data[0];
 
     return _.range(startLine, endLine).map((lineOffset) => {
       return (
@@ -51,8 +51,8 @@ export const MemView = ({ mem, segments, heapVars, dataSegment }: MemViewProps) 
 
             // is this byte heap or data
             let curSegment = "Unknown";
-            if (dataSize > 0 && calculatedOffset >= segments[1].start && calculatedOffset <= segments[1].end) curSegment = "Data";
-            else if (calculatedOffset >= segments[2].start && calculatedOffset <= segments[2].end) curSegment = "Heap";
+            if (dataSize > 0 && calculatedOffset >= segments.data[0] && calculatedOffset <= segments.data[1]) curSegment = "Data";
+            else if (calculatedOffset >= segments.heap[0] && calculatedOffset <= segments.heap[1]) curSegment = "Heap";
 
             // which heap var is this byte in
             let curVar = 0;
@@ -92,46 +92,27 @@ export const MemView = ({ mem, segments, heapVars, dataSegment }: MemViewProps) 
     });
   }, [mem, startOffset, endOffset, segments]);
 
+  const renderOffsetButtons = useMemo(() => {
+    return Object.keys(segments).map((seg, i) => {
+      return (
+        <Button
+          key={"segButton" + i}
+          size="xs"
+          className="offsetButton"
+          onClick={() => {
+            console.log(`Viewing ${seg} from ${segments[seg][0]} to ${segments[seg][1]}`);
+            setStartOffset(segments[seg][0]);
+            setEndOffset(segments[seg][1]);
+          }}>
+          {seg}
+        </Button>
+      );
+    });
+  }, [segments]);
+
   return (
     <Grid templateRows="auto 1fr" gap="4px" overflow="hidden">
-      <HStack>
-        <Button
-          size="xs"
-          className="offsetButton"
-          onClick={() => {
-            setStartOffset(segments[0].start);
-            setEndOffset(segments[0].end);
-          }}>
-          Screen
-        </Button>
-        <Button
-          size="xs"
-          className="offsetButton"
-          onClick={() => {
-            setStartOffset(segments[1].start);
-            setEndOffset(segments[1].end);
-          }}>
-          Data ({segments[1].end - segments[1].start}b)
-        </Button>
-        <Button
-          size="xs"
-          className="offsetButton"
-          onClick={() => {
-            setStartOffset(segments[2].start);
-            setEndOffset(segments[2].end);
-          }}>
-          Heap ({segments[2].end - segments[2].start}b)
-        </Button>
-        <Button
-          size="xs"
-          className="offsetButton"
-          onClick={() => {
-            setStartOffset(segments[1].start);
-            setEndOffset(segments[2].end);
-          }}>
-          Data+Heap
-        </Button>
-      </HStack>
+      <HStack>{renderOffsetButtons}</HStack>
       <OverlayScrollbarsComponent height="100%">{rows}</OverlayScrollbarsComponent>
     </Grid>
   );

@@ -87,8 +87,6 @@ export function runInterpretor(memWords: number[], metas: Map<number, any>, myop
     // instrCount = 0;
     // optimLevel = myoptimLevel;
 
-    debugger;
-
     const startTime = performance.now();
     const computer = new Computer();
     computer.resetAndLoad(memWords, metas);
@@ -115,8 +113,8 @@ self.onmessage = async ({ data }) => {
   const { action, payload } = data;
   switch (action) {
     case "main":
-      const res = runInterpretor(payload.memWords, payload.metas, payload.optimLevel);
-      postMessage({ action: "done", payload: { res, optimLevel: payload.optimLevel } });
+      const computer = runInterpretor(payload.memWords, payload.metas, payload.optimLevel);
+      postMessage({ action: "done", payload: { computer, optimLevel: payload.optimLevel } });
       break;
   }
 };
