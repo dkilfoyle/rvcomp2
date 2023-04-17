@@ -3,6 +3,7 @@
 // {             imm[11:0]           } {     rs1    } {  f3  } {      rd    } {      opcode      }   I Type
 // {     imm[11:5]    } {     rs2    } {     rs1    } {  f3  } {  imm[4:0]  } {      opcode      }   S Type
 
+import _ from "lodash";
 import { signedSlice, unsignedSlice, getBits, maskBits } from "./bits";
 
 // Base opcodes.
@@ -45,7 +46,7 @@ const F7_L = 0;
 const F7_A = 32;
 // const F7_MRET = 24;
 
-const OPCODE_TO_FORMAT = {
+const OPCODE_TO_FORMAT: Record<number, string> = {
   [OP_REG]: "R",
   [OP_LOAD]: "I",
   [OP_IMM]: "I",
@@ -59,7 +60,7 @@ const OPCODE_TO_FORMAT = {
 };
 
 // prettier-ignore
-export const operations = {
+export const operations:Record<string, number[]> = {
   //       fmt  opcode     f3   f7
   add:   [OP_REG,    F3_ADD,  F7_L], // __ rd, rs1, rs2
   sub:   [OP_REG,    F3_ADD,  F7_A], // __ rd, rs1, rs2
@@ -106,16 +107,25 @@ export const operations = {
   ecall: [OP_SYSTEM, 0x0          ],
 };
 
+interface IFields {
+  opcode?: number;
+  funct3?: number;
+  funct7?: number;
+  rs2?: number;
+  rs1?: number;
+  rd?: number;
+}
+
 // Reverse INSTR_NAME_TO_FIELDS into a tree to decode field values.
 // Use hash maps instead of plain objects to avoid converting numeric keys
 // to strings.
-function addToTree(tree, name, path, index) {
+function addToTree(tree: Map<any, any>, name: string, path: number[], index: number) {
   const fieldValue = path[index];
   if (index === path.length - 1) {
     tree.set(fieldValue, name);
   } else {
     if (!tree.has(fieldValue)) {
-      tree.set(fieldValue, new Map());
+      tree.set(fieldValue, new Map<string, string>());
     }
     addToTree(tree.get(fieldValue), name, path, index + 1);
   }
@@ -127,7 +137,7 @@ for (let [name, path] of Object.entries(operations)) {
 }
 
 // prettier-ignore
-const FORMAT_TO_IMM_SLICES = {
+const FORMAT_TO_IMM_SLICES:Record<string, number[][]> = {
     I : [[31, 20, 0 ]                                         ],
     S : [[31, 25, 5 ], [11, 7, 0  ]                           ],
     B : [[31, 31, 12], [7 , 7, 11 ], [30, 25, 5 ], [11, 8 , 1]],
@@ -135,7 +145,7 @@ const FORMAT_TO_IMM_SLICES = {
     J : [[31, 31, 20], [19, 12, 12], [20, 20, 11], [30, 21, 1]],
 };
 
-function decodeImmediate({ opcode, funct3, rs2 }, format: InstructionType, word: number) {
+function decodeImmediate({ opcode, funct3, rs2 }: IFields, format: InstructionType, word: number) {
   if (opcode === OP_IMM && (funct3 === F3_SL || funct3 === F3_SR)) {
     return rs2;
   }
@@ -192,7 +202,7 @@ export const instructionFormats = {
 
 type InstructionType = "I" | "R" | "S" | "B" | "J" | "U";
 
-interface InstructionParameters {
+export interface InstructionParameters {
   rs1?: number;
   rs2?: number;
   rd?: number;
@@ -207,27 +217,34 @@ export class Instruction {
   opName: string;
   params: InstructionParameters;
   machineCode: number;
+  meta: any;
 
-  constructor(opName: string, params: InstructionParameters) {
-    this.iType = OPCODE_TO_FORMAT[operations[opName][0]];
+  constructor(opName: string, params: InstructionParameters, meta: any) {
+    this.iType = OPCODE_TO_FORMAT[operations[opName][0]] as InstructionType;
     this.opName = opName;
     this.params = params;
     this.machineCode = 0;
+    this.meta = meta;
   }
 
-  encode(address: number, symbols: SymbolTable) {
+  encode(address: number, symbols: Map<string, number>) {
     // address is address of this instruction, used to calculated relative offsets
 
     // convert string offset to immediate offset relative to PC(address)
     if (typeof this.params.offset == "string") {
-      this.params.imm = symbols[this.params.offset] - address;
+      const labelOffset = symbols.get(this.params.offset);
+      if (_.isUndefined(labelOffset)) throw Error();
+      this.params.imm = labelOffset - address;
     }
 
     if (this.params.symbol) {
-      this.params.imm = symbols[this.params.symbol] - (address - 4); // = symbol - PC
+      const symbolOffset = symbols.get(this.params.symbol);
+      if (_.isUndefined(symbolOffset)) throw Error();
+      this.params.imm = symbolOffset - (address - 4); // = symbol - PC
     }
 
     if (this.params.macro === "hi") {
+      if (!this.params.imm) throw Error();
       this.params.imm = ((this.params.imm >>> 12) + getBits(this.params.imm, 12, 11)) << 12;
       // la rd, symbol =>
       // auipc rd, delta[31:12] + delta[11] where delta = symbol - PC
@@ -246,12 +263,36 @@ export class Instruction {
     code = setCode(code, "opcode", opcode);
     switch (this.iType) {
       case "I":
+        if (_.isUndefined(this.params.rd)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
+        if (_.isUndefined(this.params.rs1)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
+        if (_.isUndefined(this.params.imm)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
         code = setCode(code, "funct3", funct3);
         code = setCode(code, "rd", this.params.rd);
         code = setCode(code, "rs1", this.params.rs1);
         code = setCode(code, "imm_11_0", this.params.imm);
         break;
       case "R":
+        if (_.isUndefined(this.params.rd)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
+        if (_.isUndefined(this.params.rs1)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
+        if (_.isUndefined(this.params.rs2)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
         code = setCode(code, "funct3", funct3);
         code = setCode(code, "funct7", funct7);
         code = setCode(code, "rd", this.params.rd);
@@ -259,6 +300,18 @@ export class Instruction {
         code = setCode(code, "rs2", this.params.rs2);
         break;
       case "S":
+        if (_.isUndefined(this.params.imm)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
+        if (_.isUndefined(this.params.rs1)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
+        if (_.isUndefined(this.params.rs2)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
         code = setCode(code, "funct3", funct3);
         code = setCode(code, "rs1", this.params.rs1);
         code = setCode(code, "rs2", this.params.rs2);
@@ -266,6 +319,18 @@ export class Instruction {
         code = setCode(code, "imm_11_5", this.params.imm >>> 5);
         break;
       case "B":
+        if (_.isUndefined(this.params.imm)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
+        if (_.isUndefined(this.params.rs1)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
+        if (_.isUndefined(this.params.rs2)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
         code = setCode(code, "funct3", funct3);
         code = setCode(code, "rs1", this.params.rs1);
         code = setCode(code, "rs2", this.params.rs2);
@@ -275,6 +340,14 @@ export class Instruction {
         code = setCode(code, "imm_12", this.params.imm >>> 12);
         break;
       case "J":
+        if (_.isUndefined(this.params.rd)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
+        if (_.isUndefined(this.params.imm)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
         code = setCode(code, "rd", this.params.rd);
         code = setCode(code, "imm_19_12", this.params.imm >>> 12);
         code = setCode(code, "imm_11j", this.params.imm >>> 11);
@@ -282,6 +355,14 @@ export class Instruction {
         code = setCode(code, "imm_20", this.params.imm >>> 20);
         break;
       case "U":
+        if (_.isUndefined(this.params.rd)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
+        if (_.isUndefined(this.params.imm)) {
+          debugger;
+          throw Error("instruction param undefined");
+        }
         code = setCode(code, "rd", this.params.rd);
         code = setCode(code, "imm_31_12", this.params.imm >>> 12);
         break;
@@ -292,7 +373,7 @@ export class Instruction {
     return this.machineCode;
   }
 
-  static Decode(x: number) {
+  static Decode(x: number, meta: any) {
     const fields = {
       opcode: unsignedSlice(x, 6, 0),
       funct3: unsignedSlice(x, 14, 12),
@@ -311,9 +392,9 @@ export class Instruction {
     }
 
     const opName = tree as unknown as string;
-    const format = OPCODE_TO_FORMAT[fields.opcode];
+    const format = OPCODE_TO_FORMAT[fields.opcode] as InstructionType;
 
-    const result = new Instruction(opName, { ...fields, imm: decodeImmediate(fields, format, x) });
+    const result = new Instruction(opName, { ...fields, imm: decodeImmediate(fields, format, x) }, meta);
     result.machineCode = x;
     return result;
   }

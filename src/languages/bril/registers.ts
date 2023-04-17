@@ -262,8 +262,8 @@ export interface IRegisterAllocation {
   coloring: Record<string, Record<string, string | undefined> | undefined>;
 }
 
-const tempRegisters = ["T1", "T2", "T3", "T4", "T5", "T6", "T7"];
-const savedRegisters = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11"];
+const tempRegisters = ["t1", "t2", "t3", "t4", "t5", "t6", "t7"];
+const savedRegisters = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11"];
 
 const isLeafFunction = (fun: IBrilFunction) => {
   return !fun.instrs.find((instr) => "op" in instr && instr.op == "call");

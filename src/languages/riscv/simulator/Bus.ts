@@ -1,4 +1,4 @@
-import { unsigned } from "../utils/bits";
+import { unsigned } from "../bits";
 import { Device } from "./Device";
 
 export class Bus {
@@ -19,7 +19,7 @@ export class Bus {
     this.lastAddress = 0;
   }
 
-  addDevice(device) {
+  addDevice(device: Device) {
     this.devices.push(device);
   }
 

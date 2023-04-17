@@ -20,9 +20,11 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
          2. Constant folding
          3. Copy propogation
       3. Loop invariant code motion
-      4. Strength reduction
+      4. Loop unrolling
+      5. Strength reduction
 3. Code generation
    1. Webassmebly
+   2. RiscV
 
 ## Planned
 
@@ -30,7 +32,7 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
    - [x] if (cond) instead of if (cond == true) where cond is boolean identifier
    - [x] uf (cond) instead of if (cond == true) where cond is boolean function call
    - [x] arrays
-   - [x] stdlib (print_int, print_string)  
+   - [x] stdlib (print_int, print_string)
    - [x] add modulo operator to SimpleC and Bril
    - [ ] add bitwise operators to SimpleC and Bril
    - [x] add assert to library functions
@@ -50,7 +52,7 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
       - [ ] Tail merging
       - [ ] Remove top label and any unnecessary terminator instructions
    2. Loop optimisation
-      - [ ] Unrolling
+      - [x] Unrolling
       - [x] Loop-invariant computation hoisting
       - [x] Strength reduction
    3. Peephole optimisations
@@ -59,7 +61,7 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
    - [x] Color Mandelbrot
    - [x] Game of Life
 6. Code generators
-   - [ ] IR to RiscV
+   - [x] IR to RiscV - WIP
    - [x] IR to WebAssembly
 7. Add LLVM mid-end?
 
@@ -83,3 +85,12 @@ A WIP learning experiment in building a very simple C-like RiscV compiler in Typ
 2. WASM binary structure and code generation
    1. https://coinexsmartchain.medium.com/wasm-introduction-part-1-binary-format-57895d851580
    2. https://blog.scottlogic.com/2019/05/17/webassembly-compiler.html
+3. Register allocation adapted from https://github.com/johnflanigan/graph-coloring-via-register-allocation
+
+### Scratchpad
+
+1. Refractor data ? all in zustore
+   1. Simple C editor - on change => store.setCTxt(txt)
+   2. Store setCTxt c to bril, optimise bril, compile to wasm, compile to riscv
+   3. Store setBril => optimtise => brilOptim
+   4.

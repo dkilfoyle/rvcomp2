@@ -6,10 +6,11 @@ export const InterpreterSettings = () => {
   const [mainName, loopName] = useSettingsStore((state: SettingsState) => [state.interp.mainName, state.interp.loopName]);
   const mainArgs = useSettingsStore((state: SettingsState) => state.interp.mainArgs);
   const [loopDelay, loopTimes] = useSettingsStore((state: SettingsState) => [state.interp.loopDelay, state.interp.loopTimes]);
-  const [isRunOptim, isRunUnoptim, isRunWasm, isRunAuto] = useSettingsStore((state: SettingsState) => [
+  const [isRunOptim, isRunUnoptim, isRunWasm, isRunRiscv, isRunAuto] = useSettingsStore((state: SettingsState) => [
     state.interp.isRunOptim,
     state.interp.isRunUnoptim,
     state.interp.isRunWasm,
+    state.interp.isRunRiscv,
     state.interp.isRunAuto,
   ]);
 
@@ -57,6 +58,16 @@ export const InterpreterSettings = () => {
             })
           }>
           Wasm
+        </Checkbox>
+        <Checkbox
+          isChecked={isRunRiscv}
+          size="sm"
+          onChange={(e) =>
+            setSettings((state: SettingsState) => {
+              state.interp.isRunRiscv = e.target.checked;
+            })
+          }>
+          Riscv
         </Checkbox>
         <HStack>
           <Switch

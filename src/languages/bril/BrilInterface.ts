@@ -109,7 +109,14 @@ export interface IBrilNode {
   key?: number;
 }
 
-export type IBrilDataSegment = Map<string, { offset: number; size: number; bytes: Uint8Array }>;
+export interface IBrilDataItem {
+  offset: number;
+  size: number;
+  bytes: Uint8Array;
+  type: string;
+  value: any;
+}
+export type IBrilDataSegment = Map<string, IBrilDataItem>;
 
 export interface IBrilProgram extends IBrilNode {
   functions: Record<string, IBrilFunction>;

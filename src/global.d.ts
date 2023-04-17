@@ -4,6 +4,7 @@ declare global {
     conout1: Console;
     conout2: Console;
     conout3: Console;
+    conout4: Console;
   }
 }
 

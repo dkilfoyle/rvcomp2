@@ -13,14 +13,17 @@ import { IRuntimeOptions, runWasm } from "../languages/wasm/runWasm";
 import "./output.css";
 import { GiSlowBlob } from "react-icons/gi";
 import { FaRunning, FaShippingFast } from "react-icons/fa";
+import { BsCpu } from "react-icons/bs";
 import { SiWebassembly } from "react-icons/si";
 import { VscDebugRerun, VscDebugStepOver } from "react-icons/vsc";
 import { BrilTypeByteSize, IBrilDataSegment, IBrilPrimType } from "../languages/bril/BrilInterface";
 import _ from "lodash";
+import { riscvCodeGenerator } from "../languages/riscv/brilToRiscV";
 
 window.conout1 = { ...window.console };
 window.conout2 = { ...window.console };
 window.conout3 = { ...window.console };
+window.conout4 = { ...window.console };
 
 const fullHeight = { maxHeight: "100%" };
 
@@ -54,22 +57,24 @@ let brilData: IBrilDataSegment;
 let optimData: IBrilDataSegment;
 
 export const Output: React.FC = () => {
-  const bril = useParseStore((state: ParseState) => state.bril);
-  const brilOptim = useParseStore((state: ParseState) => state.brilOptim);
-  const [isRunOptim, isRunUnoptim, isRunWasm, isRunAuto] = useSettingsStore((state: SettingsState) => [
+  const [bril, brilOptim, riscv] = useParseStore((state: ParseState) => [state.bril, state.brilOptim, state.riscv]);
+  const [isRunOptim, isRunUnoptim, isRunWasm, isRunRiscv, isRunAuto] = useSettingsStore((state: SettingsState) => [
     state.interp.isRunOptim,
     state.interp.isRunUnoptim,
     state.interp.isRunWasm,
+    state.interp.isRunRiscv,
     state.interp.isRunAuto,
   ]);
 
   const [brilMemory, setBrilMemory] = useState<Uint8ClampedArray>(new Uint8ClampedArray(64 * 1024));
   const [optimMemory, setOptimMemory] = useState<Uint8ClampedArray>(new Uint8ClampedArray(64 * 1024));
   const [wasmMemory, setWasmMemory] = useState<Uint8ClampedArray>(new Uint8ClampedArray(64 * 1024));
+  const [riscvMemory, setRiscvMemory] = useState<Uint8ClampedArray>(new Uint8ClampedArray(64 * 1024));
 
   const [unoptimlogs, setUnoptimLogs] = useState<any[]>([]);
   const [optimlogs, setOptimLogs] = useState<any[]>([]);
   const [wasmlogs, setWasmLogs] = useState<any[]>([]);
+  const [riscvlogs, setRiscvLogs] = useState<any[]>([]);
 
   const [showScreen, setShowScreen] = useState<boolean>(true);
   const [showMem, setShowMem] = useState<boolean>(true);
@@ -77,6 +82,7 @@ export const Output: React.FC = () => {
   const unoptimOutputRef = useRef<OverlayScrollbarsComponentRef>(null);
   const optimOutputRef = useRef<OverlayScrollbarsComponentRef>(null);
   const wasmOutputRef = useRef<OverlayScrollbarsComponentRef>(null);
+  const riscvOutputRef = useRef<OverlayScrollbarsComponentRef>(null);
 
   const [mainName, loopName] = useSettingsStore((state: SettingsState) => [state.interp.mainName, state.interp.loopName]);
   const mainArgs = useSettingsStore((state: SettingsState) => state.interp.mainArgs);
@@ -86,11 +92,16 @@ export const Output: React.FC = () => {
     Hook((window as any).conout1, (log) => setUnoptimLogs((currLogs) => [...currLogs, log]), false);
     Hook((window as any).conout2, (log) => setOptimLogs((currLogs) => [...currLogs, log]), false);
     Hook((window as any).conout3, (log) => setWasmLogs((currLogs) => [...currLogs, log]), false);
+    Hook((window as any).conout4, (log) => setRiscvLogs((currLogs) => [...currLogs, log]), false);
     // return () => Unhook((window as any).console);
   }, []);
 
   const brilInterpWorker: Worker = useMemo(() => {
     return new Worker(new URL("../languages/bril/interp.ts", import.meta.url), { type: "module" });
+  }, []);
+
+  const riscvInterpWorker: Worker = useMemo(() => {
+    return new Worker(new URL("../languages/riscv/simulator/System.ts", import.meta.url), { type: "module" });
   }, []);
 
   const run = (runMain: boolean = true, optimLevel: string, loops: number | undefined = undefined) => {
@@ -129,6 +140,14 @@ export const Output: React.FC = () => {
       brilInterpWorker.postMessage({
         action: "main",
         payload: { prog: brilOptim, args: [], optimLevel: "optimised" },
+      });
+    }
+
+    if (optimLevel == "optim" && isRunRiscv && riscv.memWords.length && Object.keys(brilOptim.functions).length) {
+      setRiscvLogs([]);
+      riscvInterpWorker.postMessage({
+        action: "main",
+        payload: { memWords: riscv.memWords, metas: riscv.metas, optimLevel: "optimised" },
       });
     }
   };
@@ -183,6 +202,56 @@ export const Output: React.FC = () => {
     };
   }, [brilInterpWorker]);
 
+  useEffect(() => {
+    riscvInterpWorker.onmessage = ({ data }) => {
+      const { action, payload } = data;
+      switch (action) {
+        case "done":
+          const { res } = payload;
+          console.log("riscv done", res);
+          // if (optimLevel == "optimised") {
+          //   setOptimMemory(new Uint8ClampedArray(res.memory.buffer));
+          //   optimHeapVars = res.heap;
+          //   optimData = res.data;
+          //   segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
+          //   segments[2].start = res.heap_start; // 40960 + bril.dataSize;
+          //   segments[2].end = res.heap_pointer - 1;
+          // } else if (optimLevel == "un-optimised") {
+          //   setBrilMemory(new Uint8ClampedArray(res.memory.buffer));
+          //   brilHeapVars = res.heap;
+          //   brilData = res.data;
+          //   segments[1].end = res.heap_start - 1; // Math.max(0, bril.dataSize - 1);
+          //   segments[2].start = res.heap_start; // 40960 + bril.dataSize;
+          //   segments[2].end = res.heap_pointer - 1;
+          // }
+          break;
+        case "render": {
+          // const { memory, optimLevel } = payload;
+          // switch (optimLevel) {
+          //   case "optimised":
+          //     setOptimMemory(new Uint8ClampedArray(memory.buffer));
+          //     break;
+          //   case "un-optimised":
+          //     setBrilMemory(new Uint8ClampedArray(memory.buffer));
+          //     break;
+          // }
+          break;
+        }
+        case "log":
+          const { id, level, logmsg, dump } = payload;
+          const con = id == "console" ? window.conout0 : window.conout4;
+          const logger = con[level as "warn" | "info" | "log" | "error"];
+          if (logmsg != "") {
+            if (!_.isUndefined(dump)) logger(logmsg, dump);
+            else logger(logmsg);
+          } else {
+            logger(dump);
+          }
+          break;
+      }
+    };
+  }, [riscvInterpWorker]);
+
   const wasmByteCode = useMemo(() => {
     if (Object.keys(brilOptim.functions).length == 0) return;
     let wasmByteCode: Uint8Array;
@@ -205,7 +274,7 @@ export const Output: React.FC = () => {
     if (isRunAuto) {
       run(true, "optim");
     }
-  }, [brilOptim, isRunAuto, isRunWasm, isRunOptim]);
+  }, [brilOptim, isRunAuto, isRunWasm, isRunOptim, riscv]);
 
   useEffect(() => {
     if (showScreen && brilMemory.byteLength > 0) paintScreen("brilCanvas", brilMemory);
@@ -249,6 +318,16 @@ export const Output: React.FC = () => {
     }
   }, [wasmlogs, wasmOutputRef.current]);
 
+  useEffect(() => {
+    if (riscvOutputRef.current && riscvOutputRef.current.osInstance()) {
+      const { viewport } = riscvOutputRef.current.osInstance()!.elements();
+      const { scrollLeft, scrollTop } = viewport; // get scroll offset
+      const lc = viewport.lastChild as HTMLElement;
+      const lc2 = lc.lastChild as HTMLElement;
+      if (lc2) lc2.scrollIntoView();
+    }
+  }, [riscvlogs, riscvOutputRef.current]);
+
   const screenButton = (
     <div className="verticalButton">
       <span onClick={() => setShowScreen(true)}>Screen</span>
@@ -272,6 +351,9 @@ export const Output: React.FC = () => {
         </Tab>
         <Tab>
           <Icon as={SiWebassembly} />
+        </Tab>
+        <Tab>
+          <Icon as={BsCpu} />
         </Tab>
       </TabList>
       <TabPanels height="100%">
@@ -354,6 +436,39 @@ export const Output: React.FC = () => {
               </HStack>
               <Divider></Divider>
               {showScreen ? <canvas id="wasmCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
+            </Grid>
+          </Grid>
+        </TabPanel>
+
+        <TabPanel height="100%" padding="4px">
+          <Grid templateColumns="1fr auto auto auto auto" gap="2" height="100%">
+            <OverlayScrollbarsComponent style={fullHeight} ref={wasmOutputRef}>
+              <Console
+                logs={riscvlogs}
+                variant="light"
+                // filter={["info"]}
+                styles={{
+                  BASE_FONT_SIZE: 10,
+                  BASE_LINE_HEIGHT: 0.8,
+                  LOG_INFO_ICON: "",
+                  // LOG_ICON_WIDTH: "8px",
+                  // LOG_ICON_HEIGHT: "8px",
+                  TREENODE_FONT_SIZE: 8,
+                  BASE_BACKGROUND_COLOR: "white",
+                  LOG_BACKGROUND: "white",
+                }}></Console>
+            </OverlayScrollbarsComponent>
+
+            <Divider orientation="vertical" size="sm"></Divider>
+            {showMem ? <MemView mem={riscvMemory} segments={segments}></MemView> : memButton}
+            <Divider orientation="vertical" size="sm"></Divider>
+            <Grid templateRows="auto auto 1fr" gap="2" height="100%">
+              <HStack>
+                <IconButton size="xs" aria-label="main" icon={<VscDebugRerun />} onClick={() => run(true, "optim", 0)} />
+                <IconButton size="xs" aria-label="loop" icon={<VscDebugStepOver />} onClick={() => run(false, "optim", 1)} />
+              </HStack>
+              <Divider></Divider>
+              {showScreen ? <canvas id="riscvCanvas" width="100" height="100" style={{ margin: "auto" }}></canvas> : screenButton}
             </Grid>
           </Grid>
         </TabPanel>

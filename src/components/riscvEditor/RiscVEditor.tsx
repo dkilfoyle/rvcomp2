@@ -28,20 +28,19 @@ export const RiscVEditor: VFC = () => {
   const { brilOptim, regAllo } = useParseStore((state: ParseState) => ({ brilOptim: state.brilOptim, regAllo: state.regAllo }));
   const setParse = useParseStore((state: ParseState) => state.set);
 
-  const foldExprs = useSettingsStore((state: SettingsState) => state.wasm.foldExprs);
-
   useEffect(() => {
     if (editor && Object.keys(brilOptim.functions).length > 0) {
       try {
-        const txt = riscvCodeGenerator.generate(brilOptim, regAllo);
-        const riscvModel = monaco.editor.createModel(txt, "riscv");
+        const riscv = riscvCodeGenerator.generate(brilOptim, regAllo);
+        console.log("RiscV code generation: ", riscv);
+        const riscvModel = monaco.editor.createModel(riscv.asm, "riscv");
         editor.setModel(riscvModel);
         setParse((state) => {
-          state.riscv = txt;
+          state.riscv = riscv;
         });
       } catch (e: any) {
         setParse((state) => {
-          state.riscv = "";
+          state.riscv = { asm: "", memWords: [], metas: new Map() };
         });
         const riscvModel = monaco.editor.createModel(e.toString());
         editor.setModel(riscvModel);

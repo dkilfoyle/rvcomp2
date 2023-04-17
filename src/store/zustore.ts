@@ -36,6 +36,7 @@ export interface SettingsState {
     isRunUnoptim: boolean;
     isRunOptim: boolean;
     isRunWasm: boolean;
+    isRunRiscv: boolean;
     isRunAuto: boolean;
     mainName: string;
     mainArgs: string;
@@ -79,8 +80,9 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   },
   interp: {
     isRunUnoptim: false,
-    isRunOptim: true,
+    isRunOptim: false,
     isRunWasm: false,
+    isRunRiscv: true,
     isRunAuto: true,
     mainName: "main",
     mainArgs: "",
@@ -101,7 +103,7 @@ export interface ParseState {
   cfg: ICFG;
   errors: ISimpleCLangError[];
   wasm: Uint8Array;
-  riscv: string;
+  riscv: { asm: string; memWords: number[]; metas: Map<number, any> };
   set: (fn: (state: ParseState) => void) => void;
   reset: (rcst: boolean, rast?: boolean, rbril?: boolean, rbrilOptim?: boolean, rcfg?: boolean) => void;
 }
@@ -115,7 +117,7 @@ export const useParseStore = create<ParseState>()((set) => ({
   regAllo: { graph: {}, coloring: {} },
   errors: [],
   wasm: new Uint8Array(),
-  riscv: "",
+  riscv: { asm: "", memWords: [], metas: new Map<number, any>() },
   set: (fn: (state: ParseState) => void) => set(produce(fn)),
   reset: (rcst: boolean, rast: boolean = true, rbril: boolean = true, rbrilOptim: boolean = true, rcfg: boolean = true) =>
     set(

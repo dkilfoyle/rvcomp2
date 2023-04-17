@@ -1,7 +1,8 @@
 // Adapted from https://raw.githubusercontent.com/Guillaume-Savaton-ESEO/emulsiV/master/src/virgule.js
 
-import { Instruction } from "../languages/riv32asm/parser/Instruction";
-import { unsignedSlice, signed, unsigned } from "../utils/bits";
+import _ from "lodash";
+import { Instruction } from "../Instruction";
+import { unsignedSlice, signed, unsigned } from "../bits";
 import { Bus } from "./Bus.js";
 import { memSize } from "./System";
 
@@ -60,28 +61,28 @@ const ACTION_TABLE: Record<string, Datapath> = {
 
 export class Processor {
   x: number[];
-  pc: number;
-  pcLast: number;
-  mepc: number;
+  pc: number = 0;
+  pcLast: number = 0;
+  mepc: number = 0;
   bus: Bus;
-  fetchData: number;
-  fetchError: boolean;
-  x1: number;
-  x2: number;
-  aluResult: number;
-  branchTaken: boolean;
-  loadData: number;
-  loadStoreError: boolean;
-  state: "fetch" | "decode" | "compute" | "updatePC" | "compare" | "loadStoreWriteBack" | "ecall";
-  instr: Instruction;
-  datapath: Datapath;
-  irqState: boolean;
-  acceptingIrq: boolean;
-  console: string[];
-  isExit: boolean;
+  fetchData: number = 0x13;
+  fetchError: boolean = false;
+  x1: number = 0;
+  x2: number = 0;
+  aluResult: number = 0;
+  branchTaken: boolean = false;
+  loadData: number = 0;
+  loadStoreError: boolean = false;
+  state: "halt" | "fetch" | "decode" | "compute" | "updatePC" | "compare" | "loadStoreWriteBack" | "ecall" = "fetch";
+  instr: Instruction = new Instruction("add", {}, {});
+  datapath: Datapath = {};
+  irqState: boolean = false;
+  acceptingIrq: boolean = false;
+  console: string[] = [];
+  isExit: boolean = false;
+  metas: Map<number, any> = new Map();
 
-  constructor(nx, bus) {
-    // Créer et initialiser la banque de registres.
+  constructor(nx: number, bus: Bus) {
     this.x = new Array(nx);
     this.bus = bus;
     this.reset();
@@ -117,9 +118,9 @@ export class Processor {
   }
 
   decode() {
-    this.instr = Instruction.Decode(this.fetchData);
+    this.instr = Instruction.Decode(this.fetchData, this.metas.get(this.pc));
     this.datapath = ACTION_TABLE[this.instr.opName];
-    // console.log("Decode: ", this.instr.opName, this.instr.params, this.datapath);
+    console.log("Decode: ", this.instr.opName, this.instr); //, this.datapath);
     this.state = this.datapath.aluOp ? "compute" : "updatePC";
 
     if (this.instr.opName === "ecall") {
@@ -132,6 +133,7 @@ export class Processor {
     const etype = this.getX(10); // a0
     switch (etype) {
       case 1: // print_int
+        debugger;
         this.console.push(`${a1}`);
         console.log("ecall print_int: ", a1);
         break;
@@ -141,15 +143,17 @@ export class Processor {
         console.log("ecall printstring: ", str);
         break;
       case 10: // exit
-        this.isExit = true;
+        this.state = "halt";
         console.log("ecall exit");
-        break;
+        return;
     }
     this.state = "updatePC";
   }
 
   compute() {
     // Read registers.
+    if (_.isUndefined(this.instr.params.rs1)) throw Error();
+    if (_.isUndefined(this.instr.params.rs2)) throw Error();
     this.x1 = this.getX(this.instr.params.rs1);
     this.x2 = this.getX(this.instr.params.rs2);
 
@@ -168,7 +172,7 @@ export class Processor {
     let b = 0;
     switch (this.datapath.src2) {
       case "imm":
-        b = this.instr.params.imm;
+        b = this.instr.params.imm || 0;
         break;
       case "x2":
         b = this.x2;
@@ -213,14 +217,11 @@ export class Processor {
         break;
     }
 
-    this.branchTaken = this.datapath.branch && this.datapath.branch === "al";
+    this.branchTaken = !_.isUndefined(this.datapath.branch) && this.datapath.branch === "al";
 
     if (this.datapath.branch && this.datapath.branch !== "al") {
       this.state = "compare";
-    } else if (
-      (this.datapath.wbMem !== "r" && this.datapath.wbMem !== "pc+") ||
-      this.instr.params.rd
-    ) {
+    } else if ((this.datapath.wbMem !== "r" && this.datapath.wbMem !== "pc+") || this.instr.params.rd) {
       this.state = "loadStoreWriteBack";
     } else {
       this.state = "updatePC";
@@ -258,28 +259,35 @@ export class Processor {
     this.loadData = 0;
     switch (this.datapath.wbMem) {
       case "r":
+        if (_.isUndefined(this.instr.params.rd)) throw Error();
         this.setX(this.instr.params.rd, this.aluResult);
         break;
       case "pc+":
+        if (_.isUndefined(this.instr.params.rd)) throw Error();
         this.setX(this.instr.params.rd, this.pcNext);
         break;
       case "lb":
+        if (_.isUndefined(this.instr.params.rd)) throw Error();
         this.loadData = this.bus.read(this.aluResult, 1, true);
         this.setX(this.instr.params.rd, this.loadData);
         break;
       case "lh":
         this.loadData = this.bus.read(this.aluResult, 2, true);
+        if (_.isUndefined(this.instr.params.rd)) throw Error();
         this.setX(this.instr.params.rd, this.loadData);
         break;
       case "lw":
         this.loadData = this.bus.read(this.aluResult, 4, true);
+        if (_.isUndefined(this.instr.params.rd)) throw Error();
         this.setX(this.instr.params.rd, this.loadData);
         break;
       case "lbu":
+        if (_.isUndefined(this.instr.params.rd)) throw Error();
         this.loadData = this.bus.read(this.aluResult, 1, false);
         this.setX(this.instr.params.rd, this.loadData);
         break;
       case "lhu":
+        if (_.isUndefined(this.instr.params.rd)) throw Error();
         this.loadData = this.bus.read(this.aluResult, 2, false);
         this.setX(this.instr.params.rd, this.loadData);
         break;
@@ -295,10 +303,12 @@ export class Processor {
     }
 
     this.loadStoreError =
-      this.datapath.wbMem &&
-      (this.datapath.wbMem[0] === "l" || this.datapath.wbMem[0] === "s") &&
-      this.bus.error;
+      !_.isUndefined(this.datapath.wbMem) && (this.datapath.wbMem[0] === "l" || this.datapath.wbMem[0] === "s") && this.bus.error;
     this.state = "updatePC";
+  }
+
+  halt() {
+    console.log("halted");
   }
 
   get pcNext() {
@@ -328,20 +338,20 @@ export class Processor {
     this[this.state]();
   }
 
-  setX(index, value) {
+  setX(index: number, value: number) {
     if (index > 0 && index < this.x.length) {
       this.x[index] = signed(value);
     }
   }
 
-  getX(index) {
+  getX(index: number) {
     if (index > 0 && index < this.x.length) {
       return this.x[index];
     }
     return 0;
   }
 
-  setPc(value) {
+  setPc(value: number) {
     this.pc = unsigned(value & ~3);
   }
 }

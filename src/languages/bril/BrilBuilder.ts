@@ -17,13 +17,15 @@ import {
   IBrilValueInstruction,
   IBrilPrimType,
   BrilTypeByteSize,
+  IBrilDataSegment,
+  IBrilDataItem,
 } from "./BrilInterface";
 
 export class BrilBuilder {
   public program: IBrilProgram = {
     functions: {},
     key: 0,
-    data: new Map<string, { offset: number; size: number; bytes: Uint8Array }>(),
+    data: new Map<string, IBrilDataItem>(),
     dataSize: 0,
   };
   public curFunction?: IBrilFunction;
@@ -33,7 +35,7 @@ export class BrilBuilder {
   constructor() {}
 
   reset() {
-    this.program = { functions: {}, key: 0, data: new Map<string, { offset: number; size: number; bytes: Uint8Array }>(), dataSize: 0 };
+    this.program = { functions: {}, key: 0, data: new Map<string, IBrilDataItem>(), dataSize: 0 };
     this.curFunction = undefined;
     this.nextFresh = 1;
     this.keyIndex = 1;
@@ -262,7 +264,7 @@ export class BrilBuilder {
     if (!this.program.data.has(stringvalue)) {
       const lastentry = this.program.data.size ? Array.from(this.program.data)[this.program.data.size - 1][1] : { offset: 40960, size: 0 };
       const bytes = new TextEncoder().encode(stringvalue + "\0");
-      this.program.data.set(stringvalue, { offset: lastentry.offset + lastentry.size, size: bytes.length, bytes });
+      this.program.data.set(stringvalue, { offset: lastentry.offset + lastentry.size, size: bytes.length, bytes, value, type: "string" });
     }
     return this.program.data.get(stringvalue)!;
   };
