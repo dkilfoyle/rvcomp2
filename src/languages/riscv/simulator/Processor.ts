@@ -4,7 +4,7 @@ import _ from "lodash";
 import { Instruction } from "../Instruction";
 import { unsignedSlice, signed, unsigned } from "../bits";
 import { Bus } from "./Bus.js";
-import { memSize } from "./System";
+import { logger, memSize } from "./System";
 
 interface Datapath {
   src1?: "pc" | "x1";
@@ -133,9 +133,7 @@ export class Processor {
     const etype = this.getX(10); // a0
     switch (etype) {
       case 1: // print_int
-        debugger;
-        this.console.push(`${a1}`);
-        console.log("ecall print_int: ", a1);
+        logger.info("output", `${a1}`);
         break;
       case 4:
         const str = this.bus.readString(a1);
