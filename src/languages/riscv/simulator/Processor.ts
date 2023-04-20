@@ -120,7 +120,7 @@ export class Processor {
   decode() {
     this.instr = Instruction.Decode(this.fetchData, this.metas.get(this.pc));
     this.datapath = ACTION_TABLE[this.instr.opName];
-    console.log("Decode: ", this.instr.opName, this.instr); //, this.datapath);
+    // console.log("Decode: ", this.instr.opName, this.instr); //, this.datapath);
     this.state = this.datapath.aluOp ? "compute" : "updatePC";
 
     if (this.instr.opName === "ecall") {
@@ -138,11 +138,11 @@ export class Processor {
       case 4:
         const str = this.bus.readString(a1);
         this.console.push(str);
-        console.log("ecall printstring: ", str);
+        logger.info("output", `${str}`);
         break;
       case 10: // exit
         this.state = "halt";
-        console.log("ecall exit");
+        // console.log("ecall exit");
         return;
     }
     this.state = "updatePC";

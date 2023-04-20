@@ -21,3 +21,7 @@
   width: 78px;
   z-index: 9999;
 }
+
+#registerTable {
+  font-size: 10pt;
+}

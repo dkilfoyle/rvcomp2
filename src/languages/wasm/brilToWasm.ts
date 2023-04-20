@@ -197,12 +197,12 @@ const emitWasmFunction = (
           case "const":
             const constInstr = instr as IBrilConst;
             if (typeof constInstr.type == "object" && "ptr" in constInstr.type && (instr.type as IBrilParamType).ptr == "char") {
-              if (typeof constInstr.value != "number") throw new Error("ptr<char> should be number");
+              let address;
+              if (typeof constInstr.value == "number") address = constInstr.value;
+              else if (typeof constInstr.value == "string" && constInstr.value.at(0) == "@") {
+                address = program.data.get(constInstr.value);
+              } else throw Error("const ptr");
               const constdest = localIndexForSymbol(instr.dest, instr.type).index;
-              code.push(Opcodes.i32_const);
-              code.push(...signedLEB128(constInstr.value));
-              code.push(Opcodes.set_local);
-              code.push(...unsignedLEB128(constdest));
             } else {
               const consttype = convertBrilToWasmType(instr.type);
               const constopcode = `${consttype}_const` as IWasmOpCode;
@@ -493,7 +493,6 @@ export const emitWasm: IWasmEmitter = (bril: IBrilProgram) => {
     throw new Error("Empty bril");
   }
   const cfg = cfgBuilder.buildProgram(bril);
-
   allSymbols = {};
 
   Object.values(libraryFunctions).forEach((libFunc) => {

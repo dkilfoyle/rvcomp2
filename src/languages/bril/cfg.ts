@@ -1,4 +1,5 @@
 import _ from "lodash";
+import { ISimpleCLangError } from "../../components/simpleCEditor/monaco/DiagnosticsAdapter";
 import { IBrilEffectOperation, IBrilFunction, IBrilInstruction, IBrilInstructionOrLabel, IBrilLabel, IBrilProgram } from "./BrilInterface";
 
 const TERMINATORS = ["br", "jmp", "ret"];
@@ -234,4 +235,26 @@ export const getFunctionBlockMap = (func: IBrilFunction) => {
   let blockMap = addCfgEntry(getCfgBlockMap(cfgBuilder.buildFunction(func)), func);
   addCfgTerminators(blockMap);
   return blockMap;
+};
+
+export const validateCfg = (cfg: ICFG, errors: ISimpleCLangError[]) => {
+  Object.entries(cfg).forEach(([fnName, blocks]) => {
+    const edges = getCfgEdges(getCfgBlockMap(blocks));
+
+    debugger;
+    // detect any orphan blocks = blocks other than first block with no in-edge
+    const noInEdge = blocks.slice(1).find((block) => edges.predecessorsMap[block.name].length == 0);
+    if (noInEdge) {
+      const p = noInEdge.instructions[0].pos;
+      errors.push({
+        startColumn: p?.startColumn || 0,
+        startLineNumber: p?.startLineNumber || 0,
+        endColumn: p?.endColumn || 0,
+        endLineNumber: p?.endLineNumber || 0,
+        message: "Unreachable code",
+        code: "error",
+      });
+      console.log("NoInEdge", noInEdge);
+    }
+  });
 };

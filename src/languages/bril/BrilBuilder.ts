@@ -237,7 +237,7 @@ export class BrilBuilder {
   buildString(strvalue: string, assignIDExpr?: IAstIdentifierExpression) {
     const constInstr: IBrilConst = {
       op: "const",
-      value: this.dataOffsetForValue("char", strvalue).offset,
+      value: this.dataOffsetForValue("char", strvalue).name,
       dest: this.freshVar("pchar"),
       type: { ptr: "char" },
     };
@@ -261,12 +261,21 @@ export class BrilBuilder {
   dataOffsetForValue = (type: IBrilType, value: IBrilValueType) => {
     if (type !== "char") throw new Error("Only string data supported");
     const stringvalue = value.toString();
-    if (!this.program.data.has(stringvalue)) {
-      const lastentry = this.program.data.size ? Array.from(this.program.data)[this.program.data.size - 1][1] : { offset: 40960, size: 0 };
+    const existingEntry = Array.from(this.program.data.values()).find((x) => x.value == stringvalue);
+    if (!existingEntry) {
+      const lastentry = this.program.data.size ? Array.from(this.program.data)[this.program.data.size - 1][1] : { offset: 0, size: 0 };
       const bytes = new TextEncoder().encode(stringvalue + "\0");
-      this.program.data.set(stringvalue, { offset: lastentry.offset + lastentry.size, size: bytes.length, bytes, value, type: "string" });
-    }
-    return this.program.data.get(stringvalue)!;
+      const name = this.freshVar("@str");
+      this.program.data.set(name, {
+        offset: lastentry.offset + lastentry.size,
+        size: bytes.length,
+        bytes,
+        value,
+        type: "string",
+        name,
+      });
+      return this.program.data.get(name)!;
+    } else return existingEntry;
   };
 
   calcDataSize = () => {

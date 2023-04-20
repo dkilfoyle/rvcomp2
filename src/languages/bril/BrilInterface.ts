@@ -115,6 +115,7 @@ export interface IBrilDataItem {
   bytes: Uint8Array;
   type: string;
   value: any;
+  name: string;
 }
 export type IBrilDataSegment = Map<string, IBrilDataItem>;
 

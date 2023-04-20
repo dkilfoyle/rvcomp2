@@ -57,7 +57,7 @@ class RiscvCodeGenerator {
   emitter: RiscvEmmiter;
   labelCount: number = 0;
   scopeStack: LocalScopeStack;
-  dataSection: GlobalVar[];
+  bril: IBrilProgram | undefined;
   currentFunction: IBrilFunction | undefined;
   registerAllocation: IRegisterAllocation;
   textStart = 0;
@@ -66,7 +66,6 @@ class RiscvCodeGenerator {
   constructor() {
     this.emitter = new RiscvEmmiter();
     this.scopeStack = new LocalScopeStack();
-    this.dataSection = [];
     this.currentFunction = undefined;
     this.registerAllocation = { graph: {}, coloring: {} };
     this.reset({ graph: {}, coloring: {} });
@@ -76,7 +75,6 @@ class RiscvCodeGenerator {
     this.emitter.reset();
     this.scopeStack.reset();
     this.labelCount = 0;
-    this.dataSection = [];
     this.currentFunction = undefined;
     this.registerAllocation = registerAllocation;
   }
@@ -111,7 +109,7 @@ class RiscvCodeGenerator {
     }
     const reg = this.registerAllocation.coloring![this.currentFunction.name]![variableName];
     if (!(reg && reg in R)) {
-      debugger;
+      // debugger;
       throw Error(`unable to get register for variable ${variableName}`);
     }
     return reg as R;
@@ -119,6 +117,7 @@ class RiscvCodeGenerator {
 
   generate(bril: IBrilProgram, registerAllocation: IRegisterAllocation) {
     this.reset(registerAllocation);
+    this.bril = bril;
 
     if (Object.keys(bril.functions).length == 0) {
       throw new Error("Empty bril");
@@ -169,7 +168,7 @@ class RiscvCodeGenerator {
     // add a new scope for the function. SP starts at -WORD_SIZE to accomodate saved FP and RA
     const scope = this.scopeStack.enterFunction(func.name);
     if (!scope.context) throw Error("No scope context");
-    console.log(`Entering function ${func.name} scope: FP=${scope.context.FP}, initSP=${scope.context.SP}`);
+    //console.log(`Entering function ${func.name} scope: FP=${scope.context.FP}, initSP=${scope.context.SP}`);
     this.currentFunction = func;
 
     const meta = (comment: string, i: number) => {
@@ -240,8 +239,17 @@ class RiscvCodeGenerator {
         let binOpFn;
         switch (instr.op) {
           case "const":
-            if (instr.type == "int") {
-              ins = instr as IBrilConst;
+            ins = instr as IBrilConst;
+            // todo;
+            if (typeof ins.type == "object" && "ptr" in ins.type) {
+              // const ptr
+              if (typeof ins.value == "string") {
+                if (!ins.value.startsWith("@")) throw Error(`const ptr value ${ins.value} is a string but does not start with @`);
+                const address = this.bril?.data.get(ins.value);
+                if (!address) throw Error("str ptr not found");
+                this.emitter.emitLA(this.getRegister(ins.dest), address.name, meta(insText));
+              } else throw Error(`Unsupported ptr value type ${typeof ins.value}`);
+            } else if (ins.type == "int") {
               this.emitter.emitLI(this.getRegister(ins.dest), ins.value as number, meta(insText));
             } else throw Error("unsupported const type");
             break;
@@ -257,6 +265,8 @@ class RiscvCodeGenerator {
           case "mul":
           case "div":
           case "mod":
+          case "gt":
+          case "lt":
             ins = instr as IBrilValueOperation;
             if (!ins.args) throw new Error("Branch instruction missing args - badly formed bril");
             const rd = this.getRegister(ins.dest);
@@ -268,6 +278,12 @@ class RiscvCodeGenerator {
                 break;
               case "sub":
                 this.emitter.emitSUB(rd, rs1, rs2, meta(insText));
+                break;
+              case "gt":
+                this.emitter.emitSLT(rd, rs2, rs1, meta(insText));
+                break;
+              case "lt":
+                this.emitter.emitSLT(rd, rs1, rs2, meta(insText));
                 break;
               default:
                 throw Error(`${instr.op} not yet implemented in RiscV code generator`);
@@ -283,10 +299,27 @@ class RiscvCodeGenerator {
             if (!ins.funcs) throw new Error("call instruction missing funcs");
             if (!ins.args) throw new Error("call instruction missing args");
             if (ins.funcs[0] == "print_int") {
+              this.emitter.emitLI(R.A0, 1, meta(insText));
+              this.emitter.emitMV(R.A1, this.getRegister(ins.args[0]), meta(insText));
+              this.emitter.emitECALL(meta(insText));
+            }
+            if (ins.funcs[0] == "print_string") {
               this.emitter.emitLI(R.A0, 4, meta(insText));
               this.emitter.emitMV(R.A1, this.getRegister(ins.args[0]), meta(insText));
               this.emitter.emitECALL(meta(insText));
             }
+          case "ret":
+            {
+              ins = instr as IBrilEffectOperation;
+              if (ins.args?.length) {
+                const rs1 = this.getRegister(ins.args[0]);
+                this.emitter.emitMV(R.A0, rs1, meta(insText));
+              }
+            }
+            break;
+
+          default:
+            throw Error(`${instr.op} not implemented yet in brilToRiscV`);
         }
       }
     });

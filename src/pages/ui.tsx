@@ -75,7 +75,15 @@ const defaultlayout: LayoutBase = {
             mode: "vertical",
             children: [
               { id: "codePanel", size: 400, group: "card", tabs: [{ id: "code" }] },
-              { id: "brilPanel", size: 600, group: "card", tabs: [{ id: "bril" }, { id: "wasm" }, { id: "riscv" }] },
+              {
+                id: "compiledPanel",
+                size: 600,
+                mode: "horizontal",
+                children: [
+                  { id: "irPanel", group: "card", tabs: [{ id: "bril" }] },
+                  { id: "asmPanel", group: "card", tabs: [{ id: "riscv" }, { id: "wasm" }] },
+                ],
+              },
             ],
           },
           {

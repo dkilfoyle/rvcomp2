@@ -3,7 +3,28 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Console, Hook } from "console-feed";
 import "overlayscrollbars/overlayscrollbars.css";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import { Button, ButtonGroup, Divider, Flex, Grid, HStack, Icon, IconButton, Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  ButtonGroup,
+  Divider,
+  Flex,
+  Grid,
+  HStack,
+  Icon,
+  IconButton,
+  Tab,
+  Table,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+} from "@chakra-ui/react";
 import { useParseStore, ParseState, useSettingsStore, SettingsState } from "../store/zustore";
 import { Env, IHeapVar, Pointer, runInterpretor } from "../languages/bril/interp";
 import { emitWasm } from "../languages/wasm/brilToWasm";
@@ -20,6 +41,7 @@ import { BrilTypeByteSize, IBrilDataSegment, IBrilPrimType } from "../languages/
 import _ from "lodash";
 import { riscvCodeGenerator } from "../languages/riscv/brilToRiscV";
 import { Computer } from "../languages/riscv/simulator/System";
+import { regNum } from "../languages/riscv/emitter";
 
 window.conout1 = { ...window.console };
 window.conout2 = { ...window.console };
@@ -68,6 +90,8 @@ export const Output: React.FC = () => {
   const [optimMemory, setOptimMemory] = useState<Uint8ClampedArray>(new Uint8ClampedArray(64 * 1024));
   const [wasmMemory, setWasmMemory] = useState<Uint8ClampedArray>(new Uint8ClampedArray(64 * 1024));
   const [riscvMemory, setRiscvMemory] = useState<Uint8ClampedArray>(new Uint8ClampedArray(64 * 1024));
+
+  const [riscvRegisters, setRiscvRegisters] = useState<number[]>([]);
 
   const [unoptimlogs, setUnoptimLogs] = useState<any[]>([]);
   const [optimlogs, setOptimLogs] = useState<any[]>([]);
@@ -205,6 +229,7 @@ export const Output: React.FC = () => {
           const computer: Computer = payload.computer;
           console.log("riscv done", computer);
           setRiscvMemory(new Uint8ClampedArray(computer.mem.data));
+          setRiscvRegisters(computer.cpu.x);
 
           segments.riscv.screen = [0, 0];
           segments.riscv.text = [riscv.textStart, riscv.dataStart - 4];
@@ -326,8 +351,20 @@ export const Output: React.FC = () => {
     </div>
   );
 
+  const registerTable = useMemo(() => {
+    const regNames = Object.keys(regNum);
+    return riscvRegisters.map((x, i) => {
+      return (
+        <Tr key={"x" + i}>
+          <Th>{regNames[i]}</Th>
+          <Td>{x}</Td>
+        </Tr>
+      );
+    });
+  }, [riscvRegisters]);
+
   return (
-    <Tabs defaultIndex={1} size="sm" orientation="vertical" padding="4px" height="100%" overflow="hidden" borderColor="whitesmoke">
+    <Tabs defaultIndex={3} size="sm" orientation="vertical" padding="4px" height="100%" overflow="hidden" borderColor="whitesmoke">
       <TabList background="whitesmoke" width="40px">
         <Tab>
           <Icon as={GiSlowBlob} />
@@ -431,7 +468,7 @@ export const Output: React.FC = () => {
         </TabPanel>
 
         <TabPanel height="100%" padding="4px">
-          <Grid templateColumns="1fr auto auto auto auto" gap="2" height="100%">
+          <Grid templateColumns="minmax(100px,1fr) auto 80px auto auto auto auto" gap="2" height="100%">
             <OverlayScrollbarsComponent style={fullHeight} ref={riscvOutputRef}>
               <Console
                 logs={riscvlogs}
@@ -449,6 +486,12 @@ export const Output: React.FC = () => {
                 }}></Console>
             </OverlayScrollbarsComponent>
 
+            <Divider orientation="vertical" size="sm"></Divider>
+            <OverlayScrollbarsComponent style={fullHeight} ref={riscvOutputRef}>
+              <Table id="registerTable" size="xs">
+                <Tbody>{registerTable}</Tbody>
+              </Table>
+            </OverlayScrollbarsComponent>
             <Divider orientation="vertical" size="sm"></Divider>
             {showMem ? <MemView mem={riscvMemory} segments={segments.riscv}></MemView> : memButton}
             <Divider orientation="vertical" size="sm"></Divider>

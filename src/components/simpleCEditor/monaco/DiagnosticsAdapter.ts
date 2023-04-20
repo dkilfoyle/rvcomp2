@@ -8,6 +8,7 @@ import { IAstProgram, IAstResult } from "../../../languages/simpleC/ast";
 import { ParseState, useParseStore } from "../../../store/zustore";
 import { IBrilProgram } from "../../../languages/bril/BrilInterface";
 import _ from "lodash";
+import { cfgBuilder, validateCfg } from "../../../languages/bril/cfg";
 
 export interface ISimpleCLangError {
   startLineNumber: number;
@@ -80,8 +81,12 @@ export default class DiagnosticsAdapter {
       });
       if (errors.length == 0) {
         bril = astToBrilVisitor.visit(ast);
+        // const cfg = cfgBuilder.buildProgram(bril);
+        // validateCfg(cfg, errors);
+        // if (errors.length == 0)
         setParse((state: ParseState) => {
           state.bril = bril;
+          // state.brilCfg = cfg;
         });
       }
     }

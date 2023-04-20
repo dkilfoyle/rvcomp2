@@ -73,7 +73,7 @@ interface ILogger {
   error: (id: "console" | "output", msg: string, dump?: any) => void;
 }
 
-const logger: ILogger = {
+export const logger: ILogger = {
   warn: (id, msg, dump) => postMessage({ action: "log", payload: { id, level: "warn", logmsg: msg, dump } }),
   info: (id, msg, dump) => postMessage({ action: "log", payload: { id, level: "info", logmsg: msg, dump } }),
   log: (id, msg, dump) => postMessage({ action: "log", payload: { id, level: "log", logmsg: msg, dump } }),
