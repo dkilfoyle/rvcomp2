@@ -170,14 +170,15 @@ export class RiscvEmmiter {
     this.nextLine = this.nextLine + 1;
   }
   emitIns(instruction: string, comment?: string) {
-    if (comment) this.emit("  " + instruction.padEnd(32) + "# " + comment);
+    if (comment) this.emit("  " + instruction.padEnd(24) + "# " + comment);
     else this.emit("  " + instruction);
   }
-  emitComment(comment: string) {
-    this.emitIns("", comment);
+  emitComment(comment: string, left: boolean = false) {
+    if (left) this.emit(`  # ${comment}`);
+    else this.emitIns("", comment);
   }
   emitLocalLabel(label: string, comment?: string) {
-    if (comment) this.emit((label + ":").padEnd(34) + "# " + comment);
+    if (comment) this.emit((label + ":").padEnd(24) + "# " + comment);
     else this.emit(label + ":");
     this.labelOffsets.set(label, this.instructions.length * 4);
   }
@@ -209,7 +210,8 @@ export class RiscvEmmiter {
     const asmTxt = `li ${rd}, ${imm}`;
     this.emitIns(asmTxt, meta.brilTxt);
     if (imm > 0b111111111111) {
-      this.addIns("lui", { rd: regNum[rd], imm: getBits(imm, 31, 12) }, this.insMeta(meta, asmTxt));
+      // this.addIns("lui", { rd: regNum[rd], imm: getBits(imm, 31, 12) }, this.insMeta(meta, asmTxt));
+      this.addIns("lui", { rd: regNum[rd], imm }, this.insMeta(meta, asmTxt));
       this.addIns("addi", { rd: regNum[rd], rs1: regNum[rd], imm: getBits(imm, 11, 0) }, this.insMeta(meta, asmTxt));
     } else {
       this.addIns("addi", { rd: regNum[rd], imm, rs1: 0 }, this.insMeta(meta, asmTxt));

@@ -18,10 +18,10 @@ import {
 } from "./antlr/SimpleASMParser";
 import { SimpleASMVisitor } from "./antlr/SimpleASMVisitor";
 import { getBits } from "../../../utils/bits";
-import { Instruction } from "./Instruction";
+import { Instruction } from "../Instruction";
 import { ParseTree } from "antlr4ts/tree/ParseTree";
 import { DocPosition } from "../../../utils/antlr";
-import { ASMRootNode, DataSection } from "./astNodes";
+import { ASMRootNode, DataSection } from "../astNodes";
 import { AstBuildResult } from "../../simpleC/parser/astBuilder";
 
 export const registerNumbers = {
@@ -121,10 +121,7 @@ const pseudos = {
 
 export type SymbolTable = { [index: string]: number };
 
-export class SimpleASMAstBuilder
-  extends AbstractParseTreeVisitor<ASMRootNode>
-  implements SimpleASMVisitor<void>
-{
+export class SimpleASMAstBuilder extends AbstractParseTreeVisitor<ASMRootNode> implements SimpleASMVisitor<void> {
   // textBytes: ArrayBuffer;
   // textView: DataView;
   instructions!: Instruction[];
@@ -241,9 +238,7 @@ export class SimpleASMAstBuilder
     const rs1 = parseInt(registerNumbers[ctx._rs1.text]);
     const rs2 = parseInt(registerNumbers[ctx._rs2.text]);
     const label = ctx.ID().text;
-    this.instructions.push(
-      new Instruction(ctx._op.text, { offset: label, rs1, rs2 }, this.getPos(ctx))
-    );
+    this.instructions.push(new Instruction(ctx._op.text, { offset: label, rs1, rs2 }, this.getPos(ctx)));
   }
 
   visitJtype(ctx: JtypeContext) {
@@ -268,22 +263,14 @@ export class SimpleASMAstBuilder
     const symbol = ctx._symbol ? ctx._symbol.text : undefined;
 
     if (op === "la") {
-      this.instructions.push(
-        new Instruction("auipc", { rd, symbol, macro: "hi" }, this.getPos(ctx))
-      );
-      this.instructions.push(
-        new Instruction("addi", { rd, rs1: rd, symbol, macro: "lo" }, this.getPos(ctx))
-      );
+      this.instructions.push(new Instruction("auipc", { rd, symbol, macro: "hi" }, this.getPos(ctx)));
+      this.instructions.push(new Instruction("addi", { rd, rs1: rd, symbol, macro: "lo" }, this.getPos(ctx)));
       return;
     }
 
     if (op === "li" && imm > 0b111111111111) {
-      this.instructions.push(
-        new Instruction("lui", { rd, imm: getBits(imm, 31, 12) }, this.getPos(ctx))
-      );
-      this.instructions.push(
-        new Instruction("addi", { rd, rs1: rd, imm: getBits(imm, 11, 0) }, this.getPos(ctx))
-      );
+      this.instructions.push(new Instruction("lui", { rd, imm: getBits(imm, 31, 12) }, this.getPos(ctx)));
+      this.instructions.push(new Instruction("addi", { rd, rs1: rd, imm: getBits(imm, 11, 0) }, this.getPos(ctx)));
       return;
     }
 

@@ -53,7 +53,7 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   // filename: "./Syntax/while.sc",
   // filename: "./Screen/mandel.sc",
   // filename: "./Syntax/elseif.sc",
-  filename: "./Syntax/strings.sc",
+  filename: "./Syntax/call.sc",
   cfg: {
     nodeName: "",
     functionName: "main",

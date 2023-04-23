@@ -225,6 +225,87 @@ export class Instruction {
     this.params = params;
     this.machineCode = 0;
     this.meta = meta;
+
+    switch (this.iType) {
+      case "I":
+        if (_.isUndefined(this.params.rd)) {
+          debugger;
+          throw Error("I type instruction param rd undefined");
+        }
+        if (_.isUndefined(this.params.rs1)) {
+          debugger;
+          throw Error("I type instruction param rs1 undefined");
+        }
+        if (_.isUndefined(this.params.imm)) {
+          debugger;
+          throw Error("I type instruction param imm undefined");
+        }
+        break;
+      case "R":
+        if (_.isUndefined(this.params.rd)) {
+          debugger;
+          throw Error("R type instruction param rd undefined");
+        }
+        if (_.isUndefined(this.params.rs1)) {
+          debugger;
+          throw Error("R type instruction param rs1 undefined");
+        }
+        if (_.isUndefined(this.params.rs2)) {
+          debugger;
+          throw Error("R type instruction param rs2 undefined");
+        }
+        break;
+      case "S":
+        if (_.isUndefined(this.params.imm)) {
+          debugger;
+          throw Error("S type instruction param imm undefined");
+        }
+        if (_.isUndefined(this.params.rs1)) {
+          debugger;
+          throw Error("S type instruction param rs1 undefined");
+        }
+        if (_.isUndefined(this.params.rs2)) {
+          debugger;
+          throw Error("S type instruction param rs2 undefined");
+        }
+        break;
+      case "B":
+        if (_.isUndefined(this.params.imm)) {
+          debugger;
+          throw Error("B type instruction param imm undefined");
+        }
+        if (_.isUndefined(this.params.rs1)) {
+          debugger;
+          throw Error("B type instruction param rs1 undefined");
+        }
+        if (_.isUndefined(this.params.rs2)) {
+          debugger;
+          throw Error("B type instruction param rs 2undefined");
+        }
+        break;
+      case "J":
+        if (_.isUndefined(this.params.rd)) {
+          debugger;
+          throw Error("J type instruction param rd undefined");
+        }
+        if (_.isUndefined(this.params.imm) && _.isUndefined(this.params.offset)) {
+          debugger;
+          throw Error("J type instruction param imm/offset undefined");
+        }
+        break;
+      case "U":
+        if (_.isUndefined(this.params.rd)) {
+          debugger;
+          throw Error("U type instruction param rd undefined");
+        }
+        if (_.isUndefined(this.params.imm)) {
+          debugger;
+          throw Error("U type instruction param imm undefined");
+        }
+        break;
+      default:
+        throw new Error("Instruction constructor unknown instruction type");
+    }
   }
 
   encode(address: number, symbols: Map<string, number>) {
@@ -263,108 +344,44 @@ export class Instruction {
     code = setCode(code, "opcode", opcode);
     switch (this.iType) {
       case "I":
-        if (_.isUndefined(this.params.rd)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
-        if (_.isUndefined(this.params.rs1)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
-        if (_.isUndefined(this.params.imm)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
         code = setCode(code, "funct3", funct3);
-        code = setCode(code, "rd", this.params.rd);
-        code = setCode(code, "rs1", this.params.rs1);
-        code = setCode(code, "imm_11_0", this.params.imm);
+        code = setCode(code, "rd", this.params.rd!);
+        code = setCode(code, "rs1", this.params.rs1!);
+        code = setCode(code, "imm_11_0", this.params.imm!);
         break;
       case "R":
-        if (_.isUndefined(this.params.rd)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
-        if (_.isUndefined(this.params.rs1)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
-        if (_.isUndefined(this.params.rs2)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
         code = setCode(code, "funct3", funct3);
         code = setCode(code, "funct7", funct7);
-        code = setCode(code, "rd", this.params.rd);
-        code = setCode(code, "rs1", this.params.rs1);
-        code = setCode(code, "rs2", this.params.rs2);
+        code = setCode(code, "rd", this.params.rd!);
+        code = setCode(code, "rs1", this.params.rs1!);
+        code = setCode(code, "rs2", this.params.rs2!);
         break;
       case "S":
-        if (_.isUndefined(this.params.imm)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
-        if (_.isUndefined(this.params.rs1)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
-        if (_.isUndefined(this.params.rs2)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
         code = setCode(code, "funct3", funct3);
-        code = setCode(code, "rs1", this.params.rs1);
-        code = setCode(code, "rs2", this.params.rs2);
-        code = setCode(code, "imm_4_0", this.params.imm);
-        code = setCode(code, "imm_11_5", this.params.imm >>> 5);
+        code = setCode(code, "rs1", this.params.rs1!);
+        code = setCode(code, "rs2", this.params.rs2!);
+        code = setCode(code, "imm_4_0", this.params.imm!);
+        code = setCode(code, "imm_11_5", this.params.imm! >>> 5);
         break;
       case "B":
-        if (_.isUndefined(this.params.imm)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
-        if (_.isUndefined(this.params.rs1)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
-        if (_.isUndefined(this.params.rs2)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
         code = setCode(code, "funct3", funct3);
-        code = setCode(code, "rs1", this.params.rs1);
-        code = setCode(code, "rs2", this.params.rs2);
-        code = setCode(code, "imm_11b", this.params.imm >>> 11);
-        code = setCode(code, "imm_4_1", this.params.imm >>> 1);
-        code = setCode(code, "imm_10_5", this.params.imm >>> 5);
-        code = setCode(code, "imm_12", this.params.imm >>> 12);
+        code = setCode(code, "rs1", this.params.rs1!);
+        code = setCode(code, "rs2", this.params.rs2!);
+        code = setCode(code, "imm_11b", this.params.imm! >>> 11);
+        code = setCode(code, "imm_4_1", this.params.imm! >>> 1);
+        code = setCode(code, "imm_10_5", this.params.imm! >>> 5);
+        code = setCode(code, "imm_12", this.params.imm! >>> 12);
         break;
       case "J":
-        if (_.isUndefined(this.params.rd)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
-        if (_.isUndefined(this.params.imm)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
-        code = setCode(code, "rd", this.params.rd);
-        code = setCode(code, "imm_19_12", this.params.imm >>> 12);
-        code = setCode(code, "imm_11j", this.params.imm >>> 11);
-        code = setCode(code, "imm_10_1", this.params.imm >>> 1);
-        code = setCode(code, "imm_20", this.params.imm >>> 20);
+        code = setCode(code, "rd", this.params.rd!);
+        code = setCode(code, "imm_19_12", this.params.imm! >>> 12);
+        code = setCode(code, "imm_11j", this.params.imm! >>> 11);
+        code = setCode(code, "imm_10_1", this.params.imm! >>> 1);
+        code = setCode(code, "imm_20", this.params.imm! >>> 20);
         break;
       case "U":
-        if (_.isUndefined(this.params.rd)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
-        if (_.isUndefined(this.params.imm)) {
-          debugger;
-          throw Error("instruction param undefined");
-        }
-        code = setCode(code, "rd", this.params.rd);
-        code = setCode(code, "imm_31_12", this.params.imm >>> 12);
+        code = setCode(code, "rd", this.params.rd!);
+        code = setCode(code, "imm_31_12", this.params.imm! >>> 12);
         break;
       default:
         throw new Error();

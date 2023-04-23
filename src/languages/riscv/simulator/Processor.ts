@@ -5,6 +5,7 @@ import { Instruction } from "../Instruction";
 import { unsignedSlice, signed, unsigned } from "../bits";
 import { Bus } from "./Bus.js";
 import { logger, memSize } from "./System";
+import { brilPrinter } from "../../bril/BrilPrinter";
 
 interface Datapath {
   src1?: "pc" | "x1";
@@ -74,7 +75,7 @@ export class Processor {
   loadData: number = 0;
   loadStoreError: boolean = false;
   state: "halt" | "fetch" | "decode" | "compute" | "updatePC" | "compare" | "loadStoreWriteBack" | "ecall" = "fetch";
-  instr: Instruction = new Instruction("add", {}, {});
+  instr: Instruction = new Instruction("add", { rd: 0, rs1: 0, rs2: 0 }, {});
   datapath: Datapath = {};
   irqState: boolean = false;
   acceptingIrq: boolean = false;
@@ -120,7 +121,7 @@ export class Processor {
   decode() {
     this.instr = Instruction.Decode(this.fetchData, this.metas.get(this.pc));
     this.datapath = ACTION_TABLE[this.instr.opName];
-    // console.log("Decode: ", this.instr.opName, this.instr); //, this.datapath);
+    // console.log(`Decode: ${this.instr.opName}`, this.instr, this.x);
     this.state = this.datapath.aluOp ? "compute" : "updatePC";
 
     if (this.instr.opName === "ecall") {

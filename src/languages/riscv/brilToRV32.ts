@@ -8,14 +8,12 @@ import {
   IBrilInstructionOrLabel,
   IBrilLabel,
   IBrilProgram,
-  IBrilValueInstruction,
   IBrilValueOperation,
 } from "../bril/BrilInterface";
 import { brilPrinter } from "../bril/BrilPrinter";
-import { IRegisterAllocation } from "../bril/registers";
+import { IRegisterAllocation, isLeafFunction } from "../bril/registers";
 import { R, RiscvEmmiter } from "./emitter";
-import { LocalScope, LocalScopeStack, LocalVariable } from "./LocalScope";
-import { cfgBuilder } from "../bril/cfg";
+import { LocalScopeStack } from "./LocalScope";
 
 // ABI
 // caller:
@@ -124,9 +122,11 @@ class RiscvCodeGenerator {
     }
 
     this.emitter.startCode();
-    this.emitter.emitGlobalLabel("main");
     this.emitter.emitLocalLabel("_start");
     this.emitter.emitLI(R.SP, 4096, { brilTxt: "init stack pointer to top of memory" });
+    this.emitter.emitJAL("main", { brilTxt: "call main" });
+    this.emitter.emitLI(R.A0, 10, { brilTxt: "Set A0 to 10 for exit ecall" });
+    this.emitter.emitECALL({ brilTxt: "halt" });
 
     this.textStart = 0;
     Object.values(bril.functions).forEach((func) => this.generateFunction(func));
@@ -163,13 +163,12 @@ class RiscvCodeGenerator {
   }
 
   generateFunction(func: IBrilFunction) {
-    const asmFunctionStartLine = this.emitter.nextLine;
-
-    // add a new scope for the function. SP starts at -WORD_SIZE to accomodate saved FP and RA
-    const scope = this.scopeStack.enterFunction(func.name);
-    if (!scope.context) throw Error("No scope context");
     //console.log(`Entering function ${func.name} scope: FP=${scope.context.FP}, initSP=${scope.context.SP}`);
+    const asmFunctionStartLine = this.emitter.nextLine;
     this.currentFunction = func;
+    const isLeaf = isLeafFunction(func);
+    const stackStart = isLeaf ? 0 : 1;
+    const regAllo = this.registerAllocation.coloring[func.name];
 
     const meta = (comment: string, i: number) => {
       return {
@@ -179,52 +178,54 @@ class RiscvCodeGenerator {
       };
     };
 
+    this.emitter.emitGlobalLabel(func.name);
+    this.emitter.emitLocalLabel(func.name);
+
     const generateProlog = () => {
-      // add function parameters to function scope
-      this.scopeStack.pushFunctionParams(func);
+      if (!regAllo) throw Error("No register allocation in generateFunction");
+      this.emitter.emitComment(`Prolog${isLeaf ? " (leaf function)" : ""}`, true);
+      Object.entries(regAllo).forEach(([variableName, registerName]) => {
+        const argNum = func.args.findIndex((arg) => arg.name == variableName);
+        this.emitter.emitComment(`${registerName}: ${variableName} (${argNum >= 0 ? "a" + argNum : "local"})`, true);
+      });
 
-      this.emitter.emitLocalLabel(func.name + ".prolog");
-      this.currentFunction = func;
+      if (!isLeaf) {
+        this.emitter.emitADDI(R.SP, R.SP, (Object.keys(regAllo).length + stackStart) * -4, meta("Allocate space for stack", 0));
+        if (!isLeaf) this.emitter.emitSW(R.RA, R.SP, 0, meta("Save caller's RA", 0));
+        Object.values(regAllo).forEach((reg, i) => {
+          this.emitter.emitSW(reg as R, R.SP, (i + stackStart) * 4, meta(`Save ${reg} to stack`, 0));
+        });
+      }
 
-      // preface: the caller will have resulted in state
-      // Arg1  <--- Caller FP
-      // ....
-      // Arg3
-      // Arg2
-      // Arg1  <--- SP
-
-      // prolog: now becomes
-      // Arg1  <--- old SP             ====> new FP (args will be at 0(FP), 4(FP), 8(FP)... )
-      // RA
-      // Caller FP = dynamic link      ====> new SP
-      if (!scope.context) throw Error("invalid scope");
-      this.emitter.emitADDI(R.SP, R.SP, scope.context.SP, meta("Make space for start of AR", 0));
-      this.emitter.emitSW(R.FP, R.SP, 0, meta("Save caller's FP", 0));
-      this.emitter.emitSW(R.RA, R.SP, WORD_SIZE, meta("Save caller's RA", 0));
-      this.emitter.emitADDI(R.FP, R.SP, 2 * WORD_SIZE, meta("New FP is at old SP", 0));
+      this.currentFunction?.args.forEach((arg, i) => {
+        const sreg = this.getRegister(arg.name);
+        // if (sreg !== "s" + i + 1) {debugger; throw Error("prolog - argn != sn+1");}
+        this.emitter.emitMV(sreg, ("a" + i) as R, meta(`${sreg} <= ${arg.name}`, 0));
+      });
     };
 
-    if (!(func.name === "main")) generateProlog();
+    const generateEpilog = () => {
+      if (!regAllo) throw Error("No register allocation in generateFunction");
+      this.emitter.emitComment(`${func.name} epilog`, true);
+      if (!isLeaf) {
+        this.emitter.emitLW(R.RA, R.SP, 0, meta("Restore saved RA", lastInstr));
+        Object.values(regAllo).forEach((reg, i) => {
+          this.emitter.emitLW(reg as R, R.SP, (i + stackStart) * 4, meta(`Restore ${reg}`, lastInstr));
+        });
+        this.emitter.emitADDI(R.SP, R.SP, (stackStart + Object.keys(regAllo).length) * 4, meta("Pop stack, lastInstr", lastInstr));
+      }
+    };
+
+    generateProlog();
 
     const asmBodyStartLine = this.emitter.nextLine;
-    this.emitter.emitComment(`${func.name} body`);
-
-    this.generateInstructions(func.instrs, `${func.name} body`);
+    this.emitter.emitComment(`${func.name} body`, true);
+    this.generateInstructions(func.instrs.slice(1), `${func.name} body`);
 
     const asmEpilogStartLine = this.emitter.nextLine;
     const lastInstr = func.instrs.length - 1;
-    this.emitter.emitComment(`${func.name} epilogue`);
-    if (func.name === "main") {
-      this.emitter.emitLI(R.A0, 10, meta("Set A0 to 10 for exit ecall", lastInstr));
-      this.emitter.emitECALL({ brilTxt: "end main" });
-    } else {
-      // Epilog
-      this.emitter.emitLW(R.RA, R.FP, -1 * WORD_SIZE, meta("load saved RA", lastInstr));
-      this.emitter.emitMV(R.T0, R.FP, meta("temp current FP (also = old SP)", lastInstr));
-      this.emitter.emitLW(R.FP, R.FP, -2 * WORD_SIZE, meta("restore callers FP", lastInstr));
-      this.emitter.emitMV(R.SP, R.T0, meta("restore caller's SP, deleting the callee AR", lastInstr));
-      this.emitter.emitJR(R.RA, meta("jump back to caller (RA)", lastInstr));
-    }
+    generateEpilog();
+    this.emitter.emitJR(R.RA, meta("jump back to caller (RA)", lastInstr));
   }
 
   generateInstructions(instrs: IBrilInstructionOrLabel[], label: string) {
@@ -302,12 +303,21 @@ class RiscvCodeGenerator {
               this.emitter.emitLI(R.A0, 1, meta(insText));
               this.emitter.emitMV(R.A1, this.getRegister(ins.args[0]), meta(insText));
               this.emitter.emitECALL(meta(insText));
+              return;
             }
             if (ins.funcs[0] == "print_string") {
               this.emitter.emitLI(R.A0, 4, meta(insText));
               this.emitter.emitMV(R.A1, this.getRegister(ins.args[0]), meta(insText));
               this.emitter.emitECALL(meta(insText));
+              return;
             }
+            // move arguments to A registers
+            if (ins.args.length > 8) throw Error("function call with > 8 arguments not supported");
+            ins.args.forEach((arg, i) => {
+              this.emitter.emitMV(("a" + i) as R, this.getRegister(arg), meta(insText));
+            });
+            this.emitter.emitJAL(ins.funcs[0], meta(insText));
+
           case "ret":
             {
               ins = instr as IBrilEffectOperation;
@@ -324,58 +334,5 @@ class RiscvCodeGenerator {
       }
     });
   }
-
-  encode() {
-    return [];
-  }
-
-  // visitFunctionCall(node: AstFunctionCall) {
-  //   if (node.funDecl.id === "print_int") {
-  //     const startLine = this.emitter.nextLine;
-  //     this.visitExpression(node.params[0]);
-  //     this.emitter.emitMV(R.A1, R.A0, "Move A0 to A1 to be argument for print_int ecall");
-  //     this.emitter.emitLI(R.A0, 1, "print_int ecall");
-  //     this.emitter.emitECALL();
-  //     this.rangeMap.push({
-  //       left: { ...node.pos, col: "red" },
-  //       right: { startLine, endLine: this.emitter.nextLine - 1, col: "blue" },
-  //     });
-  //     return;
-  //   }
-
-  //   if (node.funDecl.id === "print_string") {
-  //     this.visitExpression(node.params[0]);
-  //     this.emitter.emitMV(R.A1, R.A0, "Move A0 to A1 to be argument for print_string ecall");
-  //     this.emitter.emitLI(R.A0, 4, "print_string ecall");
-  //     this.emitter.emitECALL();
-  //     return;
-  //   }
-
-  //   this.emitter.emitComment(`call ${node.toCode()}`);
-
-  //   //  AR Start:   Caller's FP   } Set by caller
-  //   //              A3            } "
-  //   //              A2            } "
-  //   //    FP -->    A1            } "
-  //   //              RA            ] Set by callee (RA is not set until after JAL)
-  //   //    SP -->    Caller FP     ] "
-
-  //   // Function argument[n] can be retrieved from (4*(n+1))(FP)
-  //   // eg LW a0, 4(FP) => a0 = arg[0]
-
-  //   // push params onto AR in reverse order
-  //   if (node.params.length) {
-  //     // this.emitter.emitADDI(R.SP, R.SP, -node.params.length*WORD_SIZE, `make stack space for ${node.funDecl.id} ${-node.params.length*WORD_SIZE} arguments`);
-  //     node.params.reverse().forEach((p, i) => {
-  //       this.visitExpression(p);
-  //       this.scopeStack.pushLocal(this.newLabel("param"), 4);
-  //       this.pushStack(R.A0, `save function param ${i}:${node.funDecl.params[i].id} to stack`);
-  //       // this.emitter.emitSW(R.A0, R.SP, i*WORD_SIZE, `save function param ${i}:${node.funDecl.params[i].id} to stack`);
-  //     });
-  //   }
-
-  //   this.emitter.emitJAL(node.funDecl.id);
-  // }
 }
-
 export const riscvCodeGenerator = new RiscvCodeGenerator();

@@ -1,4 +1,4 @@
-import { SymbolTable } from "./astBuilder";
+import { SymbolTable } from "./simulator/astBuilder";
 import { Instruction } from "./Instruction";
 
 export interface ASMRootNode {

@@ -7,7 +7,7 @@ import { setupLanguage } from "./monaco/setup";
 
 import { useSettingsStore, SettingsState, ParseState, useParseStore } from "../../store/zustore";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
-import { riscvCodeGenerator } from "../../languages/riscv/brilToRiscV";
+import { riscvCodeGenerator } from "../../languages/riscv/brilToRV32";
 import _ from "lodash";
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {

@@ -39,7 +39,7 @@ import { SiWebassembly } from "react-icons/si";
 import { VscDebugRerun, VscDebugStepOver } from "react-icons/vsc";
 import { BrilTypeByteSize, IBrilDataSegment, IBrilPrimType } from "../languages/bril/BrilInterface";
 import _ from "lodash";
-import { riscvCodeGenerator } from "../languages/riscv/brilToRiscV";
+import { riscvCodeGenerator } from "../languages/riscv/brilToRV32";
 import { Computer } from "../languages/riscv/simulator/System";
 import { regNum } from "../languages/riscv/emitter";
 

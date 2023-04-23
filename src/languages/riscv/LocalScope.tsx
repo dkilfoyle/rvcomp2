@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { IBrilFunction } from "../bril/BrilInterface";
-import { WORD_SIZE } from "./brilToRiscV";
+import { WORD_SIZE } from "./brilToRV32";
 import { ScopeStack } from "./scopeStack";
 
 export interface LocalScope {

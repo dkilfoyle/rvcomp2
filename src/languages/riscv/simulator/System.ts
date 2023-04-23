@@ -1,4 +1,5 @@
 import { IBrilProgram } from "../../bril/BrilInterface";
+import { regNum } from "../emitter";
 import { Bus } from "./Bus";
 import { Memory } from "./Memory";
 import { Processor } from "./Processor";
@@ -59,9 +60,14 @@ export class Computer {
     if (this.cpu.state === "compare") this.cpu.compare();
     if (this.cpu.state === "loadStoreWriteBack") this.cpu.loadStoreWriteBack();
     if (this.cpu.state === "updatePC") this.cpu.updatePC();
+    // console.log(`pc=${this.cpu.pc}, ra=${this.cpu.x[regNum["ra"]]}, sp=${this.cpu.x[regNum["sp"]]}`);
   }
   run() {
-    while (this.cpu.state !== "halt") this.step();
+    let cycles = 0;
+    while (this.cpu.state !== "halt" && cycles < 100) {
+      this.step();
+      cycles++;
+    }
     // todo
   }
 }
