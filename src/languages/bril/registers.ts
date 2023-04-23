@@ -226,7 +226,7 @@ const colorGraph = (g: Graph, nodes: string[], colors: string[]): Record<string,
   const node = nodes.find((nodei) => g.neighbors(nodei).length < colors.length);
   if (_.isUndefined(node)) {
     // console.log("No nodes with < 6 neighbors");
-    console.groupEnd();
+    // console.groupEnd();
     return undefined;
   }
 
@@ -265,7 +265,7 @@ export interface IRegisterAllocation {
 const tempRegisters = ["t1", "t2", "t3", "t4", "t5", "t6", "t7"];
 const savedRegisters = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11"];
 
-const isLeafFunction = (fun: IBrilFunction) => {
+export const isLeafFunction = (fun: IBrilFunction) => {
   return !fun.instrs.find((instr) => "op" in instr && instr.op == "call");
 };
 
